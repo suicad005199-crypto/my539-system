@@ -1,184 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>539 智能分析系統 - Pro 量化決策版</title>
+<style>
+:root {
+    --primary: #0f172a; --secondary: #1e293b; --accent: #38bdf8; --gold: #fbbf24;
+    --success: #22c55e; --bg: #0f172a; --card-bg: rgba(30, 41, 59, 0.7);
+    --text: #f1f5f9; --glass: rgba(255, 255, 255, 0.03);
+}
+body { 
+    font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; background-color: var(--bg);
+    background-image: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 100%);
+    margin: 0; padding: 20px 15px; color: var(--text); min-height: 100vh; line-height: 1.6;
+}
+.container { max-width: 1000px; margin: 0 auto; }
+header { text-align: center; margin-bottom: 30px; padding: 10px 0; }
+header h1 { font-size: 2.2rem; margin: 0; color: var(--accent); font-weight: 900; text-shadow: 0 0 20px rgba(56, 189, 248, 0.3); letter-spacing: 2px; }
+header p { font-size: 0.85rem; margin: 8px 0 0; opacity: 0.5; letter-spacing: 3px; font-weight: 300; }
+.card { background: var(--card-bg); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); padding: 24px; border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); margin-bottom: 25px; }
+.upload-section { border: 2px dashed rgba(56, 189, 248, 0.2); transition: 0.3s; padding: 40px 20px; text-align: center; }
+button { background: linear-gradient(135deg, var(--accent), #0284c7); color: white; border: none; padding: 16px 30px; border-radius: 14px; font-weight: 800; font-size: 1.1rem; cursor: pointer; transition: 0.3s; width: 100%; }
+.dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+@media (min-width: 768px) { .dashboard-grid { grid-template-columns: 1fr 1fr; } }
+h3 { font-size: 1.2rem; margin-top: 0; margin-bottom: 20px; color: var(--gold); display: flex; align-items: center; font-weight: 700; }
+h3::before { content: ''; display: inline-block; width: 4px; height: 20px; background: var(--gold); margin-right: 12px; border-radius: 2px; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: center; font-size: 0.75rem; opacity: 0.4; padding: 12px; font-weight: normal; }
+td { padding: 15px 5px; border-bottom: 1px solid rgba(255,255,255,0.03); text-align: center; }
+.ball { display: inline-block; width: 36px; height: 36px; line-height: 36px; text-align: center; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #475569, #1e293b); margin: 3px; font-weight: 800; color: var(--accent); }
+.strategy-block { background: var(--glass); padding: 20px; margin: 15px 0; border-radius: 18px; border-left: 4px solid var(--accent); cursor: pointer; }
+.logic-detail { display: none; margin-top: 10px; font-size: 0.85rem; color: #94a3b8; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 10px; }
+.rate-badge { float: right; background: rgba(56, 189, 248, 0.15); color: var(--accent); padding: 2px 10px; border-radius: 10px; font-size: 0.8rem; }
+.inline-input { width: 55px; height: 55px; text-align: center; border-radius: 12px; border: 1px solid #334155; background: #0f172a; color: var(--gold); font-size: 1.2rem; font-weight: bold; }
+.chart-container { height: 300px; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <header><h1>539 QUANT PRO</h1><p>ADVANCED ANALYTICS • DATA DRIVEN</p></header>
+
+    <div class="card upload-section">
+        <input type="file" id="csvFile" accept=".csv" style="display: none;">
+        <label for="csvFile" id="fileLabel" style="display: block; padding: 15px; background: var(--secondary); border-radius: 10px; cursor: pointer; margin-bottom: 20px;">點擊選取歷史數據 CSV</label>
+        <button onclick="runAll()">啟動量化決策分析</button>
+    </div>
+
+    <div class="dashboard-grid">
+        <div id="history" class="card"><h3>近期開獎歷史</h3></div>
+        <div id="stats_area" class="card"><h3>策略回測表現</h3><div id="stats_table"></div></div>
+    </div>
+
+    <div id="results" class="card"><h3>智能推荐組合 (點擊策略查看邏輯)</h3></div>
+
+    <div class="card chart-container">
+        <h3>機率分布趨勢 (綜合評分)</h3>
+        <canvas id="trendChart"></canvas>
+    </div>
+</div>
+
 <script>
 let HIST_DATA = [];
-let CORR_MATRIX = {};
-let trendChartInstance = null;
+let chartInstance = null;
 
 const RULES = [
-    { 
-        name: "保守型策略", pool: "last1+5", 
-        desc: "核心為「熱號規律」。鎖定上期開出的號碼及其鄰近 5 位數關聯號，捕捉短期內重複出現的高頻率路徑。",
-        logic: "頻率加權 60% + 關聯性 30% + 擾動 10%" 
-    },
-    { 
-        name: "平衡型策略", pool: "last5+5+10", 
-        desc: "掃描近 5 期數據。平衡中長期遺漏值與短期熱度，尋找正處於「上升趨勢」的號碼組合。",
-        logic: "平均頻率 40% + 遺漏修正 40% + 隨機 20%" 
-    },
-    { 
-        name: "激進型策略", pool: "last5+10", 
-        desc: "採用大跨度相關性分析（+10 偏移）。旨在捕捉跳躍式或突變型的版路，適合尋求冷熱切換的轉折點。",
-        logic: "關聯矩陣 50% + 跳號預測 30% + 隨機 20%" 
-    }
+    { name: "保守熱號型", type: "hot", desc: "鎖定近期頻率最高的號碼規律。", logic: "Top 15 頻率號碼加權隨機" },
+    { name: "冷號反彈型", type: "cold", desc: "分析遺漏期數（Gap），捕捉回補點。", logic: "極限遺漏 Top 10 號碼隨機" },
+    { name: "冷熱平衡型", type: "mix", desc: "混合 3 熱 2 冷，規避單一趨勢風險。", logic: "熱號 (3) + 冷號 (2) 組合" }
 ];
 
-document.getElementById('csvFile').addEventListener('change', function(e){
-    const name = e.target.files[0] ? e.target.files[0].name : "點擊選取歷史數據 CSV";
-    document.getElementById('fileLabel').innerText = name;
-});
+async function runAll() {
+    const file = document.getElementById("csvFile").files[0];
+    if(!file) return alert("請選取 CSV 檔案");
+    HIST_DATA = parseCSV(await file.text());
+    if(HIST_DATA.length < 30) return alert("數據量不足");
 
-async function runAll(){
-    const fileInput = document.getElementById("csvFile");
-    if(!fileInput.files[0]){ alert("請先選取 CSV 檔案"); return; }
-    const text = await fileInput.files[0].text();
-    HIST_DATA = parseCSV(text);
-    if(HIST_DATA.length < 20) return;
-    
-    buildCorrelationMatrix(HIST_DATA);
-    showHistory(HIST_DATA);
-    
-    // 執行回測邏輯
-    const stats = doBacktest(HIST_DATA);
+    showHistory();
+    const stats = doBacktest();
     renderStatsTable(stats);
-    
-    // 繪製圖表與渲染結果
-    drawTrendChart(stats);
-    renderTopCombinations(HIST_DATA);
+    renderResults();
+    drawChart(stats);
 }
 
-function parseCSV(text){
-    const lines = text.trim().split("\n");
-    lines.shift();
-    return lines.map(l => {
+function parseCSV(text) {
+    return text.trim().split("\n").slice(1).map(l => {
         const p = l.split(",");
-        if(p.length < 7) return null;
-        return {date: p[0].trim(), nums: p.slice(2, 7).map(n => parseInt(n.trim())).sort((a,b)=>a-b)};
-    }).filter(x => x !== null).sort((a,b) => new Date(a.date) - new Date(b.date));
+        return { date: p[0], nums: p.slice(2, 7).map(n => parseInt(n)).sort((a,b)=>a-b) };
+    }).filter(x => !isNaN(x.nums[0]));
 }
 
-function buildCorrelationMatrix(data) {
-    CORR_MATRIX = {};
-    for (let i = 0; i < data.length - 1; i++) {
-        const current = data[i].nums;
-        const next = data[i+1].nums;
-        current.forEach(c => {
-            if (!CORR_MATRIX[c]) CORR_MATRIX[c] = {};
-            next.forEach(n => { CORR_MATRIX[c][n] = (CORR_MATRIX[c][n] || 0) + 1; });
-        });
-    }
+function calculateGaps(data) {
+    const gaps = {};
+    for(let i=1; i<=39; i++) gaps[i] = data.length;
+    data.forEach((d, idx) => d.nums.forEach(n => gaps[n] = data.length - 1 - idx));
+    return gaps;
 }
 
-function showHistory(data){
-    let html = "<table>";
-    data.slice(-5).reverse().forEach(d => {
-        html += `<tr><td style='opacity:0.6; font-size:0.8rem;'>${d.date.slice(5)}</td><td>${d.nums.map(n => `<span class="ball">${String(n).padStart(2,'0')}</span>`).join("")}</td></tr>`;
-    });
-    html += "</table>";
-    document.getElementById("history").innerHTML = "<h3>近期開獎歷史</h3>" + html;
+function generateSmartPick(data, ruleType) {
+    const gaps = calculateGaps(data);
+    const sorted = Object.entries(gaps).sort((a,b) => a[1] - b[1]); 
+    const hots = sorted.slice(0, 15).map(x => parseInt(x[0]));
+    const colds = sorted.slice(-10).map(x => parseInt(x[0]));
+
+    let pick = [];
+    if(ruleType === 'hot') pick = hots.sort(() => 0.5 - Math.random()).slice(0,5);
+    else if(ruleType === 'cold') pick = colds.sort(() => 0.5 - Math.random()).slice(0,5);
+    else pick = [...hots.sort(() => 0.5 - Math.random()).slice(0,3), ...colds.sort(() => 0.5 - Math.random()).slice(0,2)];
+    return pick.sort((a,b) => a - b);
 }
 
-// 修正：補完缺失的期望值與命中計算
-function calculateExpectedValue(pick, testData) {
-    if(!testData.length) return 0;
-    let score = 0;
-    testData.forEach(d => {
-        const match = d.nums.filter(n => pick.includes(n)).length;
-        if(match === 2) score += 1;
-        else if(match === 3) score += 10;
-        else if(match >= 4) score += 50;
-    });
-    return score / testData.length;
-}
-
-function generateSmartPick(prev, rule) {
-    const pool = new Set();
-    const lastNums = prev[prev.length - 1].nums;
-    if(rule.pool.includes("last1")) lastNums.forEach(n => pool.add(n));
-    if(rule.pool.includes("last5")) prev.slice(-5).forEach(d => d.nums.forEach(n => pool.add(n)));
-    
-    [...pool].forEach(n => {
-        if(rule.pool.includes("+5") && n+5 <= 39) pool.add(n+5);
-        if(rule.pool.includes("+10") && n+10 <= 39) pool.add(n+10);
-    });
-
-    let best = [], maxVal = -1;
-    for(let i=0; i<50; i++) {
-        let arr = [...pool].sort(() => Math.random() - 0.5);
-        let candidate = arr.slice(0, 5).sort((a,b) => a-b);
-        let val = calculateExpectedValue(candidate, prev.slice(-30));
-        if (val > maxVal) { maxVal = val; best = candidate; }
-    }
-    return best;
-}
-
-// 修正：新增策略回測執行函數
-function doBacktest(data) {
+function doBacktest() {
     return RULES.map(rule => {
         let h2 = 0, h3 = 0;
-        const range = Math.min(60, data.length - 10);
-        for(let i = data.length - range; i < data.length - 1; i++) {
-            const pick = generateSmartPick(data.slice(0, i), rule);
-            const m = data[i+1].nums.filter(n => pick.includes(n)).length;
-            if(m === 2) h2++; else if(m >= 3) h3++;
+        const range = 60;
+        for(let i = HIST_DATA.length - range; i < HIST_DATA.length - 1; i++) {
+            const pick = generateSmartPick(HIST_DATA.slice(0, i), rule.type);
+            const matches = HIST_DATA[i+1].nums.filter(n => pick.includes(n)).length;
+            if(matches === 2) h2++; else if(matches >= 3) h3++;
         }
-        return { name: rule.name, h2, h3, score: ((h2 + h3*10)/range).toFixed(2) };
+        return { name: rule.name, h2, h3, score: (h2 + h3*10) / 6 };
     });
 }
 
-// 修正：渲染回測表格
 function renderStatsTable(stats) {
-    let html = "<table><thead><tr><th>策略</th><th>二星</th><th>三星+</th><th>評分</th></tr></thead><tbody>";
-    stats.forEach(s => {
-        html += `<tr><td>${s.name}</td><td>${s.h2}</td><td>${s.h3}</td><td style="color:var(--accent)">${s.score}</td></tr>`;
-    });
-    document.getElementById("stats_table").innerHTML = "<h3>策略回測表現</h3>" + html + "</tbody></table>";
+    let html = "<table><tr><th>策略</th><th>二星</th><th>三星+</th><th>評分</th></tr>";
+    stats.forEach(s => html += `<tr><td>${s.name}</td><td>${s.h2}</td><td>${s.h3}</td><td style="color:var(--accent)">${s.score.toFixed(1)}</td></tr>`);
+    document.getElementById("stats_table").innerHTML = html + "</table>";
 }
 
-function renderTopCombinations(data) {
+function renderResults() {
     const res = document.getElementById("results");
-    res.innerHTML = "<h3>智能推荐組合 (點擊策略查看邏輯)</h3>";
+    res.innerHTML = "<h3>智能推荐組合</h3>";
     RULES.forEach(rule => {
-        const pick = generateSmartPick(data, rule);
+        const pick = generateSmartPick(HIST_DATA, rule.type);
         const div = document.createElement("div");
         div.className = "strategy-block";
-        div.onclick = function() {
-            const det = this.querySelector(".logic-detail");
-            det.style.display = det.style.display === 'block' ? 'none' : 'block';
-        };
-        div.innerHTML = `
-            <div><strong>${rule.name}</strong> <span class="rate-badge">AI 算力分析中</span></div>
-            <div style="margin:15px 0">${pick.map(n => `<span class="ball" style="border:1px solid var(--accent)">${String(n).padStart(2,'0')}</span>`).join("")}</div>
-            <div class="logic-detail">描述：${rule.desc}<br>邏輯：${rule.logic}</div>
-        `;
+        div.onclick = function() { const d = this.querySelector(".logic-detail"); d.style.display = d.style.display === 'block' ? 'none' : 'block'; };
+        div.innerHTML = `<strong>${rule.name}</strong><span class="rate-badge">量化強度：高</span><div style="margin-top:10px">${pick.map(n => `<span class="ball">${String(n).padStart(2,'0')}</span>`).join("")}</div><div class="logic-detail">邏輯：${rule.logic}<br>${rule.desc}</div>`;
         res.appendChild(div);
     });
 }
 
-function drawTrendChart(stats) {
+function showHistory() {
+    let html = "<table>";
+    HIST_DATA.slice(-5).reverse().forEach(d => html += `<tr><td style="opacity:0.5">${d.date.slice(5)}</td><td>${d.nums.map(n => `<span class="ball">${String(n).padStart(2,'0')}</span>`).join("")}</td></tr>`);
+    document.getElementById("history").innerHTML = "<h3>近期開獎歷史</h3>" + html + "</table>";
+}
+
+function drawChart(stats) {
     const ctx = document.getElementById('trendChart').getContext('2d');
-    if(trendChartInstance) trendChartInstance.destroy();
-    trendChartInstance = new Chart(ctx, {
+    if(chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(ctx, {
         type: 'bar',
-        data: {
-            labels: stats.map(s => s.name),
-            datasets: [{
-                label: '策略綜合評分 (基於 60 期回測)',
-                data: stats.map(s => s.score),
-                backgroundColor: 'rgba(56, 189, 248, 0.4)',
-                borderColor: '#38bdf8', borderWidth: 1
-            }]
-        },
+        data: { labels: stats.map(s => s.name), datasets: [{ label: '策略表現評分', data: stats.map(s => s.score), backgroundColor: '#38bdf8' }] },
         options: { responsive: true, maintainAspectRatio: false }
     });
 }
-
-function verifyUserPick() {
-    const user = [1,2,3,4,5].map(i => parseInt(document.getElementById("userNum"+i).value)).filter(n=>!isNaN(n));
-    if(user.length < 2) return alert("請輸入號碼");
-    let h2=0, h3=0, h4=0;
-    HIST_DATA.forEach(d => {
-        const m = d.nums.filter(n => user.includes(n)).length;
-        if(m===2) h2++; else if(m===3) h3++; else if(m>=4) h4++;
-    });
-    document.getElementById("userPickResult").innerHTML = `歷史命中：二星 ${h2} | 三星 ${h3} | 四星以上 ${h4}`;
-}
 </script>
+</body>
+</html>
