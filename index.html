@@ -1,206 +1,191 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539 量化決策系統</title>
-    <style>
-        :root { 
-            --bg: #f2f2f7; --card: #ffffff; --primary: #1c1c1e; 
-            --gold: #ffcc00; --red: #ff3b30; --green: #34c759; --blue: #007aff;
-            --gray: #8e8e93; --shadow: rgba(0,0,0,0.1);
-        }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; 
-            background: var(--bg); margin: 0; padding: 20px; color: var(--primary);
-            -webkit-tap-highlight-color: transparent;
-        }
-        .container { max-width: 500px; margin: auto; background: var(--card); padding: 25px; border-radius: 30px; box-shadow: 0 10px 40px var(--shadow); }
-        
-        /* 狀態列 */
-        .status-bar { 
-            background: #fffbe6; color: #856404; font-size: 12px; padding: 10px; 
-            border-radius: 12px; margin-bottom: 20px; text-align: center; border: 1px solid #ffe58f;
-        }
-
-        .header { text-align: center; margin-bottom: 25px; }
-        .main-title { font-size: 28px; font-weight: 800; margin: 0; letter-spacing: -1px; }
-        .update-tag { font-size: 12px; color: var(--gray); margin-top: 8px; }
-
-        /* 統計面板 */
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 25px; }
-        .stat-box { background: #f8f8fa; padding: 12px; border-radius: 15px; text-align: center; }
-        .stat-label { font-size: 11px; color: var(--gray); display: block; margin-bottom: 4px; }
-        .stat-value { font-size: 16px; font-weight: 700; color: var(--primary); }
-
-        /* 按鈕設計 */
-        .btn-main { 
-            width: 100%; padding: 20px; background: var(--primary); color: white; border: none; 
-            border-radius: 20px; font-size: 18px; font-weight: 700; cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-        }
-        .btn-main:active { transform: scale(0.96); background: #000; }
-        .btn-main:disabled { background: var(--gray); cursor: not-allowed; }
-
-        /* 結果區域 */
-        #resultsArea { margin-top: 25px; }
-        .set-card { 
-            background: white; border: 1px solid #e5e5ea; border-radius: 22px; padding: 20px; 
-            margin-bottom: 16px; animation: slideUp 0.5s ease-out;
-        }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .ball-row { display: flex; gap: 8px; }
-        .ball { 
-            width: 40px; height: 40px; background: #f2f2f7; color: var(--primary); 
-            border-radius: 50%; display: flex; align-items: center; justify-content: center; 
-            font-weight: 800; font-size: 16px; transition: 0.3s;
-        }
-        .ball.hot { background: var(--gold); border: 1px solid #e6b800; }
-        .conf-score { background: #e8f9ee; color: var(--green); padding: 5px 12px; border-radius: 12px; font-size: 14px; font-weight: 800; }
-
-        .btn-detail {
-            width: 100%; background: #f2f2f7; border: none; color: var(--blue); padding: 12px; 
-            border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer;
-        }
-
-        /* iOS 彈窗 */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; backdrop-filter: blur(10px); }
-        .modal-sheet { 
-            display: none; position: fixed; bottom: 0; left: 0; width: 100%; 
-            background: white; border-radius: 30px 30px 0 0; padding: 30px 20px; 
-            z-index: 101; box-shadow: 0 -10px 30px rgba(0,0,0,0.1);
-            animation: sheetUp 0.3s ease-out;
-        }
-        @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        .modal-title { font-size: 20px; font-weight: 800; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
-        .modal-content { font-size: 16px; line-height: 1.8; color: #3a3a3c; }
-        .modal-close { margin-top: 30px; width: 100%; padding: 18px; background: var(--blue); color: white; border: none; border-radius: 18px; font-weight: 700; font-size: 16px; }
-    </style>
+<meta charset="UTF-8">
+<title>539 回測＋建議號碼系統</title>
+<style>
+body { font-family: Arial, sans-serif; padding: 20px; }
+input, button { margin-top: 10px; padding: 8px; }
+#results { margin-top: 20px; }
+.chart-container { width: 90%; margin-top: 40px; }
+</style>
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-<div class="container">
-    <div class="status-bar">⚠️ 離線模式 (使用快取數據)</div>
-    
-    <div class="header">
-        <h1 class="main-title">539 智慧量化系統</h1>
-        <div class="update-tag" id="syncTime">正在同步最新開獎紀錄...</div>
-    </div>
+<h2>539 回測 + 一鍵建議號碼（含圖表）</h2>
 
-    <div class="stats-grid">
-        <div class="stat-box"><span class="stat-label">近期熱號</span><span class="stat-value" id="hotList">--</span></div>
-        <div class="stat-box"><span class="stat-label">系統信心</span><span class="stat-value" style="color:var(--green)">極高</span></div>
-    </div>
+<label>載入歷史開獎 CSV：</label><br>
+<input type="file" id="csvFile" accept=".csv"><br>
+<button onclick="runAll()">執行回測 + 顯示圖表 + 產生建議</button>
 
-    <button class="btn-main" id="genBtn" onclick="runSimulation()">生成高機率組合</button>
-    
-    <div id="resultsArea"></div>
-</div>
+<div id="results"></div>
 
-<div class="modal-overlay" id="overlay" onclick="toggleModal(false)"></div>
-<div class="modal-sheet" id="sheet">
-    <div class="modal-title">選號依據詳解</div>
-    <div id="modalBody" class="modal-content"></div>
-    <button class="modal-close" onclick="toggleModal(false)">我已掌握邏輯</button>
+<div class="chart-container">
+  <canvas id="trendChart"></canvas>
 </div>
 
 <script>
-    // 1. 歷史模擬數據 (未來可接入台彩 API)
-    const historyData = [
-        { id: "115009", nums: [11, 25, 26, 34, 38] },
-        { id: "115008", nums: [01, 12, 14, 22, 34] },
-        { id: "115007", nums: [03, 08, 10, 21, 30] },
-        { id: "115006", nums: [05, 10, 14, 15, 28] },
-        { id: "115005", nums: [01, 02, 06, 11, 33] }
-    ];
+// 規則定義
+const RULES = [
+  { name: "A_保守", pool: "last1+5", odd: [2,3], sum: [85,115] },
+  { name: "B_均衡", pool: "last5+5+10", odd: [1,2,3,4], sum: [80,120] },
+  { name: "C_進取", pool: "last5+10", odd: [3], sum: [90,125] }
+];
 
-    // 2. 初始統計運算
-    const freq = {};
-    historyData.forEach(d => d.nums.forEach(n => freq[n] = (freq[n] || 0) + 1));
-    const hots = Object.keys(freq).filter(k => freq[k] >= 2).map(Number);
-    const colds = Array.from({length:39}, (_,i)=>i+1).filter(n => !freq[n]);
+// 主流程
+async function runAll() {
+  const fileInput = document.getElementById("csvFile");
+  if (!fileInput.files[0]) {
+    alert("請先載入 CSV 檔");
+    return;
+  }
+  
+  const text = await fileInput.files[0].text();
+  const data = parseCSV(text);
+  const stats = doBacktest(data);
+  renderStats(stats);
 
-    document.getElementById('syncTime').innerText = `已同步台彩官網數據 (截至 ${new Date().toLocaleDateString()})`;
-    document.getElementById('hotList').innerText = hots.sort((a,b)=>freq[b]-freq[a]).slice(0,3).join(', ');
+  const trend = stats.map(s => s.hit3Rate * 100);
+  drawTrendChart(trend);
 
-    // 3. 核心量化演算法
-    function runSimulation() {
-        const btn = document.getElementById('genBtn');
-        const area = document.getElementById('resultsArea');
-        
-        btn.disabled = true;
-        btn.innerText = "正在進行量化運算...";
-        area.innerHTML = '';
+  const bestRule = selectBestRule(stats);
+  const picks = generateNext3(data.slice(-5), bestRule.rule);
+  renderPicks(picks, bestRule.rule.name);
+}
 
-        setTimeout(() => {
-            for(let i=0; i<3; i++) {
-                const combination = generateSmartSet();
-                renderCard(combination);
-            }
-            btn.disabled = false;
-            btn.innerText = "生成高機率組合";
-        }, 800);
+// 解析 CSV
+function parseCSV(text) {
+  const lines = text.trim().split("\n");
+  const headers = lines.shift().split(",");
+  return lines.map(l => {
+    const p = l.split(",");
+    return { date: p[0], nums: p.slice(2,7).map(n => parseInt(n)) };
+  }).sort((a,b) => new Date(a.date) - new Date(b.date));
+}
+
+// 回測
+function doBacktest(data) {
+  const stats = RULES.map(r => ({
+    rule: r, hit3: 0, hit2: 0, total: 0
+  }));
+
+  for (let i = 5; i < data.length; i++) {
+    const prev = data.slice(i - 5, i);
+    const actual = data[i].nums;
+    stats.forEach(s => {
+      const pick = generatePick(prev, s.rule);
+      const hit = countHit(actual, pick);
+      s.total++;
+      if (hit >= 3) s.hit3++;
+      if (hit >= 2) s.hit2++;
+    });
+  }
+  stats.forEach(s => {
+    s.hit3Rate = s.hit3 / s.total;
+    s.hit2Rate = s.hit2 / s.total;
+  });
+  return stats;
+}
+
+// 顯示統計結果
+function renderStats(stats) {
+  let html = "<h3>回測結果（≥3 碼機率排序）</h3>";
+  html += "<table border='1' cellpadding='5'><tr><th>規則</th><th>≥3 碼</th><th>≥2 碼</th><th>總期數</th></tr>";
+  stats.sort((a,b) => b.hit3Rate - a.hit3Rate)
+       .forEach(s => {
+         html += `<tr>
+           <td>${s.rule.name}</td>
+           <td>${(s.hit3Rate*100).toFixed(2)}%</td>
+           <td>${(s.hit2Rate*100).toFixed(2)}%</td>
+           <td>${s.total}</td>
+         </tr>`;
+       });
+  html += "</table>";
+  document.getElementById("results").innerHTML = html;
+}
+
+// 趨勢圖
+function drawTrendChart(dataPoints) {
+  const ctx = document.getElementById("trendChart").getContext("2d");
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: RULES.map(r => r.name),
+      datasets: [{
+        label: '≥3 碼命中率 (%)',
+        data: dataPoints,
+        backgroundColor: ['#3e95cd', '#8e5ea2', '#3cba9f']
+      }]
+    },
+    options: {
+      scales: { y: { beginAtZero: true, max: 100 } }
     }
+  });
+}
 
-    function generateSmartSet() {
-        let attempts = 0;
-        while(attempts < 1000) {
-            let set = new Set();
-            // 強制帶入 1-2 個熱號
-            let h = hots.sort(() => 0.5 - Math.random()).slice(0, Math.random() > 0.5 ? 2 : 1);
-            h.forEach(n => set.add(n));
-            
-            // 隨機補滿
-            while(set.size < 5) set.add(Math.floor(Math.random() * 39) + 1);
-            
-            let arr = Array.from(set).sort((a,b)=>a-b);
-            let sum = arr.reduce((a,b)=>a+b);
-            let odds = arr.filter(n => n % 2 !== 0).length;
+// 選擇最佳規則
+function selectBestRule(stats) {
+  const sorted = stats.sort((a,b) => {
+    if (b.hit3Rate !== a.hit3Rate) return b.hit3Rate - a.hit3Rate;
+    return b.hit2Rate - a.hit2Rate;
+  });
+  return sorted[0];
+}
 
-            // 過濾邏輯：和值 70-130，奇偶比 2:3 或 3:2 或 1:4 (符合截圖需求)
-            if(sum >= 70 && sum <= 130 && (odds >= 1 && odds <= 4)) {
-                return { nums: arr, sum, odds, h: arr.filter(n => hots.includes(n)) };
-            }
-            attempts++;
-        }
-    }
+// 產生下一期建議 3 組
+function generateNext3(latest5, rule) {
+  const pool = buildPool(latest5, rule);
+  const results = [];
+  while (results.length < 3) {
+    const pick = shuffle(pool).slice(0,5).sort((a,b) => a-b);
+    if (validPick(pick, rule) && !exists(results, pick)) results.push(pick);
+  }
+  return results;
+}
 
-    // 4. UI 渲染邏輯
-    function renderCard(data) {
-        const area = document.getElementById('resultsArea');
-        const conf = (85 + Math.random() * 10).toFixed(1);
-        const detail = encodeURIComponent(JSON.stringify(data));
+// 建議輸出
+function renderPicks(picks, ruleName) {
+  let html = document.getElementById("results").innerHTML;
+  html += `<h3>採用規則：${ruleName}</h3>`;
+  picks.forEach((p,i) => { html += `組 ${i+1}: ${p.join(", ")}<br>`; });
+  document.getElementById("results").innerHTML = html;
+}
 
-        area.innerHTML += `
-            <div class="set-card">
-                <div class="card-header">
-                    <div class="ball-row">${data.nums.map(n => `<div class="ball ${hots.includes(n)?'hot':''}">${n.toString().padStart(2,'0')}</div>`).join('')}</div>
-                    <div class="conf-score">${conf}%</div>
-                </div>
-                <button class="btn-detail" onclick="openDetail('${detail}')">查看選號依據</button>
-            </div>
-        `;
-    }
+// 工具：命中數量
+function countHit(actual, pick) {
+  return actual.filter(n => pick.includes(n)).length;
+}
 
-    function openDetail(jsonStr) {
-        const d = JSON.parse(decodeURIComponent(jsonStr));
-        const coldNum = colds[Math.floor(Math.random() * colds.length)];
-        
-        document.getElementById('modalBody').innerHTML = `
-            <p><b>1. 熱趨勢：</b>帶入號碼 [${d.h.join(', ') || '無'}]，此為近期高頻熱號，具備連動機率。</p>
-            <p><b>2. 冷補償：</b>含冷號 [${coldNum}]，防範均值回歸下的補漲開出。</p>
-            <p><b>3. 平衡度：</b>奇偶比 ${d.odds}:${5-d.odds}，和值 ${d.sum}。大小數配比均衡，符合 539 歷史分佈最廣的區間。</p>
-        `;
-        toggleModal(true);
-    }
+// 工具：建立候選池
+function buildPool(latest5, rule) {
+  const pool = new Set();
+  if (rule.pool.includes("last1")) latest5[4].nums.forEach(n => pool.add(n));
+  if (rule.pool.includes("last5")) latest5.forEach(d => d.nums.forEach(n => pool.add(n)));
+  [...pool].forEach(n => {
+    if (rule.pool.includes("+5") && n+5 <= 39) pool.add(n+5);
+    if (rule.pool.includes("+10") && n+10 <= 39) pool.add(n+10);
+  });
+  return [...pool];
+}
 
-    function toggleModal(show) {
-        document.getElementById('overlay').style.display = show ? 'block' : 'none';
-        document.getElementById('sheet').style.display = show ? 'block' : 'none';
-    }
+// 工具：生成一注（用於回測）
+function generatePick(prev, rule) {
+  const pool = buildPool(prev, rule);
+  return shuffle(pool).slice(0,5).sort((a,b)=>a-b);
+}
+
+// 工具：合法性檢查
+function validPick(pick, rule) {
+  const odd = pick.filter(n => n%2).length;
+  const sum = pick.reduce((a,b)=>a+b,0);
+  return rule.odd.includes(odd) && sum>=rule.sum[0] && sum<=rule.sum[1];
+}
+
+function exists(arr, pick) { return arr.some(a => a.join()==pick.join()); }
+function shuffle(arr) { return arr.sort(() => Math.random()-0.5); }
+
 </script>
 
 </body>
