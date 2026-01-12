@@ -12,68 +12,37 @@
     --bg-color: #f0f2f5;
     --card-bg: #ffffff;
 }
-/* iOS 滾動優化與字體調整 */
 body { 
     font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', sans-serif; 
-    background: var(--bg-color); 
-    margin:0; padding:15px; color:#333; line-height:1.6;
+    background: var(--bg-color); margin:0; padding:15px; color:#333; line-height:1.6;
     -webkit-font-smoothing: antialiased;
 }
 .container { max-width:1200px; margin:0 auto; }
-header { 
-    text-align:center; margin-bottom:20px; padding:15px; 
-    background: var(--primary-color); color:white; border-radius:12px; 
-}
+header { text-align:center; margin-bottom:20px; padding:15px; background: var(--primary-color); color:white; border-radius:12px; }
 header h1 { font-size: 1.4rem; margin: 0; }
 header p { font-size: 0.9rem; margin: 5px 0 0; opacity: 0.8; }
 
-.upload-section { 
-    background: var(--card-bg); padding:20px; border-radius:12px; text-align:center; 
-    margin-bottom:15px; box-shadow:0 2px 10px rgba(0,0,0,0.05);
-}
-/* 防止 iOS 輸入框點擊縮放，Font-size 必須為 16px */
+.upload-section { background: var(--card-bg); padding:20px; border-radius:12px; text-align:center; margin-bottom:15px; box-shadow:0 2px 10px rgba(0,0,0,0.05); }
 input[type=file], input[type=number] { font-size: 16px; margin: 10px 0; }
 
-button { 
-    background:var(--accent-color); color:white; border:none; padding:12px 20px; 
-    border-radius:8px; font-weight:bold; cursor:pointer; transition:0.2s; 
-    margin:5px; -webkit-appearance: none; /* 移除 iOS 默認樣式 */
-}
+button { background:var(--accent-color); color:white; border:none; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer; transition:0.2s; margin:5px; -webkit-appearance: none; }
 button:active { transform: scale(0.98); opacity: 0.9; }
 
-/* 響應式網格：手機端單欄，平板以上雙欄 */
-.dashboard-grid { 
-    display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 15px; 
-}
-@media (min-width: 768px) {
-    .dashboard-grid { grid-template-columns: 1fr 1fr; }
-}
+.dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 15px; }
+@media (min-width: 768px) { .dashboard-grid { grid-template-columns: 1fr 1fr; } }
 
 .card { background:var(--card-bg); padding:15px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.05); overflow-x: auto; }
 table { width:100%; border-collapse:collapse; margin-top:10px; font-size: 0.9rem; }
 th, td { padding:8px; border-bottom:1px solid #eee; text-align:center; }
 
-/* 號碼球在手機上稍微縮小一點避免換行 */
-.ball { 
-    display:inline-block; width:28px; height:28px; line-height:28px; 
-    text-align:center; border-radius:50%; background:#e9ecef; 
-    margin:2px; font-weight:bold; font-size:13px; 
-}
+.ball { display:inline-block; width:28px; height:28px; line-height:28px; text-align:center; border-radius:50%; background:#e9ecef; margin:2px; font-weight:bold; font-size:13px; }
 .high-rate .ball { background: var(--success-color); color:white; }
 
 .strategy-block { border-left:4px solid var(--accent-color); padding-left:10px; margin:15px 0; background:#fcfcfc; }
 .rate-badge { font-size:11px; padding:2px 6px; border-radius:10px; background:#eee; margin-left:2px; white-space: nowrap; }
 
-/* 圖表容器 iOS 適配 */
-.chart-container { 
-    position: relative; height: 300px; width: 100%;
-    background:white; padding:15px; border-radius:12px; 
-    box-shadow:0 2px 10px rgba(0,0,0,0.05); margin-top:15px;
-}
-.inline-input { 
-    width: 45px; height: 40px; text-align:center; margin:0 2px; 
-    border: 1px solid #ccc; border-radius: 6px; -webkit-appearance: none;
-}
+.chart-container { position: relative; height: 300px; width: 100%; background:white; padding:15px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.05); margin-top:15px; }
+.inline-input { width: 45px; height: 40px; text-align:center; margin:0 2px; border: 1px solid #ccc; border-radius: 6px; -webkit-appearance: none; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -103,11 +72,11 @@ th, td { padding:8px; border-bottom:1px solid #eee; text-align:center; }
     <div class="card" style="margin-top:15px;">
         <h3>策略 D - 自選驗證</h3>
         <div style="display: flex; justify-content: center; margin-bottom: 10px;">
-            <input type="number" pattern="\d*" inputmode="numeric" class="inline-input" id="userNum1">
-            <input type="number" pattern="\d*" inputmode="numeric" class="inline-input" id="userNum2">
-            <input type="number" pattern="\d*" inputmode="numeric" class="inline-input" id="userNum3">
-            <input type="number" pattern="\d*" inputmode="numeric" class="inline-input" id="userNum4">
-            <input type="number" pattern="\d*" inputmode="numeric" class="inline-input" id="userNum5">
+            <input type="number" class="inline-input" id="userNum1">
+            <input type="number" class="inline-input" id="userNum2">
+            <input type="number" class="inline-input" id="userNum3">
+            <input type="number" class="inline-input" id="userNum4">
+            <input type="number" class="inline-input" id="userNum5">
         </div>
         <button onclick="verifyUserPick()" style="width: 100%;">驗證自選命中率</button>
         <div id="userPickResult" style="margin-top:10px; font-size:14px;"></div>
@@ -119,7 +88,6 @@ th, td { padding:8px; border-bottom:1px solid #eee; text-align:center; }
 </div>
 
 <script>
-// --- 原有邏輯保持不變，優化 Chart.js 配置以適配 iOS 螢幕 ---
 const RULES = [
     { name: "A_保守型", pool: "last1+5", desc:"追蹤熱碼位移。" },
     { name: "B_均衡型", pool: "last5+5+10", desc:"平衡冷熱號碼。" },
@@ -169,7 +137,12 @@ function doBacktest(data){
             s.total++; if(hit>=2)s.hit2++; if(hit>=3)s.hit3++; if(hit>=4)s.hit4++; if(hit==5)s.hit5++;
         });
     }
-    stats.forEach(s=>{ s.hit2Rate=s.hit2/s.total; s.hit3Rate=s.hit3/s.total; });
+    stats.forEach(s=>{ 
+        s.hit2Rate=s.hit2/s.total; 
+        s.hit3Rate=s.hit3/s.total;
+        s.hit4Rate=s.hit4/s.total;
+        s.hit5Rate=s.hit5/s.total;
+    });
     return stats;
 }
 
@@ -203,6 +176,7 @@ function drawTrendChart(hit2Data, hit3Data){
 }
 
 function countHit(actual,pick){ return actual.filter(n=>pick.includes(n)).length; }
+
 function estimateHitRate(pick,data,minHit){
     let count=0; data.forEach(d=>{ if(countHit(d.nums,pick)>=minHit) count++; });
     return count/data.length;
@@ -223,25 +197,32 @@ function generatePick(prev,rule){
     const pool=buildPool(prev,rule);
     return shuffle(pool).slice(0,5).sort((a,b)=>a-b);
 }
+
 function shuffle(arr){ return arr.sort(()=>Math.random()-0.5); }
 
 function renderTopCombinations(data, stats){
     const resultsDiv=document.getElementById("results");
     resultsDiv.innerHTML="<h3>智能建議組合</h3>";
+
     stats.forEach(s=>{
         const pool=buildPool(data.slice(-5), s.rule);
         const candidates=[];
-        for(let i=0;i<30;i++){
+        for(let i=0;i<50;i++){
             const pick=shuffle(pool).slice(0,5).sort((a,b)=>a-b);
-            candidates.push({pick, h2:estimateHitRate(pick,data,2), h3:estimateHitRate(pick,data,3)});
+            const h2=estimateHitRate(pick,data,2);
+            const h3=estimateHitRate(pick,data,3);
+            const h4=estimateHitRate(pick,data,4);
+            const h5=estimateHitRate(pick,data,5);
+            const expected=(h2*0.3 + h3*0.5 + h4*1 + h5*5);
+            candidates.push({pick,h2,h3,h4,h5,expected});
         }
-        candidates.sort((a,b)=> (b.h3*10+b.h2)-(a.h3*10+a.h2));
+        candidates.sort((a,b)=>b.expected-a.expected);
         const best=candidates[0];
         const sBlock=document.createElement("div");
-        sBlock.className="strategy-block";
+        sBlock.className="strategy-block high-rate";
         sBlock.innerHTML=`<strong>${s.rule.name}</strong><br>` + 
             best.pick.map(n=>`<span class="ball">${String(n).padStart(2,'0')}</span>`).join("") +
-            `<br><span class="rate-badge">期望勝率: ${((best.h3*10+best.h2)/2*100).toFixed(1)}%</span>`;
+            `<br><span class="rate-badge">期望值: ${(best.expected*100).toFixed(1)}%</span>`;
         resultsDiv.appendChild(sBlock);
     });
 }
@@ -249,24 +230,41 @@ function renderTopCombinations(data, stats){
 function verifyUserPick(){
     if(HIST_DATA.length==0){ alert("請先載入 CSV"); return; }
     const pick=[];
-    for(let i=1;i<=5;i++) {
-        const v = parseInt(document.getElementById("userNum"+i).value);
+    for(let i=1;i<=5;i++){
+        const v=parseInt(document.getElementById("userNum"+i).value);
         if(!isNaN(v) && v>=1 && v<=39) pick.push(v);
     }
     if(pick.length!=5){ alert("請輸入 5 個號碼"); return; }
     const h2=estimateHitRate(pick,HIST_DATA,2);
     const h3=estimateHitRate(pick,HIST_DATA,3);
-    document.getElementById("userPickResult").innerHTML=`中2+命中: ${(h2*100).toFixed(1)}%<br>中3+命中: ${(h3*100).toFixed(1)}%`;
+    const h4=estimateHitRate(pick,HIST_DATA,4);
+    const h5=estimateHitRate(pick,HIST_DATA,5);
+    document.getElementById("userPickResult").innerHTML=
+        `中2+命中: ${(h2*100).toFixed(1)}%<br>`+
+        `中3+命中: ${(h3*100).toFixed(1)}%<br>`+
+        `中4+命中: ${(h4*100).toFixed(1)}%<br>`+
+        `中5命中: ${(h5*100).toFixed(1)}%`;
 }
 
+// 熱碼權重生成下期推薦組合
 function renderNextPeriod(data){
     const resultsDiv=document.getElementById("results");
     const nextDiv=document.createElement("div");
     nextDiv.className="strategy-block";
     nextDiv.innerHTML="<strong>近期趨勢推薦</strong><br>";
-    const pool=new Set();
-    data.slice(-8).forEach(d=>d.nums.forEach(n=>pool.add(n)));
-    const pick=shuffle([...pool]).slice(0,5).sort((a,b)=>a-b);
+
+    const freq={};
+    data.forEach(d=>d.nums.forEach(n=>{ freq[n]=(freq[n]||0)+1; }));
+    const weightedPool=[];
+    for(const n in freq){
+        for(let i=0;i<freq[n];i++) weightedPool.push(parseInt(n));
+    }
+    const pick=[];
+    while(pick.length<5){
+        const choice=weightedPool[Math.floor(Math.random()*weightedPool.length)];
+        if(!pick.includes(choice)) pick.push(choice);
+    }
+    pick.sort((a,b)=>a-b);
     nextDiv.innerHTML+=pick.map(n=>`<span class="ball">${String(n).padStart(2,'0')}</span>`).join("");
     resultsDiv.appendChild(nextDiv);
 }
