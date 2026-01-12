@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>539 智能分析系統 - iOS 優化版</title>
+<title>539 智能分析系統 - AI統計優化版</title>
 <style>
 :root {
     --primary-color: #1a3a5f;
@@ -12,35 +12,24 @@
     --bg-color: #f0f2f5;
     --card-bg: #ffffff;
 }
-body { 
-    font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', sans-serif; 
-    background: var(--bg-color); margin:0; padding:15px; color:#333; line-height:1.6;
-    -webkit-font-smoothing: antialiased;
-}
+body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', sans-serif; background: var(--bg-color); margin:0; padding:15px; color:#333; line-height:1.6; -webkit-font-smoothing: antialiased; }
 .container { max-width:1200px; margin:0 auto; }
 header { text-align:center; margin-bottom:20px; padding:15px; background: var(--primary-color); color:white; border-radius:12px; }
 header h1 { font-size: 1.4rem; margin: 0; }
 header p { font-size: 0.9rem; margin: 5px 0 0; opacity: 0.8; }
-
 .upload-section { background: var(--card-bg); padding:20px; border-radius:12px; text-align:center; margin-bottom:15px; box-shadow:0 2px 10px rgba(0,0,0,0.05); }
 input[type=file], input[type=number] { font-size: 16px; margin: 10px 0; }
-
 button { background:var(--accent-color); color:white; border:none; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer; transition:0.2s; margin:5px; -webkit-appearance: none; }
 button:active { transform: scale(0.98); opacity: 0.9; }
-
 .dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 15px; }
 @media (min-width: 768px) { .dashboard-grid { grid-template-columns: 1fr 1fr; } }
-
 .card { background:var(--card-bg); padding:15px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.05); overflow-x: auto; }
 table { width:100%; border-collapse:collapse; margin-top:10px; font-size: 0.9rem; }
 th, td { padding:8px; border-bottom:1px solid #eee; text-align:center; }
-
 .ball { display:inline-block; width:28px; height:28px; line-height:28px; text-align:center; border-radius:50%; background:#e9ecef; margin:2px; font-weight:bold; font-size:13px; }
 .high-rate .ball { background: var(--success-color); color:white; }
-
 .strategy-block { border-left:4px solid var(--accent-color); padding-left:10px; margin:15px 0; background:#fcfcfc; }
 .rate-badge { font-size:11px; padding:2px 6px; border-radius:10px; background:#eee; margin-left:2px; white-space: nowrap; }
-
 .chart-container { position: relative; height: 300px; width: 100%; background:white; padding:15px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.05); margin-top:15px; }
 .inline-input { width: 45px; height: 40px; text-align:center; margin:0 2px; border: 1px solid #ccc; border-radius: 6px; -webkit-appearance: none; }
 </style>
@@ -50,7 +39,7 @@ th, td { padding:8px; border-bottom:1px solid #eee; text-align:center; }
 <div class="container">
     <header>
         <h1>539 智能分析系統</h1>
-        <p>機率評估模型 (iOS 優化版)</p>
+        <p>AI統計+大數據優化版</p>
     </header>
 
     <div class="upload-section">
@@ -113,7 +102,7 @@ function parseCSV(text){
     const lines = text.trim().split("\n");
     lines.shift();
     return lines.map(l=>{
-        const p=l.split(",");
+        const p = l.split(",");
         return {date:p[0], nums:p.slice(2,7).map(n=>parseInt(n))};
     }).sort((a,b)=>new Date(a.date)-new Date(b.date));
 }
@@ -132,7 +121,7 @@ function doBacktest(data){
     for(let i=5;i<data.length;i++){
         const prev = data.slice(i-5,i), actual = data[i].nums;
         stats.forEach(s=>{
-            const pick = generatePick(prev,s.rule);
+            const pick = generateWeightedPick(prev,s.rule,50); // Monte Carlo 模擬 50 次
             const hit = countHit(actual,pick);
             s.total++; if(hit>=2) s.hit2++; if(hit>=3) s.hit3++; if(hit>=4) s.hit4++; if(hit==5) s.hit5++;
         });
@@ -167,11 +156,7 @@ function drawTrendChart(hit2Data, hit3Data){
                 { label:'中3+ (%)', data: hit3Data, backgroundColor:'#1a3a5f' }
             ]
         },
-        options:{ 
-            maintainAspectRatio: false,
-            responsive:true, 
-            scales:{ y:{ beginAtZero:true, max:100 } }
-        }
+        options:{ maintainAspectRatio: false, responsive:true, scales:{ y:{ beginAtZero:true, max:100 } } }
     });
 }
 
@@ -193,13 +178,38 @@ function buildPool(latest5,rule){
     return [...pool];
 }
 
-// --- 核心改動：根據歷史頻率選號，完全固定 ---
-function generatePick(prev, rule){
+// --- Monte Carlo + 機率加權選號
+function generateWeightedPick(prev, rule, simCount=50){
     const pool = buildPool(prev, rule);
     const freq = {};
     prev.forEach(d=>d.nums.forEach(n=>freq[n]=(freq[n]||0)+1));
-    const sorted = [...new Set(pool)].sort((a,b)=>(freq[b]||0)-(freq[a]||0));
-    return sorted.slice(0,5).sort((a,b)=>a-b);
+    let candidates = [];
+    for(let i=0;i<simCount;i++){
+        let pick = [];
+        while(pick.length<5){
+            const arr = [...pool];
+            arr.sort((a,b)=>(freq[b]||0)-(freq[a]||0));
+            for(let n of arr){
+                if(!pick.includes(n)){
+                    pick.push(n);
+                    if(pick.length==5) break;
+                }
+            }
+        }
+        pick.sort((a,b)=>a-b);
+        candidates.push(pick);
+    }
+    // 選擇最高期望值組合
+    let best = candidates[0], bestVal=-1;
+    candidates.forEach(p=>{
+        const h2=estimateHitRate(p,HIST_DATA,2);
+        const h3=estimateHitRate(p,HIST_DATA,3);
+        const h4=estimateHitRate(p,HIST_DATA,4);
+        const h5=estimateHitRate(p,HIST_DATA,5);
+        const val = h2*0.3+h3*0.5+h4*1+h5*5;
+        if(val>bestVal){ bestVal=val; best=p; }
+    });
+    return best;
 }
 
 function renderTopCombinations(data, stats){
@@ -209,7 +219,7 @@ function renderTopCombinations(data, stats){
     let bestExpected = -1, bestIndex = 0;
 
     stats.forEach((s, idx)=>{
-        const pick = generatePick(data.slice(-5), s.rule);
+        const pick = generateWeightedPick(data.slice(-50), s.rule, 100);
         const h2 = estimateHitRate(pick, data, 2);
         const h3 = estimateHitRate(pick, data, 3);
         const h4 = estimateHitRate(pick, data, 4);
@@ -250,7 +260,7 @@ function verifyUserPick(){
         `中5命中: ${(h5*100).toFixed(1)}%`;
 }
 
-// --- 下期推薦組合：取熱碼前5 ---
+// --- 下期推薦組合：熱碼前5 + 冷號1~2
 function renderNextPeriod(data){
     const resultsDiv = document.getElementById("results");
     const nextDiv = document.createElement("div");
@@ -258,10 +268,9 @@ function renderNextPeriod(data){
     nextDiv.innerHTML="<strong>近期趨勢推薦</strong><br>";
 
     const freq = {};
-    data.slice(-20).forEach(d=>d.nums.forEach(n=>freq[n]=(freq[n]||0)+1));
-    const weighted = Object.keys(freq).sort((a,b)=>freq[b]-freq[a]).slice(0,10).map(n=>parseInt(n));
-    const pick = weighted.slice(0,5).sort((a,b)=>a-b);
-
+    data.slice(-50).forEach(d=>d.nums.forEach(n=>freq[n]=(freq[n]||0)+1));
+    const sorted = Object.keys(freq).sort((a,b)=>freq[b]-freq[a]).map(n=>parseInt(n));
+    const pick = sorted.slice(0,5).sort((a,b)=>a-b); // 前5熱碼
     nextDiv.innerHTML += pick.map(n=>`<span class="ball">${String(n).padStart(2,'0')}</span>`).join("");
     resultsDiv.appendChild(nextDiv);
 }
