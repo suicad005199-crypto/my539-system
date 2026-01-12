@@ -2,20 +2,23 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<title>539 回測＋建議號碼系統</title>
+<title>539 回測＋建議號碼系統（優化版）</title>
 <style>
-body { font-family: Arial, sans-serif; padding: 20px; }
-input, button { margin-top: 10px; padding: 8px; }
+body { font-family: Arial, sans-serif; padding: 20px; background:#f7f7f7; }
+input, button { margin-top: 10px; padding: 8px; font-size:14px; }
 #results { margin-top: 20px; }
-.chart-container { width: 90%; margin-top: 40px; }
-table { border-collapse: collapse; }
+.chart-container { width: 90%; margin-top: 40px; background:#fff; padding:20px; border-radius:8px; box-shadow:0 0 5px rgba(0,0,0,0.1);}
+table { border-collapse: collapse; width: 100%; background:#fff; }
 th, td { border: 1px solid #333; padding: 5px 10px; text-align: center; }
+th { background: #3e95cd; color: #fff; }
+tr:nth-child(even) { background: #f2f2f2; }
+h2,h3 { margin-bottom: 10px; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-<h2>539 回測 + 一鍵建議號碼（含圖表）</h2>
+<h2>539 回測 + 高機率建議號碼（優化版）</h2>
 
 <label>載入歷史開獎 CSV：</label><br>
 <input type="file" id="csvFile" accept=".csv"><br>
@@ -38,44 +41,50 @@ const RULES = [
 // 主流程
 async function runAll() {
   const fileInput = document.getElementById("csvFile");
-  if (!fileInput.files[0]) {
-    alert("請先載入 CSV 檔");
-    return;
-  }
+  if (!fileInput.files[0]) { alert("請先載入 CSV 檔"); return; }
   
   const text = await fileInput.files[0].text();
   const data = parseCSV(text);
   const stats = doBacktest(data);
   renderStats(stats);
 
-  // 繪製雙數據集趨勢圖：≥2 碼 & ≥3 碼
+  // 繪製雙柱狀圖
   drawTrendChart(stats.map(s=>s.hit2Rate*100), stats.map(s=>s.hit3Rate*100));
 
-  // 生成每套規則建議號碼
+  // 生成每套規則建議號碼（3組）並計算每組命中率
   let html = document.getElementById("results").innerHTML;
   stats.forEach(s => {
-    const picks = generateNext3(data.slice(-5), s.rule);
-    html += `<h3>規則：${s.rule.name}</h3>`;
-    html += `<b>建議號碼（3 組）</b><br>`;
-    picks.forEach((p,i)=>{ html += `組 ${i+1}: ${p.join(", ")}<br>`; });
+    let picksWithRate = [];
+    for(let i=0;i<3;i++){
+      let pick = generateNextPick(data.slice(-5), s.rule);
+      let rate2 = estimateHitRate(pick, data, 2);
+      let rate3 = estimateHitRate(pick, data, 3);
+      let avgRate = (rate2+rate3)/2*100;
+      if(avgRate>=50) picksWithRate.push({pick, avgRate});
+    }
+    if(picksWithRate.length>0){
+      picksWithRate.sort((a,b)=>b.avgRate - a.avgRate);
+      html += `<h3>規則：${s.rule.name}</h3>`;
+      html += `<b>高機率建議號碼（過濾 <50%）：</b><br>`;
+      picksWithRate.forEach((p,i)=>{ html += `組 ${i+1}: ${p.pick.join(", ")} | 平均命中率: ${p.avgRate.toFixed(2)}%<br>`; });
+    }
   });
   document.getElementById("results").innerHTML = html;
 }
 
-// 解析 CSV
-function parseCSV(text) {
+// CSV 解析
+function parseCSV(text){
   const lines = text.trim().split("\n");
   lines.shift();
-  return lines.map(l => {
+  return lines.map(l=>{
     const p = l.split(",");
-    return { date: p[0], nums: p.slice(2,7).map(n=>parseInt(n)) };
+    return { date:p[0], nums:p.slice(2,7).map(n=>parseInt(n)) };
   }).sort((a,b)=>new Date(a.date)-new Date(b.date));
 }
 
 // 回測
-function doBacktest(data) {
-  const stats = RULES.map(r => ({rule:r, hit5:0, hit4:0, hit3:0, hit2:0, total:0}));
-
+function doBacktest(data){
+  const stats = RULES.map(r=>({rule:r, hit5:0, hit4:0, hit3:0, hit2:0, total:0}));
   for(let i=5;i<data.length;i++){
     const prev = data.slice(i-5,i);
     const actual = data[i].nums;
@@ -89,18 +98,16 @@ function doBacktest(data) {
       if(hit==5) s.hit5++;
     });
   }
-
   stats.forEach(s=>{
     s.hit2Rate = s.hit2/s.total;
     s.hit3Rate = s.hit3/s.total;
     s.hit4Rate = s.hit4/s.total;
     s.hit5Rate = s.hit5/s.total;
   });
-
   return stats;
 }
 
-// 顯示統計結果
+// 顯示統計
 function renderStats(stats){
   let html = "<h3>回測結果（歷史命中率）</h3>";
   html += "<table><tr><th>規則</th><th>5中5</th><th>5中4</th><th>5中3</th><th>5中2</th><th>總期數</th></tr>";
@@ -118,7 +125,7 @@ function renderStats(stats){
   document.getElementById("results").innerHTML = html;
 }
 
-// 趨勢圖：雙數據集
+// 趨勢圖
 function drawTrendChart(hit2Data, hit3Data){
   const ctx = document.getElementById("trendChart").getContext("2d");
   new Chart(ctx,{
@@ -136,19 +143,24 @@ function drawTrendChart(hit2Data, hit3Data){
   });
 }
 
-// 產生下一期建議 3 組
-function generateNext3(latest5, rule){
+// 產生下一組號碼
+function generateNextPick(latest5, rule){
   const pool = buildPool(latest5, rule);
-  const results = [];
-  while(results.length<3){
-    const pick = shuffle(pool).slice(0,5).sort((a,b)=>a-b);
-    if(validPick(pick,rule) && !exists(results,pick)) results.push(pick);
-  }
-  return results;
+  return shuffle(pool).slice(0,5).sort((a,b)=>a-b);
 }
 
 // 工具：命中數量
 function countHit(actual,pick){ return actual.filter(n=>pick.includes(n)).length; }
+
+// 工具：估算命中率
+function estimateHitRate(pick, data, minHit){
+  let count=0;
+  data.forEach(d=>{
+    const hit = countHit(d.nums,pick);
+    if(hit>=minHit) count++;
+  });
+  return count/data.length;
+}
 
 // 工具：建立候選池
 function buildPool(latest5,rule){
@@ -162,7 +174,7 @@ function buildPool(latest5,rule){
   return [...pool];
 }
 
-// 工具：生成一注
+// 回測生成號碼
 function generatePick(prev,rule){
   const pool = buildPool(prev,rule);
   return shuffle(pool).slice(0,5).sort((a,b)=>a-b);
@@ -175,9 +187,8 @@ function validPick(pick,rule){
   return rule.odd.includes(odd) && sum>=rule.sum[0] && sum<=rule.sum[1];
 }
 
-function exists(arr,pick){ return arr.some(a=>a.join()==pick.join()); }
 function shuffle(arr){ return arr.sort(()=>Math.random()-0.5); }
-
 </script>
+
 </body>
 </html>
