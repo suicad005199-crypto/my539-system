@@ -7,94 +7,50 @@
     <style>
         :root {
             --bg: #05070a;
-            --panel: rgba(16, 20, 28, 0.8);
+            --panel: rgba(16, 20, 28, 0.85);
             --primary: #4f46e5;
-            --accent: #6366f1;
             --success: #10b981;
             --gold: #f59e0b;
             --text: #f8fafc;
-            --border: rgba(255, 255, 255, 0.08);
+            --border: rgba(255, 255, 255, 0.1);
         }
 
         body {
             font-family: -apple-system, "SF Pro Display", "PingFang TC", sans-serif;
             background: radial-gradient(circle at 50% 0%, #111827, #05070a);
-            color: var(--text);
-            margin: 0; padding: 15px; min-height: 100vh;
+            color: var(--text); margin: 0; padding: 15px; min-height: 100vh;
             display: flex; justify-content: center;
         }
 
         .container {
             width: 100%; max-width: 800px;
-            background: var(--panel);
-            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--border);
-            border-radius: 24px; padding: 25px; box-sizing: border-box;
+            background: var(--panel); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border); border-radius: 24px; padding: 25px; box-sizing: border-box;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
         }
 
-        h2 { 
-            text-align: center; font-weight: 700; margin-bottom: 25px;
-            background: linear-gradient(to bottom, #fff, #94a3b8);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            letter-spacing: 2px;
-        }
+        h2 { text-align: center; font-weight: 700; margin-bottom: 25px; background: linear-gradient(to bottom, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 2px; }
 
-        /* 檔案控制區 */
-        .upload-section {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--border);
-            padding: 20px; border-radius: 20px; text-align: center;
-        }
-
+        .upload-section { background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border); padding: 20px; border-radius: 20px; text-align: center; }
         .file-status { margin-bottom: 15px; font-size: 0.85rem; color: #64748b; }
-
         .btn-group { display: flex; gap: 10px; justify-content: center; }
-
-        .btn {
-            background: var(--primary); color: white; border: none;
-            padding: 12px 24px; border-radius: 12px; font-weight: 600;
-            cursor: pointer; transition: 0.2s; -webkit-appearance: none;
-            flex: 1; max-width: 150px; font-size: 0.9rem;
-        }
+        .btn { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; -webkit-appearance: none; flex: 1; max-width: 150px; font-size: 0.9rem; }
         .btn-secondary { background: #334155; }
         .btn:active { transform: scale(0.96); opacity: 0.9; }
 
-        /* 數據列表 */
         .results-wrapper { overflow-x: auto; margin-top: 25px; }
         table { width: 100%; border-collapse: separate; border-spacing: 0 10px; min-width: 500px; }
-        
-        thead th { 
-            font-size: 0.75rem; color: #475569; text-align: center; 
-            padding: 0 10px 5px 10px; text-transform: uppercase;
-        }
-
+        thead th { font-size: 0.75rem; color: #475569; padding: 0 10px 5px 10px; }
         tbody tr { background: rgba(255, 255, 255, 0.02); transition: 0.2s; }
-        
         td { padding: 18px 10px; text-align: center; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
         td:first-child { border-left: 1px solid var(--border); border-radius: 14px 0 0 14px; }
         td:last-child { border-right: 1px solid var(--border); border-radius: 0 14px 14px 0; }
 
-        .strategy-btn { 
-            color: var(--accent); font-weight: 600; cursor: pointer; 
-            font-size: 0.9rem; display: block;
-        }
-
-        /* 號碼球設計 */
+        .strategy-btn { color: #818cf8; font-weight: 600; cursor: pointer; font-size: 0.9rem; text-decoration: underline; text-underline-offset: 4px; }
         .ball-group { display: flex; justify-content: center; gap: 5px; }
-        .ball {
-            width: 32px; height: 32px; line-height: 32px;
-            background: linear-gradient(135deg, #4f46e5, #312e81);
-            color: #fff; border-radius: 8px; font-weight: 700; font-size: 0.85rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        }
-
-        .win-rate { color: var(--success); font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-        
-        .ev-tag { 
-            padding: 4px 10px; border-radius: 8px; background: #1e293b; 
-            font-size: 0.75rem; font-weight: 600; color: #94a3b8;
-        }
+        .ball { width: 32px; height: 32px; line-height: 32px; background: linear-gradient(135deg, #4f46e5, #312e81); color: #fff; border-radius: 8px; font-weight: 700; font-size: 0.85rem; }
+        .win-rate { color: var(--success); font-weight: 700; font-family: monospace; }
+        .ev-tag { padding: 4px 10px; border-radius: 8px; background: #1e293b; font-size: 0.75rem; font-weight: 600; color: #94a3b8; }
         .ev-max { background: var(--gold); color: #000; box-shadow: 0 0 15px rgba(245, 158, 11, 0.3); }
     </style>
 </head>
@@ -117,7 +73,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th>分析策略 (點擊查看)</th>
+                        <th>策略類型</th>
                         <th>動態建議組合</th>
                         <th>回測勝率</th>
                         <th>期望值</th>
@@ -140,48 +96,63 @@ function updateStatus() {
 
 function showLogic(type) {
     const logics = {
-        'A': '【熱門版路】：分析最近 20 期開獎趨勢，篩選出出現頻率最高的強勢號碼。',
-        'B': '【週期+10】：以 5 期為單位。抓取當前週期首期號碼各 +10 (大於39則-39)，勝率由歷史週期實測算出。',
-        'C': '【尾數平衡】：計算 0-9 尾數的冷熱分佈，針對長期遺漏的尾數進行補位建議。',
-        'D': '【冷門避險】：掃描全量歷史數據，選取總開出次數最少的號碼。因極低平分風險，獲得最高期望值。'
+        'A': '【熱門版路】：分析最近 20 期數據，選取出現頻率最高號碼。',
+        'B': '【週期+10】：以 5 期為單位。首期號碼各 +10 (大於39則-39)，回測歷史週期中獎率。',
+        'C': '【尾數平衡】：針對歷史冷門尾數進行對位補強。',
+        'D': '【冷門避險】：選取歷史總次數最少號碼，中獎獨得率最高。'
     };
     alert(logics[type]);
 }
 
 function analyze() {
     const fileInput = document.getElementById('csvFileInput');
-    if (!fileInput.files[0]) return alert("請先載入 CSV 數據檔案");
+    const file = fileInput.files[0];
+    if (!file) return alert("請先載入檔案");
 
     const reader = new FileReader();
+    // 關鍵修正：先使用預設讀取，若亂碼則透過指定編碼解決
     reader.onload = function(e) {
-        const rows = e.target.result.split('\n').map(r => r.split(',')).filter(r => r.length >= 6);
-        const history = rows.map(r => r.slice(1, 6).map(n => parseInt(n)));
-
-        // A 組: 20期熱號 (動態)
-        const recent = history.slice(-20).flat();
-        const counts = {};
-        recent.forEach(n => counts[n] = (counts[n] || 0) + 1);
-        const aNums = Object.keys(counts).sort((a,b) => counts[b] - counts[a]).slice(0,5).map(n => n.toString().padStart(2,'0'));
-
-        // B 組: 週期+10 (核心邏輯)
-        const unit = 5;
-        const lastStart = Math.floor((history.length - 1) / unit) * unit;
-        const bNums = history[lastStart].map(n => (n+10 > 39 ? n+10-39 : n+10).toString().padStart(2,'0')).sort();
-
-        // B 組勝率回測
-        let bWins = 0, bCycles = 0;
-        for (let i = 0; i < history.length - unit; i += unit) {
-            bCycles++;
-            let target = history[i].map(n => (n+10 > 39 ? n+10-39 : n+10));
-            for (let j = 1; j < unit; j++) {
-                if (history[i+j].filter(n => target.includes(n)).length >= 1) { bWins++; break; }
-            }
-        }
-        const bWinStr = bCycles > 0 ? ((bWins/bCycles)*100).toFixed(1) + "%" : "14.2%";
-
-        render(aNums, bNums, bWinStr);
+        let content = e.target.result;
+        processData(content);
     };
-    reader.readAsText(fileInput.files[0]);
+    
+    // 為了預防亂碼，改用 readAsText 並指定編碼
+    // 台灣常見 CSV 多為 Big5，此處先嘗試 Big5 以確保中文字顯示正常
+    reader.readAsText(file, "Big5"); 
+}
+
+function processData(content) {
+    const rows = content.split('\n')
+        .map(r => r.split(','))
+        .filter(r => r.length >= 6 && !isNaN(parseInt(r[1]))); // 過濾標題與無效行
+
+    if (rows.length === 0) return alert("CSV 格式不符或讀取失敗");
+
+    const history = rows.map(r => r.slice(1, 6).map(n => parseInt(n)));
+
+    // A 組: 熱號
+    const recent = history.slice(-20).flat();
+    const counts = {};
+    recent.forEach(n => counts[n] = (counts[n] || 0) + 1);
+    const aNums = Object.keys(counts).sort((a,b) => counts[b] - counts[a]).slice(0,5).map(n => n.toString().padStart(2,'0'));
+
+    // B 組: 週期+10
+    const unit = 5;
+    const lastStart = Math.floor((history.length - 1) / unit) * unit;
+    const bNums = history[lastStart].map(n => (n+10 > 39 ? n+10-39 : n+10).toString().padStart(2,'0')).sort();
+
+    // 勝率回測
+    let bWins = 0, bCycles = 0;
+    for (let i = 0; i < history.length - unit; i += unit) {
+        bCycles++;
+        let target = history[i].map(n => (n+10 > 39 ? n+10-39 : n+10));
+        for (let j = 1; j < unit; j++) {
+            if (history[i+j].filter(n => target.includes(n)).length >= 1) { bWins++; break; }
+        }
+    }
+    const bWinStr = bCycles > 0 ? ((bWins/bCycles)*100).toFixed(1) + "%" : "14.2%";
+
+    render(aNums, bNums, bWinStr);
 }
 
 function render(a, b, bWin) {
