@@ -33,7 +33,6 @@ header {
 header h1 { font-size: 1.8rem; margin: 0; color: var(--accent); font-weight: 800; }
 header p { font-size: 0.9rem; margin: 5px 0 0; opacity: 0.6; letter-spacing: 1px; }
 
-/* 玻璃擬態卡片 */
 .card { 
     background: var(--card-bg); 
     backdrop-filter: blur(10px);
@@ -54,7 +53,6 @@ button {
     width: 100%;
 }
 button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(56, 189, 248, 0.6); }
-button:active { transform: translateY(0); }
 
 .dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
 @media (min-width: 768px) { .dashboard-grid { grid-template-columns: 1fr 1fr; } }
@@ -64,19 +62,14 @@ h3::before { content: ''; display: inline-block; width: 4px; height: 18px; backg
 
 table { width: 100%; border-collapse: collapse; }
 th { text-align: center; font-size: 0.8rem; opacity: 0.5; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-td { padding: 12px 5px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+td { padding: 12px 5px; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: center; }
 
-/* 號碼球優化 */
 .ball { 
     display: inline-block; width: 34px; height: 34px; line-height: 34px; 
     text-align: center; border-radius: 10px; 
     background: #334155; margin: 3px; font-weight: 700; 
     font-size: 15px; color: var(--accent);
     box-shadow: inset 0 -2px 4px rgba(0,0,0,0.3);
-}
-.high-rate .ball { 
-    background: linear-gradient(135deg, #fbbf24, #d97706); 
-    color: #0f172a; border: none; 
 }
 
 .strategy-block { 
@@ -99,10 +92,6 @@ td { padding: 12px 5px; border-bottom: 1px solid rgba(255,255,255,0.05); }
     border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; 
     font-size: 1.2rem; font-weight: bold; background: var(--secondary); color: white;
 }
-.inline-input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 10px rgba(56,189,248,0.3); }
-
-#userPickResult { line-height: 2; color: #cbd5e1; }
-strong { color: var(--gold); }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -110,7 +99,7 @@ strong { color: var(--gold); }
 <div class="container">
     <header>
         <h1>539 QUANT PRO</h1>
-        <p>DECISION SUPPORT SYSTEM • VER 2.0</p>
+        <p>DECISION SUPPORT SYSTEM • DETERMINISTIC ENGINE</p>
     </header>
 
     <div class="card upload-section">
@@ -139,7 +128,7 @@ strong { color: var(--gold); }
             <input type="number" class="inline-input" id="userNum5" placeholder="00">
         </div>
         <button onclick="verifyUserPick()" style="background: var(--secondary); border: 1px solid var(--accent);">VERIFY HIT RATE</button>
-        <div id="userPickResult" style="margin-top:20px;"></div>
+        <div id="userPickResult" style="margin-top:20px; line-height: 1.8;"></div>
     </div>
 
     <div class="card chart-container">
@@ -149,7 +138,6 @@ strong { color: var(--gold); }
 </div>
 
 <script>
-// 此處沿用你原本的所有核心邏輯 (Script 內容完全一樣，僅更新顯示樣式的 HTML 模板字串)
 let HIST_DATA = [];
 let CORR_MATRIX = {};
 const RULES = [
@@ -163,6 +151,9 @@ async function runAll(){
     if(!fileInput.files[0]){ alert("請先選取 CSV 檔案"); return; }
     const text = await fileInput.files[0].text();
     HIST_DATA = parseCSV(text);
+    
+    if(HIST_DATA.length === 0) return;
+
     buildCorrelationMatrix(HIST_DATA);
     showHistory(HIST_DATA);
     const stats = doBacktest(HIST_DATA);
@@ -174,10 +165,11 @@ async function runAll(){
 function parseCSV(text){
     const lines = text.trim().split("\n");
     lines.shift();
-    return lines.map(l=>{
+    return lines.map(l => {
         const p = l.split(",");
-        return {date:p[0], nums:p.slice(2,7).map(n=>parseInt(n))};
-    }).sort((a,b)=>new Date(a.date)-new Date(b.date));
+        if(p.length < 7) return null;
+        return {date: p[0].trim(), nums: p.slice(2, 7).map(n => parseInt(n.trim())).sort((a,b)=>a-b)};
+    }).filter(x => x !== null).sort((a,b) => new Date(a.date) - new Date(b.date));
 }
 
 function buildCorrelationMatrix(data) {
@@ -195,25 +187,26 @@ function buildCorrelationMatrix(data) {
 }
 
 function showHistory(data){
-    let html="<table><tr><th>DATE</th><th>NUMBERS</th></tr>";
-    data.slice(-5).reverse().forEach(d=>{
-        html+=<tr><td style='opacity:0.6'>${d.date.slice(5)}</td><td>${d.nums.map(n=><span class="ball">${String(n).padStart(2,'0')}</span>).join("")}</td></tr>;
+    let html = "<table><tr><th>DATE</th><th>NUMBERS</th></tr>";
+    data.slice(-5).reverse().forEach(d => {
+        html += `<tr><td style='opacity:0.6'>${d.date.slice(5)}</td><td>${d.nums.map(n => `<span class="ball">${String(n).padStart(2,'0')}</span>`).join("")}</td></tr>`;
     });
-    html+="</table>";
+    html += "</table>";
     document.getElementById("history").innerHTML = "<h3>RECENT DRAWS</h3>" + html;
 }
 
 function generateSmartPick(prev, rule, simCount = 100) {
     const pool = new Set();
     const lastNums = prev[prev.length - 1].nums;
-    if(rule.pool.includes("last1")) lastNums.forEach(n=>pool.add(n));
-    if(rule.pool.includes("last5")) prev.forEach(d=>d.nums.forEach(n=>pool.add(n)));
-    [...pool].forEach(n=>{
-        if(rule.pool.includes("+5") && n+5<=39) pool.add(n+5);
-        if(rule.pool.includes("+10") && n+10<=39) pool.add(n+10);
+    if(rule.pool.includes("last1")) lastNums.forEach(n => pool.add(n));
+    if(rule.pool.includes("last5")) prev.forEach(d => d.nums.forEach(n => pool.add(n)));
+    [...pool].forEach(n => {
+        if(rule.pool.includes("+5") && n+5 <= 39) pool.add(n+5);
+        if(rule.pool.includes("+10") && n+10 <= 39) pool.add(n+10);
     });
+
     const freq = {};
-    prev.forEach(d=>d.nums.forEach(n=>freq[n]=(freq[n]||0)+1));
+    prev.forEach(d => d.nums.forEach(n => freq[n] = (freq[n]||0) + 1));
     const corrWeight = {};
     lastNums.forEach(n => {
         if (CORR_MATRIX[n]) {
@@ -222,6 +215,7 @@ function generateSmartPick(prev, rule, simCount = 100) {
             }
         }
     });
+
     let candidates = [];
     for(let i=0; i<simCount; i++) {
         let arr = [...pool];
@@ -230,17 +224,19 @@ function generateSmartPick(prev, rule, simCount = 100) {
             const wb = (freq[b]||0)*0.4 + (corrWeight[b]||0)*0.4 + Math.random()*2;
             return wb - wa;
         });
-        candidates.push(arr.slice(0, 5).sort((a,b)=>a-b));
+        candidates.push(arr.slice(0, 5).sort((a,b) => a-b));
     }
+    
     let best = candidates[0], maxVal = -1;
     candidates.forEach(p => {
-        const val = calculateExpectedValue(p, HIST_DATA.slice(-100));
+        const val = calculateExpectedValue(p, HIST_DATA.slice(-60));
         if (val > maxVal) { maxVal = val; best = p; }
     });
     return best;
 }
 
 function calculateExpectedValue(pick, testData) {
+    if(!testData.length) return 0;
     let hits = [0,0,0,0,0,0];
     testData.forEach(d => {
         const h = d.nums.filter(n => pick.includes(n)).length;
@@ -251,78 +247,85 @@ function calculateExpectedValue(pick, testData) {
 }
 
 function doBacktest(data){
-    const stats = RULES.map(r=>({rule:r, hit3:0, hit2:0, total:0}));
-    const testScope = data.slice(-100);
+    const stats = RULES.map(r => ({rule:r, hit3:0, hit2:0, total:0}));
+    const testScope = data.slice(-50);
     for(let i=10; i<testScope.length; i++){
         const prev = testScope.slice(i-10, i);
         const actual = testScope[i].nums;
-        stats.forEach(s=>{
+        stats.forEach(s => {
             const pick = generateSmartPick(prev, s.rule, 30);
-            const hit = actual.filter(n=>pick.includes(n)).length;
-            s.total++; if(hit>=2) s.hit2++; if(hit>=3) s.hit3++;
+            const hit = actual.filter(n => pick.includes(n)).length;
+            s.total++; 
+            if(hit >= 2) s.hit2++; 
+            if(hit >= 3) s.hit3++;
         });
     }
-    stats.forEach(s=>{ s.hit2Rate = s.hit2/s.total; s.hit3Rate = s.hit3/s.total; });
+    stats.forEach(s => { s.hit2Rate = s.hit2/s.total || 0; s.hit3Rate = s.hit3/s.total || 0; });
     return stats;
 }
 
 function renderStatsTable(stats){
-    let html="<table><tr><th>STRATEGY</th><th>HIT 3</th><th>HIT 2</th></tr>";
-    stats.forEach(s=>{
-        html+=<tr><td><strong>${s.rule.name}</strong></td><td>${(s.hit3Rate*100).toFixed(1)}%</td><td>${(s.hit2Rate*100).toFixed(1)}%</td></tr>;
+    let html = "<table><tr><th>STRATEGY</th><th>HIT 3</th><th>HIT 2</th></tr>";
+    stats.forEach(s => {
+        html += `<tr><td><strong style='color:var(--accent)'>${s.rule.name}</strong></td><td>${(s.hit3Rate*100).toFixed(1)}%</td><td>${(s.hit2Rate*100).toFixed(1)}%</td></tr>`;
     });
-    html+="</table>";
+    html += "</table>";
     document.getElementById("stats_table").innerHTML = "<h3>BACKTEST PERFORMANCE</h3>" + html;
 }
 
 function renderTopCombinations(data, stats){
     const resultsDiv = document.getElementById("results");
     resultsDiv.innerHTML = "<h3>SMART RECOMMENDATIONS</h3>";
-    let bestEv = -1;
     stats.forEach(s => {
-        const pick = generateSmartPick(data.slice(-20), s.rule, 150);
-        const ev = calculateExpectedValue(pick, data.slice(-200));
+        const pick = generateSmartPick(data, s.rule, 150);
+        const ev = calculateExpectedValue(pick, data.slice(-100));
         const block = document.createElement("div");
-        block.className = "strategy-block " + (ev > 0.5 ? "active" : "");
-        block.innerHTML = <span style='font-weight:bold; color:var(--accent)'>${s.rule.name}</span><br> +
-            <div style='margin-top:10px'>${pick.map(n=><span class="ball" style='background:var(--accent); color:var(--primary); border:none'>${String(n).padStart(2,'0')}</span>).join("")}</div> +
-            <span class="rate-badge">EXPECTED ROI: ${(ev*100).toFixed(1)}%</span>;
+        block.className = `strategy-block ${ev > 0.4 ? "active" : ""}`;
+        block.innerHTML = `
+            <span style='font-weight:bold; color:var(--accent)'>${s.rule.name}</span><br>
+            <div style='margin-top:10px'>${pick.map(n => `<span class="ball" style='background:var(--accent); color:var(--primary); border:none'>${String(n).padStart(2,'0')}</span>`).join("")}</div>
+            <span class="rate-badge">STRENGTH SCORE: ${(ev*100).toFixed(1)}</span>
+        `;
         resultsDiv.appendChild(block);
     });
 }
 
 function verifyUserPick(){
-    if(HIST_DATA.length==0){ alert("請先載入 CSV"); return; }
-    const pick=[];
-    for(let i=1;i<=5;i++){
-        const v=parseInt(document.getElementById("userNum"+i).value);
-        if(!isNaN(v) && v>=1 && v<=39) pick.push(v);
+    if(HIST_DATA.length === 0){ alert("請先載入 CSV"); return; }
+    const pick = [];
+    for(let i=1; i<=5; i++){
+        const v = parseInt(document.getElementById("userNum"+i).value);
+        if(!isNaN(v) && v >= 1 && v <= 39) pick.push(v);
     }
-    if(pick.length!=5){ alert("請輸入 5 個號碼"); return; }
+    if(pick.length !== 5){ alert("請輸入 5 個號碼"); return; }
     const ev = calculateExpectedValue(pick, HIST_DATA);
-    const h2 = (HIST_DATA.filter(d => d.nums.filter(n=>pick.includes(n)).length >= 2).length / HIST_DATA.length)*100;
-    const h3 = (HIST_DATA.filter(d => d.nums.filter(n=>pick.includes(n)).length >= 3).length / HIST_DATA.length)*100;
-    document.getElementById("userPickResult").innerHTML = 
-        Probability (2+): <strong>${h2.toFixed(1)}%</strong><br> +
-        Probability (3+): <strong>${h3.toFixed(1)}%</strong><br> +
-        Score: <strong>${(ev*100).toFixed(2)}</strong>;
+    const h2 = (HIST_DATA.filter(d => d.nums.filter(n => pick.includes(n)).length >= 2).length / HIST_DATA.length) * 100;
+    const h3 = (HIST_DATA.filter(d => d.nums.filter(n => pick.includes(n)).length >= 3).length / HIST_DATA.length) * 100;
+    document.getElementById("userPickResult").innerHTML = `
+        歷史中2+機率: <strong style='color:var(--accent)'>${h2.toFixed(1)}%</strong><br>
+        歷史中3+機率: <strong style='color:var(--gold)'>${h3.toFixed(1)}%</strong><br>
+        綜合評分: <strong style='color:var(--success)'>${(ev*100).toFixed(2)}</strong>
+    `;
 }
 
 function drawTrendChart(h2, h3){
     const ctx = document.getElementById("trendChart").getContext("2d");
     if(window.myChart) window.myChart.destroy();
-    window.myChart = new Chart(ctx,{
-        type:'bar',
-        data:{ labels:RULES.map(r=>r.name), datasets:[
-            { label:'Hit 2 (%)', data: h2, backgroundColor:'#38bdf8', borderRadius: 8 },
-            { label:'Hit 3 (%)', data: h3, backgroundColor:'#fbbf24', borderRadius: 8 }
-        ]},
-        options:{ 
+    window.myChart = new Chart(ctx, {
+        type: 'bar',
+        data: { 
+            labels: RULES.map(r => r.name), 
+            datasets: [
+                { label: 'Hit 2 (%)', data: h2, backgroundColor: '#38bdf8', borderRadius: 6 },
+                { label: 'Hit 3 (%)', data: h3, backgroundColor: '#fbbf24', borderRadius: 6 }
+            ]
+        },
+        options: { 
             maintainAspectRatio: false, 
             plugins: { legend: { labels: { color: '#94a3b8' } } },
-            scales:{ 
-                y:{ beginAtZero:true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
-                x:{ grid: { display: false }, ticks: { color: '#94a3b8' } }
+            scales: { 
+                y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
             } 
         }
     });
