@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>今彩539｜每週熱冷統計選號</title>
+<title>今彩539｜每週熱冷統計選號 (CSV上傳版)</title>
 
 <style>
 :root {
@@ -36,14 +36,13 @@ p {
   line-height: 1.5;
 }
 
-textarea {
+input[type="file"] {
   width: 100%;
-  min-height: 160px;
-  padding: 10px;
-  font-size: 0.9rem;
+  padding: 12px;
   border-radius: 8px;
   border: 1px solid #d1d5db;
   box-sizing: border-box;
+  margin-bottom: 12px;
 }
 
 button {
@@ -84,7 +83,6 @@ button:active {
 /* PC 加強 */
 @media (min-width: 768px) {
   h1 { font-size: 1.6rem; }
-  textarea { min-height: 200px; }
 }
 </style>
 </head>
@@ -93,11 +91,10 @@ button:active {
 <div class="container">
 
 <h1>今彩 539｜每週熱冷統計選號</h1>
-<p>貼上 CSV（最新在上），本工具僅作理性選號輔助，非預測。</p>
+<p>上傳 CSV（最新在上，格式：date,n1,n2,n3,n4,n5），本工具僅作理性選號輔助。</p>
 
-<textarea id="csvInput" placeholder="date,n1,n2,n3,n4,n5"></textarea>
-
-<button onclick="run()">分析並產生本週 5 注</button>
+<input type="file" id="csvFile" accept=".csv">
+<button onclick="processCSV()">分析並產生本週 5 注</button>
 
 <div class="card">
   <h3>熱 / 冷 統計（近 50 期）</h3>
@@ -113,15 +110,24 @@ button:active {
 
 <script>
 const SET_COUNT = 5;
-const PICK_PER_SET = 5;
 
-function run() {
-  const text = document.getElementById("csvInput").value.trim();
-  if (!text) return;
+function processCSV() {
+  const fileInput = document.getElementById("csvFile");
+  if (!fileInput.files.length) { alert("請先上傳 CSV"); return; }
+  const file = fileInput.files[0];
+  const reader = new FileReader();
 
-  const rows = text.split("\n").slice(1, 51);
-  const draws = rows.map(r => r.split(",").slice(1).map(Number));
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const rows = text.trim().split("\n").slice(1,51); // 取最新50期
+    const draws = rows.map(r => r.split(",").slice(1).map(Number));
+    generate(draws);
+  };
 
+  reader.readAsText(file);
+}
+
+function generate(draws) {
   const freq = {};
   for (let i = 1; i <= 39; i++) freq[i] = 0;
   draws.forEach(d => d.forEach(n => freq[n]++));
@@ -129,25 +135,23 @@ function run() {
   const sorted = Object.entries(freq).sort((a,b)=>b[1]-a[1]);
   const hot = sorted.slice(0,10).map(x=>Number(x[0]));
   const cold = sorted.slice(-10).map(x=>Number(x[0]));
-  const mid = Object.keys(freq).map(Number)
-    .filter(n => !hot.includes(n) && !cold.includes(n));
+  const mid = Object.keys(freq).map(Number).filter(n=>!hot.includes(n)&&!cold.includes(n));
 
   document.getElementById("stats").innerHTML =
-    `熱號：${hot.join("、")}<br>冷號：${cold.join("、")}`;
+    `熱號 Top10：${hot.join("、")}<br>冷號 Top10：${cold.join("、")}`;
 
   const results = [];
-
   while (results.length < SET_COUNT) {
     let set = [
-      ...pick(hot, 2),
-      ...pick(mid, 2),
-      ...pick(cold, 1)
+      ...pick(hot,2),
+      ...pick(mid,2),
+      ...pick(cold,1)
     ];
-
     set = [...new Set(set)].sort((a,b)=>a-b);
+
     if (set.length !== 5) continue;
     if (!valid(set)) continue;
-    if (results.some(r => overlap(r,set) > 2)) continue;
+    if (results.some(r=>overlap(r,set)>2)) continue;
 
     results.push(set);
   }
@@ -156,7 +160,7 @@ function run() {
     results.map((s,i)=>`<div class="set">注 ${i+1}：${s.join("・")}</div>`).join("");
 }
 
-function pick(arr, n) {
+function pick(arr,n) {
   return [...arr].sort(()=>Math.random()-0.5).slice(0,n);
 }
 
@@ -168,9 +172,7 @@ function valid(set) {
   if (set.every(n=>n<=31)) return false;
 
   let seq = 0;
-  for (let i=1;i<set.length;i++) {
-    if (set[i] === set[i-1]+1) seq++;
-  }
+  for (let i=1;i<set.length;i++) if (set[i]===set[i-1]+1) seq++;
   return seq <= 1;
 }
 
