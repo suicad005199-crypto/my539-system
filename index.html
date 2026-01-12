@@ -1,138 +1,134 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539 智能量化分析系統</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        :root {
-            --primary: #0f172a;    --secondary: #1e293b;
-            --accent: #38bdf8;     --gold: #fbbf24;
-            --success: #22c55e;    --text: #f1f5f9;
-            --card-bg: rgba(30, 41, 59, 0.7);
-        }
+// --- 核心運算模組 ---
 
-        body {
-            font-family: 'PingFang TC', sans-serif;
-            background: var(--primary);
-            background-image: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 100%);
-            color: var(--text);
-            margin: 0; padding: 20px;
-            min-height: 100vh;
-        }
+const ODDS = {
+    two: 53,    // 二星賠率
+    three: 570, // 三星賠率
+    car: 5.57,  // 全車賠率
+    miss5: 2.1  // 自選五不中(概估)
+};
 
-        .container { max-width: 1000px; margin: 0 auto; }
-
-        /* 頂部標題 */
-        header { text-align: center; margin-bottom: 30px; }
-        header h1 { font-size: 2rem; color: var(--accent); margin: 0; letter-spacing: 2px; }
-
-        /* 通用卡片設計 */
-        .card {
-            background: var(--card-bg);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255,255,255,0.1);
-            padding: 24px; border-radius: 20px;
-            margin-bottom: 20px;
-        }
-
-        /* 上傳區塊 */
-        .upload-zone {
-            border: 2px dashed rgba(56, 189, 248, 0.3);
-            text-align: center; padding: 40px;
-            cursor: pointer; transition: 0.3s;
-        }
-        .upload-zone:hover { border-color: var(--accent); background: rgba(56, 189, 248, 0.05); }
-
-        /* 按鈕 */
-        button {
-            background: linear-gradient(135deg, var(--accent), #0284c7);
-            color: white; border: none; padding: 15px 30px;
-            border-radius: 12px; font-weight: bold; cursor: pointer;
-            width: 100%; font-size: 1.1rem;
-        }
-
-        /* 數據儀表板佈局 */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
-        @media (min-width: 768px) {
-            .dashboard-grid { grid-template-columns: 1fr 1fr; }
-        }
-
-        /* 號碼球樣式 */
-        .ball {
-            display: inline-block; width: 36px; height: 36px; line-height: 36px;
-            text-align: center; border-radius: 50%;
-            background: #1e293b; margin: 4px;
-            font-weight: 800; color: var(--accent);
-            border: 1px solid rgba(56, 189, 248, 0.2);
-        }
-
-        /* 表格樣式 */
-        table { width: 100%; border-collapse: collapse; }
-        th { font-size: 0.8rem; opacity: 0.5; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        td { padding: 12px 5px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
-
-        /* 推薦組合區塊 */
-        .strategy-item {
-            background: rgba(255,255,255,0.03);
-            padding: 20px; border-radius: 15px;
-            border-left: 4px solid var(--accent);
-            margin-bottom: 15px;
-        }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <header>
-        <h1>539 QUANT PRO</h1>
-        <p style="opacity: 0.5;">數據驅動 • 智能過濾系統</p>
-    </header>
-
-    <div class="card upload-zone" onclick="document.getElementById('csvFile').click()">
-        <input type="file" id="csvFile" accept=".csv" style="display: none;">
-        <div id="fileLabel" style="color: var(--accent);">[ 點擊載入歷史 CSV 數據檔案 ]</div>
-    </div>
-    <button onclick="startAnalysis()">執行一鍵量化分析</button>
-
-    <div style="margin-top: 25px;" class="dashboard-grid">
-        <div class="card">
-            <h3>近期開獎歷史</h3>
-            <div id="historyDisplay"></div>
-        </div>
-
-        <div class="card">
-            <h3>策略回測表現 (近60期)</h3>
-            <div id="backtestDisplay">
-                <p style="opacity: 0.3; text-align: center;">尚未有數據</p>
-            </div>
-        </div>
-    </div>
-
-    <div class="card">
-        <h3>AI 推薦高勝率組合</h3>
-        <div id="recommendationDisplay">
-            <p style="opacity: 0.3; text-align: center;">請先完成數據分析</p>
-        </div>
-    </div>
-
-    <div class="card" style="height: 300px;">
-        <h3>數據機率分布趨勢</h3>
-        <canvas id="mainChart"></canvas>
-    </div>
-</div>
-
-<script>
-    // JS 邏輯將在此分段開發
-    function startAnalysis() {
-        console.log("分析啟動...");
+/**
+ * 1. 遺漏值與冷熱統計模組
+ * @param {Array} data - 歷史數據
+ */
+function analyzeFrequencyAndGaps(data) {
+    const stats = {};
+    for (let i = 1; i <= 39; i++) {
+        stats[i] = { num: i, count: 0, gap: 0, lastIndex: -1 };
     }
-</script>
 
-</body>
-</html>
+    data.forEach((row, idx) => {
+        row.nums.forEach(n => {
+            stats[n].count++;
+            stats[n].lastIndex = idx;
+        });
+    });
+
+    const totalLen = data.length;
+    for (let i = 1; i <= 39; i++) {
+        stats[i].gap = stats[i].lastIndex === -1 ? totalLen : (totalLen - 1 - stats[i].lastIndex);
+    }
+    return Object.values(stats);
+}
+
+/**
+ * 2. 期望值排序與策略生成
+ * @param {Array} stats - 統計後的數據
+ */
+function getStrategyPicks(stats) {
+    // 熱號池：頻率前 12 名
+    const hots = [...stats].sort((a, b) => b.count - a.count).slice(0, 12).map(x => x.num);
+    // 冷號池：遺漏值前 10 名
+    const colds = [...stats].sort((a, b) => b.gap - a.gap).slice(0, 10).map(x => x.num);
+    
+    return {
+        hot_impact: { name: "熱號衝擊", pick: hots.sort(() => 0.5 - Math.random()).slice(0, 5) },
+        cold_rebound: { name: "冷號回補", pick: colds.sort(() => 0.5 - Math.random()).slice(0, 5) },
+        balanced: { 
+            name: "冷熱平衡", 
+            pick: [
+                ...hots.sort(() => 0.5 - Math.random()).slice(0, 3),
+                ...colds.sort(() => 0.5 - Math.random()).slice(0, 2)
+            ].sort((a, b) => a - b)
+        }
+    };
+}
+
+/**
+ * 3. 獲利回測系統 (近 100 期)
+ * @param {Array} fullData - 完整歷史數據
+ */
+function runBacktest(fullData) {
+    const testCount = Math.min(100, fullData.length - 20);
+    const results = {
+        hot_impact: { name: "熱號衝擊", hit2: 0, hit3: 0, profit: 0 },
+        cold_rebound: { name: "冷號回補", hit2: 0, hit3: 0, profit: 0 },
+        balanced: { name: "冷熱平衡", hit2: 0, hit3: 0, profit: 0 }
+    };
+
+    // 模擬過去 100 期
+    for (let i = fullData.length - testCount; i < fullData.length - 1; i++) {
+        const historySnapshot = fullData.slice(0, i);
+        const nextDraw = fullData[i + 1].nums;
+        const stats = analyzeFrequencyAndGaps(historySnapshot);
+        const strategies = getStrategyPicks(stats);
+
+        for (let key in strategies) {
+            const pick = strategies[key].pick;
+            const matches = nextDraw.filter(n => pick.includes(n)).length;
+            
+            if (matches === 2) {
+                results[key].hit2++;
+                results[key].profit += ODDS.two;
+            } else if (matches === 3) {
+                results[key].hit3++;
+                results[key].profit += ODDS.three;
+            }
+            results[key].profit -= 1; // 扣除每期成本
+        }
+    }
+
+    // 計算評分 (Score) = 總收益 / 測試期數
+    for (let key in results) {
+        results[key].score = (results[key].profit / testCount).toFixed(2);
+    }
+    return results;
+}
+
+// --- UI 整合觸發函數 ---
+
+async function startAnalysis() {
+    const fileInput = document.getElementById("csvFile");
+    if (!fileInput.files[0]) return alert("請載入 CSV 檔案");
+
+    const text = await fileInput.files[0].text();
+    const allData = parseCSV(text); // 假設 parseCSV 已經實作
+    
+    // 1. 執行回測
+    const backtestResults = runBacktest(allData);
+    
+    // 2. 獲取當前最新推薦
+    const currentStats = analyzeFrequencyAndGaps(allData);
+    const currentPicks = getStrategyPicks(currentStats);
+
+    // 3. 渲染回測表格
+    renderBacktestTable(backtestResults);
+    
+    // 4. 渲染推薦號碼
+    renderRecommendations(currentPicks, backtestResults);
+}
+
+function renderBacktestTable(results) {
+    let html = `<table><tr><th>策略名稱</th><th>二星次數</th><th>三星次數</th><th>期望值評分</th></tr>`;
+    for (let key in results) {
+        const r = results[key];
+        const color = r.score > 0 ? 'var(--success)' : 'var(--text)';
+        html += `<tr>
+            <td>${r.name}</td>
+            <td>${r.hit2}</td>
+            <td>${r.hit3}</td>
+            <td style="color: ${color}; font-weight: bold;">${r.score}</td>
+        </tr>`;
+    }
+    document.getElementById("backtestDisplay").innerHTML = html + "</table>";
+}
