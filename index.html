@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<title>539 回測＋必中組合系統</title>
+<title>539 回測＋建議號碼系統</title>
 <style>
 body { font-family: Arial, sans-serif; padding: 20px; }
 input, button { margin-top: 10px; padding: 8px; }
@@ -47,7 +47,9 @@ async function runAll() {
   const data = parseCSV(text);
   const stats = doBacktest(data);
   renderStats(stats);
-  drawTrendChart(stats.map(s => s.hit3Rate*100));
+
+  // 繪製雙數據集趨勢圖：≥2 碼 & ≥3 碼
+  drawTrendChart(stats.map(s=>s.hit2Rate*100), stats.map(s=>s.hit3Rate*100));
 
   // 生成每套規則建議號碼
   let html = document.getElementById("results").innerHTML;
@@ -55,7 +57,7 @@ async function runAll() {
     const picks = generateNext3(data.slice(-5), s.rule);
     html += `<h3>規則：${s.rule.name}</h3>`;
     html += `<b>建議號碼（3 組）</b><br>`;
-    picks.forEach((p,i) => { html += `組 ${i+1}: ${p.join(", ")}<br>`; });
+    picks.forEach((p,i)=>{ html += `組 ${i+1}: ${p.join(", ")}<br>`; });
   });
   document.getElementById("results").innerHTML = html;
 }
@@ -63,7 +65,7 @@ async function runAll() {
 // 解析 CSV
 function parseCSV(text) {
   const lines = text.trim().split("\n");
-  lines.shift(); // 去掉標題
+  lines.shift();
   return lines.map(l => {
     const p = l.split(",");
     return { date: p[0], nums: p.slice(2,7).map(n=>parseInt(n)) };
@@ -72,9 +74,7 @@ function parseCSV(text) {
 
 // 回測
 function doBacktest(data) {
-  const stats = RULES.map(r => ({
-    rule: r, hit5:0, hit4:0, hit3:0, hit2:0, total:0
-  }));
+  const stats = RULES.map(r => ({rule:r, hit5:0, hit4:0, hit3:0, hit2:0, total:0}));
 
   for(let i=5;i<data.length;i++){
     const prev = data.slice(i-5,i);
@@ -118,18 +118,17 @@ function renderStats(stats){
   document.getElementById("results").innerHTML = html;
 }
 
-// 趨勢圖
-function drawTrendChart(dataPoints){
+// 趨勢圖：雙數據集
+function drawTrendChart(hit2Data, hit3Data){
   const ctx = document.getElementById("trendChart").getContext("2d");
   new Chart(ctx,{
     type:'bar',
     data:{
       labels: RULES.map(r=>r.name),
-      datasets:[{
-        label:'≥3 碼命中率 (%)',
-        data: dataPoints,
-        backgroundColor:['#3e95cd','#8e5ea2','#3cba9f']
-      }]
+      datasets:[
+        { label:'≥2 碼命中率 (%)', data: hit2Data, backgroundColor:'#8e5ea2' },
+        { label:'≥3 碼命中率 (%)', data: hit3Data, backgroundColor:'#3e95cd' }
+      ]
     },
     options:{
       scales:{ y:{ beginAtZero:true, max:100 } }
@@ -149,9 +148,7 @@ function generateNext3(latest5, rule){
 }
 
 // 工具：命中數量
-function countHit(actual,pick){
-  return actual.filter(n=>pick.includes(n)).length;
-}
+function countHit(actual,pick){ return actual.filter(n=>pick.includes(n)).length; }
 
 // 工具：建立候選池
 function buildPool(latest5,rule){
@@ -165,7 +162,7 @@ function buildPool(latest5,rule){
   return [...pool];
 }
 
-// 工具：生成一注（回測用）
+// 工具：生成一注
 function generatePick(prev,rule){
   const pool = buildPool(prev,rule);
   return shuffle(pool).slice(0,5).sort((a,b)=>a-b);
@@ -182,6 +179,5 @@ function exists(arr,pick){ return arr.some(a=>a.join()==pick.join()); }
 function shuffle(arr){ return arr.sort(()=>Math.random()-0.5); }
 
 </script>
-
 </body>
 </html>
