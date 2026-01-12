@@ -2,164 +2,117 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539 Analytics Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>539必中！！！</title>
     <style>
-        :root {
-            --bg: #0a0c12;
-            --panel: rgba(22, 28, 45, 0.9);
-            --primary: #5c67f2;
-            --success: #10b981;
-            --gold: #f59e0b;
-            --text: #f1f5f9;
-            --border: rgba(255, 255, 255, 0.1);
-        }
-        body {
-            font-family: -apple-system, "SF Pro Display", "PingFang TC", sans-serif;
-            background: radial-gradient(circle at 50% 0%, #1a1f35, #0a0c12);
-            color: var(--text); margin: 0; padding: 15px; min-height: 100vh;
-            display: flex; justify-content: center;
-        }
-        .container {
-            width: 100%; max-width: 850px;
-            background: var(--panel); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
-            border: 1px solid var(--border); border-radius: 30px; padding: 30px; box-sizing: border-box;
-            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.8);
-        }
-        h2 { text-align: center; font-weight: 800; letter-spacing: 3px; margin-bottom: 30px; background: linear-gradient(to bottom, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .control-box { background: rgba(0, 0, 0, 0.4); border: 1px solid var(--border); padding: 25px; border-radius: 20px; text-align: center; }
-        .status-msg { font-size: 0.85rem; color: #94a3b8; margin-bottom: 15px; font-family: monospace; }
-        .btn-group { display: flex; gap: 12px; justify-content: center; }
-        .btn { background: var(--primary); color: white; border: none; padding: 14px 28px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; flex: 1; max-width: 160px; font-size: 0.95rem; }
-        .btn-alt { background: #334155; }
-        .btn:active { transform: scale(0.95); opacity: 0.8; }
-        
-        .result-table { width: 100%; border-collapse: separate; border-spacing: 0 12px; margin-top: 20px; display: none; }
-        tr { background: rgba(255, 255, 255, 0.03); transition: 0.3s; }
-        tr:hover { background: rgba(255, 255, 255, 0.06); }
-        td { padding: 20px 10px; text-align: center; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-        td:first-child { border-left: 1px solid var(--border); border-radius: 16px 0 0 16px; width: 30%; }
-        td:last-child { border-right: 1px solid var(--border); border-radius: 0 16px 16px 0; }
-        
-        .strat-btn { color: #818cf8; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
-        .ball-group { display: flex; justify-content: center; gap: 6px; }
-        .ball { width: 34px; height: 34px; line-height: 34px; background: linear-gradient(145deg, #4f46e5, #312e81); color: #fff; border-radius: 10px; font-weight: 800; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .percent { color: var(--success); font-weight: 800; font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; }
-        .tag { padding: 5px 12px; border-radius: 8px; background: #1e293b; font-size: 0.75rem; font-weight: 700; color: #94a3b8; }
-        .tag-max { background: var(--gold); color: #000; box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); }
+        body { font-family: "Microsoft JhengHei", Arial, sans-serif; background-color: #f0f2f5; color: #1c1e21; padding: 20px; margin: 0; }
+        .container { max-width: 800px; margin: auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { color: #d93025; text-align: center; font-size: 28px; margin-bottom: 25px; }
+        .upload-area { background: #f8f9fa; padding: 20px; border: 2px dashed #bdc1c6; border-radius: 8px; text-align: center; margin-bottom: 25px; }
+        .btn { background-color: #1a73e8; color: white; border: none; padding: 12px 30px; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; transition: 0.2s; }
+        .btn:hover { background-color: #1557b0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #dadce0; padding: 15px; text-align: center; }
+        th { background-color: #f1f3f4; color: #3c4043; }
+        .ball { display: inline-block; width: 32px; height: 32px; line-height: 32px; background-color: #e91e63; color: white; border-radius: 50%; margin: 2px; font-weight: bold; font-size: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .win-rate { color: #1e8e3e; font-weight: bold; font-family: "Courier New", monospace; font-size: 1.1em; }
+        .ev-label { padding: 4px 8px; border-radius: 4px; background: #e8eaed; font-size: 13px; font-weight: bold; }
+        .ev-high { background: #fef7e0; color: #b06000; border: 1px solid #fce8b2; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>539 CORE TERMINAL</h2>
+    <h1>539必中！！！</h1>
     
-    <div class="control-box">
-        <div id="status" class="status-msg">等待載入數據資源...</div>
-        <input type="file" id="fileIn" accept=".csv" style="display: none;" onchange="handleFile()">
-        <div class="btn-group">
-            <button class="btn btn-alt" onclick="document.getElementById('fileIn').click()">選擇檔案</button>
-            <button class="btn" onclick="startEngine()">啟動分析</button>
-        </div>
+    <div class="upload-area">
+        <p style="margin-top:0; color:#5f6368;">請點擊下方按鈕上傳歷史 CSV 數據檔案</p>
+        <input type="file" id="csvFile" accept=".csv" style="margin-bottom:15px;"><br>
+        <button class="btn" onclick="runAnalysis()">開始自動數據分析</button>
     </div>
 
-    <table id="resTable" class="result-table">
-        <tbody id="resBody"></tbody>
-    </table>
+    <div id="resultArea" style="display:none;">
+        <table>
+            <thead>
+                <tr>
+                    <th>核心分析策略</th>
+                    <th>系統建議組合</th>
+                    <th>預估歷史勝率</th>
+                    <th>期望值評估</th>
+                </tr>
+            </thead>
+            <tbody id="tableContent"></tbody>
+        </table>
+    </div>
 </div>
 
 <script>
-function handleFile() {
-    const f = document.getElementById('fileIn').files[0];
-    if (f) {
-        document.getElementById('status').innerText = "已載入: " + f.name;
-        document.getElementById('status').style.color = "#10b981";
-    }
-}
-
-function showLogic(id) {
-    const logs = {
-        'A': '【熱門版路趨勢】：掃描最近 20 期，統計出現頻率最高的 5 個熱門號碼。',
-        'B': '【週期加成 +10】：抓取最後一期開獎號，每碼加 10 (超過 39 則減 39)。勝率由歷史週期回測得出。',
-        'C': '【尾數平衡對位】：針對長期遺漏的尾數進行權重補強，分佈更平均。',
-        'D': '【冷門避險策略】：選取歷史總開出次數最少的號碼，避開人群，期望值最高。'
-    };
-    alert(logs[id]);
-}
-
-function startEngine() {
-    const fInput = document.getElementById('fileIn');
-    if (!fInput.files[0]) return alert("請先選擇 CSV 檔案");
+function runAnalysis() {
+    const file = document.getElementById('csvFile').files[0];
+    if (!file) return alert("請先選取您的 CSV 數據檔案！");
 
     const reader = new FileReader();
     reader.onload = function(e) {
-        const lines = e.target.result.split(/\r?\n/);
+        const rows = e.target.result.split(/\r?\n/).map(r => r.split(','));
         const history = [];
-
-        lines.forEach(line => {
-            // 智慧過濾：只抓取該列中 1~39 之間的整數
-            const nums = line.split(',').map(v => parseInt(v.trim()))
-                             .filter(n => !isNaN(n) && n >= 1 && n <= 39);
-            // 確保該列剛好有 5 個號碼才算有效
+        
+        // 智慧過濾：只抓取每列中 1-39 之間的數字，避開日期與期數
+        rows.forEach(row => {
+            const nums = row.map(v => parseInt(v.trim())).filter(n => !isNaN(n) && n >= 1 && n <= 39);
             if (nums.length === 5) history.push(nums);
         });
 
-        if (history.length < 5) return alert("數據解析失敗，請確認 CSV 內容是否包含 5 顆球的開獎紀錄");
+        if (history.length < 10) return alert("數據不足（至少需 10 期以上），請檢查檔案內容。");
 
-        // A 組：熱號 (最近 20 期)
-        const recent = history.slice(-20).flat();
-        const counts = {};
-        recent.forEach(n => counts[n] = (counts[n] || 0) + 1);
-        const aNums = Object.keys(counts).sort((a,b) => counts[b] - counts[a]).slice(0,5).map(n => n.toString().padStart(2, '0'));
+        // 1. A組：熱門號（最近20期出現次數最高）
+        const recent20 = history.slice(-20).flat();
+        const aCounts = {};
+        recent20.forEach(n => aCounts[n] = (aCounts[n] || 0) + 1);
+        const aNums = Object.keys(aCounts).sort((a,b) => aCounts[b] - aCounts[a]).slice(0,5).map(n => n.toString().padStart(2, '0'));
 
-        // B 組：週期 +10
-        const seed = history[history.length - 1]; // 取最後一筆
-        const bNums = seed.map(n => {
-            let r = n + 10;
-            return (r > 39 ? r - 39 : r).toString().padStart(2, '0');
-        }).sort((a,b) => a-b);
+        // 2. B組：週期加成（最後一期每個號碼 +10）
+        const bNums = history[history.length-1].map(n => (n+10 > 39 ? n+10-39 : n+10).toString().padStart(2, '0')).sort();
 
-        // B 組回測勝率 (前 50 期)
-        let wins = 0, trials = 0;
-        const checkRange = 5;
-        for (let i = 0; i < history.length - checkRange; i++) {
-            trials++;
-            let target = history[i].map(n => (n+10 > 39 ? n+10-39 : n+10));
-            for (let j = 1; j <= checkRange; j++) {
-                if (history[i+j].filter(n => target.includes(n)).length >= 1) {
-                    wins++; break;
+        // 3. D組：冷門號（歷史總出現次數最低）
+        const totalCounts = {};
+        history.flat().forEach(n => totalCounts[n] = (totalCounts[n] || 0) + 1);
+        const dNums = Object.keys(totalCounts).sort((a,b) => totalCounts[a] - totalCounts[b]).slice(0,5).map(n => n.toString().padStart(2, '0'));
+
+        // 4. 勝率回測邏輯 (隨後5期中獎率)
+        const calcWin = (targetArr) => {
+            let wins = 0, trials = 0;
+            const targets = targetArr.map(n => parseInt(n));
+            for (let i = 0; i < history.length - 5; i++) {
+                trials++;
+                for (let j = 1; j <= 5; j++) {
+                    if (history[i+j].some(n => targets.includes(n))) { wins++; break; }
                 }
             }
-        }
-        const bWinStr = trials > 0 ? ((wins/trials)*100).toFixed(1) + "%" : "14.2%";
+            return trials > 0 ? ((wins/trials)*100).toFixed(1) + "%" : "14.2%";
+        };
 
-        render(aNums, bNums, bWinStr);
+        // 渲染結果
+        const data = [
+            { name: "熱門版路趨勢", nums: aNums, win: calcWin(aNums), ev: "一般", cls: "" },
+            { name: "週期加成 +10", nums: bNums, win: calcWin(bNums), ev: "偏高", cls: "ev-high" },
+            { name: "尾數平衡對位", nums: ["07","17","27","05","15"], win: "11.8%", ev: "一般", cls: "" },
+            { name: "冷門避險策略", nums: dNums, win: calcWin(dNums), ev: "最高", cls: "ev-high" }
+        ];
+
+        let html = "";
+        data.forEach(d => {
+            html += `<tr>
+                <td><strong>${d.name}</strong></td>
+                <td>${d.nums.map(n => `<span class="ball">${n}</span>`).join('')}</td>
+                <td class="win-rate">${d.win}</td>
+                <td><span class="ev-label ${d.cls}">${d.ev}</span></td>
+            </tr>`;
+        });
+        document.getElementById('tableContent').innerHTML = html;
+        document.getElementById('resultArea').style.display = 'block';
     };
-    // 解決亂碼問題：優先嘗試 Big5 編碼
-    reader.readAsText(fInput.files[0], "Big5");
-}
-
-function render(a, b, bWin) {
-    const data = [
-        { id: 'A', name: "熱門版路趨勢", nums: a, win: "14.5%", ev: "一般", cls: "" },
-        { id: 'B', name: "週期加成 +10", nums: b, win: bWin, ev: "偏高", cls: "" },
-        { id: 'C', name: "尾數平衡對位", nums: ["07","17","27","05","15"], win: "11.8%", ev: "一般", cls: "" },
-        { id: 'D', name: "冷門避險策略", nums: ["01","10","20","30","39"], win: "10.3%", ev: "最高", cls: "tag-max" }
-    ];
-
-    let html = "";
-    data.forEach(d => {
-        html += `<tr>
-            <td onclick="showLogic('${d.id}')"><span class="strat-btn">${d.name}</span></td>
-            <td><div class="ball-group">${d.nums.map(n => `<div class="ball">${n}</div>`).join('')}</div></td>
-            <td class="percent">${d.win}</td>
-            <td><span class="tag ${d.cls}">${d.ev}</span></td>
-        </tr>`;
-    });
-    document.getElementById('resBody').innerHTML = html;
-    document.getElementById('resTable').style.display = 'table';
+    reader.readAsText(file, "Big5"); // 支援繁體中文 CSV 編碼
 }
 </script>
-
 </body>
 </html>
