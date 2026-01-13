@@ -6,30 +6,35 @@
 <title>539 QUANT PRO</title>
 
 <style>
-body {
+body{
     background:#0f172a;
     color:#f1f5f9;
     font-family:"Microsoft JhengHei",sans-serif;
     padding:20px;
 }
-.card {
+.card{
     background:#1e293b;
     padding:20px;
     border-radius:16px;
     margin-bottom:20px;
 }
-.ball {
+.ball{
     display:inline-block;
-    width:36px;
-    height:36px;
-    line-height:36px;
+    width:38px;
+    height:38px;
+    line-height:38px;
     border-radius:50%;
     background:#334155;
     color:#38bdf8;
     margin:4px;
     font-weight:bold;
+    text-align:center;
 }
-button {
+.recommend .ball{
+    background:#38bdf8;
+    color:#0f172a;
+}
+button{
     width:100%;
     padding:14px;
     background:#38bdf8;
@@ -50,93 +55,91 @@ button {
     <button onclick="runAll()">啟動分析</button>
 </div>
 
-<div id="history" class="card">
-    <h3>近期開獎歷史</h3>
-</div>
+<div id="history" class="card"></div>
+<div id="result" class="card"></div>
 
 <script>
 let HIST_DATA = [];
 let CORR_MATRIX = {};
 
-/* ================= 主流程 ================= */
 async function runAll(){
-    const fileInput = document.getElementById("csvFile");
-    if(!fileInput.files.length){
-        alert("請先選取 CSV");
-        return;
-    }
+    const file = document.getElementById("csvFile").files[0];
+    if(!file){ alert("請選 CSV"); return; }
 
-    const text = await fileInput.files[0].text();
+    const text = await file.text();
     HIST_DATA = parseCSV(text);
 
-    if(HIST_DATA.length === 0){
-        alert("CSV 解析失敗，請確認格式");
-        console.error(text);
+    if(!HIST_DATA.length){
+        alert("CSV 格式錯誤");
         return;
     }
 
     buildCorrelationMatrix(HIST_DATA);
-    showHistory(HIST_DATA);
-
-    console.log("成功載入期數:", HIST_DATA.length);
+    showHistory();
+    generateRecommendation();
 }
 
-/* ================= CSV 解析（已修正完成） ================= */
 function parseCSV(text){
     const lines = text.trim().split(/\r?\n/);
-    lines.shift(); // 移除標題列
-
-    return lines.map(line=>{
-        const p = line.split(",");
-        if(p.length !== 6) return null;
-
-        const nums = p.slice(1,6)
-            .map(n=>parseInt(n.trim(),10))
-            .filter(n=>!isNaN(n))
-            .sort((a,b)=>a-b);
-
-        if(nums.length !== 5) return null;
-
-        return {
-            date: p[0].trim(),
-            nums
-        };
-    })
-    .filter(Boolean)
-    .sort((a,b)=> new Date(a.date) - new Date(b.date));
+    lines.shift();
+    return lines.map(l=>{
+        const p=l.split(",");
+        if(p.length!==6) return null;
+        const nums=p.slice(1,6).map(n=>+n).filter(n=>!isNaN(n)).sort((a,b)=>a-b);
+        if(nums.length!==5) return null;
+        return {date:p[0],nums};
+    }).filter(Boolean).sort((a,b)=>new Date(a.date)-new Date(b.date));
 }
 
-/* ================= 相關矩陣 ================= */
 function buildCorrelationMatrix(data){
-    CORR_MATRIX = {};
+    CORR_MATRIX={};
     for(let i=0;i<data.length-1;i++){
-        const cur = data[i].nums;
-        const next = data[i+1].nums;
-        cur.forEach(c=>{
-            if(!CORR_MATRIX[c]) CORR_MATRIX[c] = {};
-            next.forEach(n=>{
-                CORR_MATRIX[c][n] = (CORR_MATRIX[c][n]||0)+1;
+        data[i].nums.forEach(c=>{
+            CORR_MATRIX[c]=CORR_MATRIX[c]||{};
+            data[i+1].nums.forEach(n=>{
+                CORR_MATRIX[c][n]=(CORR_MATRIX[c][n]||0)+1;
             });
         });
     }
 }
 
-/* ================= 顯示歷史 ================= */
-function showHistory(data){
-    let html = "<table>";
-    data.slice(-5).reverse().forEach(d=>{
-        html += `
-        <tr>
-            <td style="opacity:.6">${d.date}</td>
-            <td>
+function showHistory(){
+    const last = HIST_DATA.slice(-5).reverse();
+    document.getElementById("history").innerHTML = `
+        <h3>近期開獎</h3>
+        ${last.map(d=>`
+            <div>
+                <small>${d.date}</small><br>
                 ${d.nums.map(n=>`<span class="ball">${String(n).padStart(2,"0")}</span>`).join("")}
-            </td>
-        </tr>`;
-    });
-    html += "</table>";
+            </div>
+        `).join("")}
+    `;
+}
 
-    document.getElementById("history").innerHTML =
-        "<h3>近期開獎歷史</h3>" + html;
+function generateRecommendation(){
+    const lastNums = HIST_DATA[HIST_DATA.length-1].nums;
+    let score={};
+
+    lastNums.forEach(c=>{
+        const rel=CORR_MATRIX[c]||{};
+        Object.keys(rel).forEach(n=>{
+            if(lastNums.includes(+n)) return;
+            score[n]=(score[n]||0)+rel[n];
+        });
+    });
+
+    const picks = Object.entries(score)
+        .sort((a,b)=>b[1]-a[1])
+        .slice(0,5)
+        .map(e=>+e[0])
+        .sort((a,b)=>a-b);
+
+    document.getElementById("result").innerHTML = `
+        <h3>量化推薦選號</h3>
+        <div class="recommend">
+            ${picks.map(n=>`<span class="ball">${String(n).padStart(2,"0")}</span>`).join("")}
+        </div>
+    `;
 }
 </script>
 
