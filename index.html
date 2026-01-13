@@ -2,144 +2,63 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<title>539 組合預測篩選器</title>
+<title>539 掉落號碼分析</title>
 <style>
-  body { font-family: Arial, sans-serif; padding: 20px; background:#f4f4f4; }
-  h1 { color:#333; }
-  table { border-collapse: collapse; width: 100%; margin-top: 20px; background:#fff; }
+  body { font-family: Arial, sans-serif; padding: 20px; }
+  table { border-collapse: collapse; width: 100%; }
   th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-  th { background-color: #eee; }
-  input { margin: 5px 0; }
-  #results { margin-top: 20px; }
+  th { background-color: #f4f4f4; }
 </style>
 </head>
 <body>
 
-<h1>539 組合預測篩選器</h1>
-
-<label>上傳歷史開獎 CSV：</label>
-<input type="file" id="csvFile" accept=".csv"><br>
-<button onclick="processCSV()">生成預測組合</button>
-
-<div id="results"></div>
+<h2>539 掉落號碼分析</h2>
+<input type="file" id="csvFile" accept=".csv">
+<table id="resultTable">
+  <thead>
+    <tr>
+      <th>期號</th>
+      <th>本期號碼</th>
+      <th>掉落號碼</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
 
 <script>
-// 全局變數
-let historyData = [];
+document.getElementById('csvFile').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if (!file) return;
 
-function processCSV() {
-    const fileInput = document.getElementById('csvFile');
-    if (!fileInput.files[0]) {
-        alert('請先選擇 CSV 檔案');
-        return;
-    }
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const text = e.target.result;
-        historyData = parseCSV(text);
-        const combinations = generateCombinations();
-        displayResults(combinations);
-    };
-    reader.readAsText(fileInput.files[0]);
-}
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const text = e.target.result;
+    const lines = text.trim().split('\n');
+    const data = lines.map(line => line.split(',').map(x => x.trim()));
 
-// 解析 CSV
-function parseCSV(text) {
-    const lines = text.trim().split('\n').slice(1); // 跳過標題
-    return lines.map(line => {
-        const parts = line.split(',');
-        return parts.slice(1).map(n => parseInt(n, 10)); // 取號碼1-5
+    const tbody = document.querySelector('#resultTable tbody');
+    tbody.innerHTML = '';
+
+    let prevNumbers = [];
+
+    data.forEach(row => {
+      const term = row[0];
+      const numbers = row.slice(1);
+      const dropped = numbers.filter(n => prevNumbers.includes(n));
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${term}</td>
+        <td>${numbers.join(', ')}</td>
+        <td>${dropped.join(', ')}</td>
+      `;
+      tbody.appendChild(tr);
+
+      prevNumbers = numbers;
     });
-}
-
-// 計算號碼熱度
-function getNumberHeat() {
-    const heat = Array(40).fill(0); // 1-39
-    historyData.forEach(row => {
-        row.forEach(n => heat[n]++);
-    });
-    return heat;
-}
-
-// 計算組合分數
-function scoreCombination(combo, heat) {
-    let heatScore = 0;
-    let versionScore = 0;
-    let stabilityScore = 0;
-
-    // 熱度分
-    combo.forEach(n => heatScore += heat[n]);
-
-    // 版路分: 偶奇平衡、尾數分散、連號
-    const odd = combo.filter(n => n % 2 !== 0).length;
-    const even = combo.length - odd;
-    versionScore += 3 - Math.abs(odd - even); // 奇偶差距越小越高
-
-    const tails = combo.map(n => n % 10);
-    const tailSet = new Set(tails);
-    versionScore += tailSet.size / 5 * 3; // 尾數分散越多越高
-
-    const sorted = [...combo].sort((a,b)=>a-b);
-    let consecutive = 0;
-    for (let i=1;i<sorted.length;i++) {
-        if(sorted[i]-sorted[i-1]===1) consecutive++;
-    }
-    versionScore += (2-consecutive); // 連號越少越高 (最多扣2分)
-
-    // 穩定度分: 近期出現號碼加分
-    const recentN = Math.min(historyData.length, 5); // 最近5期
-    let recentCount = 0;
-    for(let i=0;i<recentN;i++){
-        combo.forEach(n => { if(historyData[i].includes(n)) recentCount++; });
-    }
-    stabilityScore = recentCount; // 每個近期號碼 +1
-
-    // 總分
-    const total = heatScore + versionScore + stabilityScore;
-    return {heatScore, versionScore:versionScore.toFixed(2), stabilityScore, total};
-}
-
-// 生成候選組合
-function generateCombinations() {
-    const heat = getNumberHeat();
-    const candidateCombos = [];
-
-    // 隨機生成大量組合
-    const allNumbers = Array.from({length:39}, (_,i)=>i+1);
-    for(let i=0;i<1000;i++){
-        const combo = [];
-        const pool = [...allNumbers];
-        for(let j=0;j<5;j++){
-            const idx = Math.floor(Math.random()*pool.length);
-            combo.push(pool.splice(idx,1)[0]);
-        }
-        const score = scoreCombination(combo, heat);
-        if(score.total >= 8) candidateCombos.push({combo, ...score});
-    }
-
-    // 依總分排序，取前3組
-    candidateCombos.sort((a,b)=>b.total - a.total);
-    return candidateCombos.slice(0,3);
-}
-
-// 顯示結果
-function displayResults(combinations) {
-    let html = '<table>';
-    html += '<tr><th>組合</th><th>號碼</th><th>熱度分</th><th>版路分</th><th>穩定度分</th><th>總分</th><th>備註</th></tr>';
-    combinations.forEach((c,i)=>{
-        html += `<tr>
-            <td>${i+1}</td>
-            <td>${c.combo.join(' ')}</td>
-            <td>${c.heatScore}</td>
-            <td>${c.versionScore}</td>
-            <td>${c.stabilityScore}</td>
-            <td>${c.total.toFixed(2)}</td>
-            <td>符合熱號/版路/穩定性</td>
-        </tr>`;
-    });
-    html += '</table>';
-    document.getElementById('results').innerHTML = html;
-}
+  };
+  reader.readAsText(file);
+});
 </script>
 
 </body>
