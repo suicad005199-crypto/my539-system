@@ -3,25 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>539 QUANT PRO｜命中機率＋熱門號碼</title>
+<title>539 QUANT PRO｜命中機率＋熱門號碼（響應式）</title>
 <style>
 :root{
     --bg:#0f172a;--card:#1e293b;--accent:#38bdf8;
     --gold:#fbbf24;--text:#f1f5f9;--muted:#94a3b8;
 }
+*{box-sizing:border-box;}
 body{
     margin:0;padding:20px;background:radial-gradient(circle at 50% 0%,#1e293b,#0f172a);
     font-family:'PingFang TC',sans-serif;color:var(--text);
 }
-.container{max-width:1200px;margin:auto}
+.container{max-width:1200px;margin:auto;}
 .card{
-    background:rgba(30,41,59,.75);border-radius:20px;padding:20px;margin-bottom:20px;border:1px solid rgba(255,255,255,.08);
+    background:rgba(30,41,59,.75);border-radius:16px;padding:16px;margin-bottom:20px;border:1px solid rgba(255,255,255,.08);
 }
 button{
-    padding:14px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#0284c7);color:#fff;font-weight:800;border:none;cursor:pointer;
+    padding:12px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#0284c7);color:#fff;font-weight:700;border:none;cursor:pointer;font-size:1rem;margin-top:5px;
+    width:100%;
 }
 .ball{
-    display:inline-block;width:30px;height:30px;line-height:30px;border-radius:50%;margin:2px;text-align:center;
+    display:inline-block;width:28px;height:28px;line-height:28px;border-radius:50%;margin:2px;text-align:center;
     background:radial-gradient(circle at 30% 30%,#475569,#1e293b);color:var(--gold);font-weight:800;font-size:.85rem;
 }
 .strategy{
@@ -30,14 +32,27 @@ button{
 .badge{display:inline-block;padding:2px 6px;border-radius:6px;font-size:.75rem;font-weight:700;margin-right:5px;}
 .b2{background:#155e75;color:#cffafe;}
 .b3{background:#166534;color:#dcfce7;}
-.table-wrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:.8rem}
-th,td{padding:6px;text-align:center;border-bottom:1px solid rgba(255,255,255,.05)}
-th{color:var(--accent)}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:.8rem;}
+th,td{padding:6px;text-align:center;border-bottom:1px solid rgba(255,255,255,.05);}
+th{color:var(--accent);}
 .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);justify-content:center;align-items:center;z-index:10;}
-.modal-content{background:var(--card);padding:20px;border-radius:16px;max-width:500px;width:90%;}
+.modal-content{background:var(--card);padding:20px;border-radius:16px;max-width:90%;width:400px;max-height:90%;overflow-y:auto;}
 .close{float:right;cursor:pointer;font-weight:bold;color:var(--accent);}
-.period-select button{margin:2px;}
+.period-select{display:flex;flex-wrap:wrap;gap:5px;margin:10px 0;}
+.period-select button{flex:1;min-width:60px;}
+/* 響應式調整 */
+@media(max-width:768px){
+    .ball{width:24px;height:24px;line-height:24px;font-size:.75rem;}
+    button{font-size:.95rem;padding:10px;}
+    .strategy{padding:10px;margin-top:8px;}
+    table{font-size:.7rem;}
+}
+@media(max-width:480px){
+    .ball{width:22px;height:22px;line-height:22px;font-size:.7rem;}
+    button{font-size:.9rem;padding:8px;}
+    table{font-size:.65rem;}
+}
 </style>
 </head>
 <body>
