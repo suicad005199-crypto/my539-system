@@ -2,81 +2,94 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>539 Strategy AI: Dynamic Heatmap</title>
+    <title>539 Strategy Commander Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --bg: #030712; --card: #111827; --accent: #38bdf8; --hot: #ef4444; --gold: #fbbf24; --success: #10b981; --con: #8b5cf6; }
+        :root { --bg: #020617; --card: #0f172a; --accent: #0ea5e9; --hot: #ef4444; --cold: #3b82f6; --gold: #fbbf24; --success: #22c55e; --con: #8b5cf6; }
         body { margin: 0; background: var(--bg); color: #f1f5f9; font-family: system-ui, sans-serif; padding: 10px; font-size: 13px; }
         .dashboard { max-width: 1600px; margin: 0 auto; display: grid; grid-template-columns: 1fr 520px; gap: 12px; }
-        .panel { background: var(--card); border-radius: 12px; padding: 16px; border: 1px solid #1f2937; }
+        .panel { background: var(--card); border-radius: 12px; padding: 16px; border: 1px solid #1e293b; }
         .full { grid-column: 1 / -1; }
         
-        /* 視覺看板 */
-        .chart-box { height: 220px; margin-top: 10px; }
+        /* 圖表區佈局 */
+        .chart-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 12px; height: 240px; }
 
-        /* 動態球盤 */
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 10px; }
+        /* 球盤交互與視覺強化 */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 8px; }
         .ball { 
-            aspect-ratio: 1; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            cursor: pointer; transition: 0.3s; position: relative; background: #1f2937; border: 1px solid #374151; overflow: hidden;
+            aspect-ratio: 1; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            cursor: pointer; transition: 0.2s; position: relative; background: #1e293b; border: 2px solid transparent; overflow: hidden;
         }
-        .ball .num { font-size: 20px; font-weight: 900; z-index: 2; transition: 0.3s; }
-        .ball:hover .num { transform: scale(1.2); }
-        
-        /* 熱度與漏期動畫漸層 */
-        .heat-bg { position: absolute; inset: 0; opacity: 0.2; transition: 0.5s; }
-        .gap-pulse { position: absolute; bottom: 0; left: 0; height: 4px; background: var(--accent); transition: width 1s ease-in-out; }
-        .con-glow { position: absolute; right: 0; top: 0; width: 4px; height: 100%; background: var(--con); opacity: 0.5; }
+        .ball.locked { border-color: var(--success); background: rgba(34, 197, 94, 0.1); }
+        .ball.excluded { opacity: 0.3; border-color: var(--hot); text-decoration: line-through; }
+        .ball .num { font-size: 20px; font-weight: 800; z-index: 2; }
+        .ball .gap-bar { position: absolute; bottom: 0; left: 0; height: 4px; background: var(--accent); transition: width 0.5s; }
+        .ball .heat-bg { position: absolute; inset: 0; background: var(--hot); opacity: 0; transition: opacity 0.5s; }
 
-        /* 方案分級列表 */
-        .plan-card { background: #1e293b; padding: 12px; border-radius: 10px; border: 1px solid #334155; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .plan-nums { display: flex; gap: 5px; }
-        .p-num { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; background: #0f172a; }
-        .p-num.hot { border: 1px solid var(--hot); color: var(--hot); }
+        /* 方案卡片 */
+        .plan-card { background: #1e293b; padding: 12px; border-radius: 10px; margin-top: 10px; border: 1px solid #334155; display: grid; grid-template-columns: 1fr 140px; gap: 10px; }
+        .plan-nums { display: flex; gap: 5px; margin-bottom: 8px; }
+        .p-num { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; background: #0f172a; }
+        .p-num.is-top { border: 1px solid var(--hot); color: var(--hot); }
         
-        .score-box { text-align: right; }
-        .rank-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
-        
-        .btn-ai { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--accent), var(--con)); border: none; color: white; border-radius: 10px; font-weight: 800; cursor: pointer; margin-top: 10px; }
+        .mini-hit-map { display: flex; height: 12px; background: #0f172a; border-radius: 6px; overflow: hidden; margin-top: 5px; }
+        .hit-bar { height: 100%; transition: width 0.5s; }
+
+        /* 控制列 */
+        .ctrl-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .btn-ai { background: linear-gradient(135deg, var(--accent), var(--con)); color: white; width: 100%; height: 45px; margin-top: 10px; }
+        select { background: #1e293b; color: #fff; border: 1px solid #334155; padding: 5px; border-radius: 6px; }
     </style>
 </head>
 <body>
 
 <div class="dashboard">
     <div class="panel full">
-        <div style="display:flex; justify-content:space-between; align-items:center">
-            <h3 style="margin:0">戰略指揮中心 (和值趨勢與熱點回測)</h3>
-            <input type="file" onchange="init(this)">
+        <div class="ctrl-row">
+            <h3 style="margin:0">戰略指揮看板 (和值趨勢 + Top10 深度回測)</h3>
+            <input type="file" onchange="process(this)">
         </div>
-        <div class="chart-box"><canvas id="mainChart"></canvas></div>
+        <div class="chart-grid">
+            <canvas id="trendChart"></canvas>
+            <canvas id="depthChart"></canvas>
+        </div>
     </div>
 
     <div class="panel">
-        <div style="display:flex; justify-content:space-between; margin-bottom:12px">
-            <b>動態權重球盤 (底條:漏期 | 背景:命中熱度)</b>
-            <span id="ai-status" style="color:var(--gold)">等待數據...</span>
+        <div class="ctrl-row">
+            <b>智能球盤 (點擊:鎖定 | 長按/右鍵:排除)</b>
+            <span id="ai-info" style="color:var(--gold)">等待數據...</span>
         </div>
         <div id="grid" class="grid"></div>
     </div>
 
     <div class="panel">
-        <h3 style="margin:0">AI 策略生成 (附穩定性評分)</h3>
-        <button class="btn-ai" onclick="generateTactics()">執行多組策略生成與方案驗證</button>
+        <h3>策略方案生成</h3>
+        <div class="ctrl-row">
+            <span>策略模式</span>
+            <select id="s-mode">
+                <option value="balanced">平衡穩定 (熱冷結合)</option>
+                <option value="aggressive">激進追熱 (核心集中)</option>
+                <option value="cold">冷門反彈 (遺漏補償)</option>
+            </select>
+        </div>
+        <button class="btn-ai" onclick="generate()">執行多組方案生成</button>
         <div id="plan-list"></div>
     </div>
 </div>
 
 <script>
-    let db = [], scores = {}, stats = { freq: {}, gap: {}, con: {} }, chart;
+    let raw = [], scores = {}, stats = { freq: {}, gap: {}, con: {} }, locked = new Set(), excluded = new Set(), charts = {};
 
-    function init(input) {
+    function process(input) {
         const reader = new FileReader();
         reader.onload = (e) => {
             const lines = e.target.result.trim().split('\n').slice(1);
             stats.freq = {}; stats.gap = {}; stats.con = {};
             for(let i=1; i<=39; i++) stats.gap[i] = lines.length;
 
-            db = lines.map((l, idx) => {
+            raw = lines.map((l, idx) => {
                 const c = l.split(',');
                 const nums = c.slice(1,6).map(Number).sort((a,b)=>a-b);
                 nums.forEach((n, i) => {
@@ -87,92 +100,121 @@
                 return { date: c[0].slice(5), nums, sum: nums.reduce((a,b)=>a+b,0) };
             }).reverse();
 
-            calcAI();
-            renderGrid();
-            renderChart();
+            updateScores();
+            renderAll();
         };
         reader.readAsText(input.files[0]);
     }
 
-    function calcAI() {
+    function updateScores() {
         for(let i=1; i<=39; i++) {
-            scores[i] = (stats.freq[i]||0)*2 + (stats.gap[i]||0)*1.5 + (stats.con[i]||0)*1.2;
+            scores[i] = (stats.freq[i]||0)*1.8 + (stats.gap[i]||0)*1.4 + (stats.con[i]||0)*1.1;
         }
-        document.getElementById('ai-status').innerText = `✅ AI 權重已更新`;
     }
 
     function renderGrid() {
         const grid = document.getElementById('grid'); grid.innerHTML = '';
-        const maxFreq = Math.max(...Object.values(stats.freq)), maxGap = Math.max(...Object.values(stats.gap));
-
+        const maxG = Math.max(...Object.values(stats.gap)), maxF = Math.max(...Object.values(stats.freq));
+        
         for(let i=1; i<=39; i++) {
             const ball = document.createElement('div');
-            const heat = (stats.freq[i]/maxFreq);
-            const gapPer = (stats.gap[i]/maxGap)*100;
-            
-            ball.className = 'ball';
+            ball.className = `ball ${locked.has(i)?'locked':''} ${excluded.has(i)?'excluded':''}`;
             ball.innerHTML = `
-                <div class="heat-bg" style="background:var(--hot); opacity:${heat * 0.5}"></div>
-                <div class="gap-pulse" style="width:${gapPer}%"></div>
-                ${stats.con[i] ? `<div class="con-glow"></div>` : ''}
+                <div class="heat-bg" style="opacity:${(stats.freq[i]/maxF)*0.4}"></div>
+                <div class="gap-bar" style="width:${(stats.gap[i]/maxG)*100}%"></div>
                 <span class="num">${String(i).padStart(2,'0')}</span>
-                <span style="font-size:8px; opacity:0.5; z-index:2">開:${stats.freq[i]}|漏:${stats.gap[i]}</span>
+                <span style="font-size:8px; opacity:0.5; z-index:2">S:${scores[i].toFixed(0)}</span>
             `;
+            ball.onclick = () => { 
+                if(locked.has(i)) locked.delete(i); 
+                else if(!excluded.has(i) && locked.size < 5) locked.add(i); 
+                renderGrid(); 
+            };
+            ball.oncontextmenu = (e) => { 
+                e.preventDefault();
+                if(excluded.has(i)) excluded.delete(i);
+                else { excluded.add(i); locked.delete(i); }
+                renderGrid();
+            };
             grid.appendChild(ball);
         }
     }
 
-    function generateTactics() {
+    function generate() {
+        const mode = document.getElementById('s-mode').value;
         const list = document.getElementById('plan-list'); list.innerHTML = '';
         const top10 = Object.entries(scores).sort((a,b)=>b[1]-a[1]).slice(0, 10).map(x=>Number(x[0]));
         
         let pool = [];
-        Object.entries(scores).forEach(([n, s]) => { for(let k=0; k<Math.floor(s); k++) pool.push(Number(n)); });
+        Object.entries(scores).forEach(([n, s]) => {
+            let weight = Math.floor(s);
+            let num = Number(n);
+            if(excluded.has(num)) weight = 0;
+            if(locked.has(num)) weight *= 10;
+            if(mode === 'aggressive' && top10.includes(num)) weight *= 2;
+            if(mode === 'cold' && stats.gap[num] > 10) weight *= 2;
+            for(let k=0; k<weight; k++) pool.push(num);
+        });
 
-        let results = [];
-        for(let g=0; g<5; g++) {
-            let temp = new Set();
-            while(temp.size < 5) temp.add(pool[Math.floor(Math.random()*pool.length)]);
+        for(let i=0; i<3; i++) {
+            let temp = new Set(locked);
+            while(temp.size < 5 && pool.length > 5) temp.add(pool[Math.floor(Math.random()*pool.length)]);
             let arr = Array.from(temp).sort((a,b)=>a-b);
             
-            // 穩定性計算 (10/30/50期命中率)
+            // 方案命中圖數據 (最近10/30/50期)
             const depths = [10, 30, 50];
             const hits = depths.map(d => {
                 let h = 0;
-                db.slice(-d).forEach(past => h += past.nums.filter(n => arr.includes(n)).length);
+                raw.slice(-d).forEach(p => h += p.nums.filter(n => arr.includes(n)).length);
                 return (h / d).toFixed(2);
             });
-            const stability = (hits[0]*0.5 + hits[1]*0.3 + hits[2]*0.2).toFixed(2);
-            results.push({ arr, hits, stability });
-        }
 
-        results.sort((a,b) => b.stability - a.stability).forEach((res, i) => {
             const card = document.createElement('div');
             card.className = 'plan-card';
             card.innerHTML = `
                 <div>
-                    <div class="plan-nums">${res.arr.map(n => `<div class="p-num ${top10.includes(n)?'hot':''}">${String(n).padStart(2,'0')}</div>`).join('')}</div>
-                    <div style="font-size:10px; color:#94a3b8; margin-top:5px">核心號佔比: ${res.arr.filter(n=>top10.includes(n)).length}/5</div>
+                    <div class="plan-nums">${arr.map(n => `<div class="p-num ${top10.includes(n)?'is-top':''}">${String(n).padStart(2,'0')}</div>`).join('')}</div>
+                    <div style="font-size:10px; color:#94a3b8">核心佔比: ${arr.filter(n=>top10.includes(n)).length}/5</div>
+                    <div class="mini-hit-map">
+                        <div class="hit-bar" style="width:${hits[0]*20}%; background:var(--hot)"></div>
+                        <div class="hit-bar" style="width:${hits[1]*20}%; background:var(--gold)"></div>
+                        <div class="hit-bar" style="width:${hits[2]*20}%; background:var(--success)"></div>
+                    </div>
                 </div>
-                <div class="score-box">
-                    <span class="rank-tag" style="background:${i===0? 'var(--gold)':'#334155'}; color:#000">${i===0? '最穩定推薦':'方案 '+(i+1)}</span>
-                    <div style="color:var(--success); font-weight:bold; margin-top:4px">評分: ${res.stability}</div>
-                    <div style="font-size:9px; opacity:0.5">10期命中: ${res.hits[0]}</div>
+                <div style="text-align:right">
+                    <div style="font-weight:bold; color:var(--success)">穩健分: ${(hits[0]*0.5+hits[1]*0.5).toFixed(2)}</div>
+                    <div style="font-size:9px; opacity:0.5; margin-top:10px">方案推薦 ${i+1}</div>
                 </div>
             `;
             list.appendChild(card);
-        });
+        }
     }
 
-    function renderChart() {
-        const ctx = document.getElementById('mainChart').getContext('2d');
-        if(chart) chart.destroy();
-        const data = db.slice(-25);
-        chart = new Chart(ctx, {
+    function renderAll() {
+        renderGrid();
+        const data = raw.slice(-25);
+        const top10 = Object.entries(scores).sort((a,b)=>b[1]-a[1]).slice(0, 10).map(x=>Number(x[0]));
+        
+        if(charts.trend) charts.trend.destroy();
+        charts.trend = new Chart(document.getElementById('trendChart'), {
             type: 'line',
-            data: { labels: data.map(d=>d.date), datasets: [{ label: '和值趨勢', data: data.map(d=>d.sum), borderColor: '#fbbf24', tension: 0.3, fill: true, backgroundColor: 'rgba(251, 191, 36, 0.1)' }] },
+            data: { labels: data.map(d=>d.date), datasets: [{ label: '和值趨勢', data: data.map(d=>d.sum), borderColor: '#fbbf24', tension: 0.3 }] },
             options: { responsive: true, maintainAspectRatio: false }
         });
+
+        const dRes = [10, 30, 50].map(d => {
+            let hits = 0;
+            raw.slice(-d).forEach(p => hits += p.nums.filter(n => top10.includes(n)).length);
+            return (hits / d).toFixed(2);
+        });
+
+        if(charts.depth) charts.depth.destroy();
+        charts.depth = new Chart(document.getElementById('depthChart'), {
+            type: 'bar',
+            data: { labels: ['10期', '30期', '50期'], datasets: [{ label: 'Top10 平均命中', data: dRes, backgroundColor: ['#ef4444', '#fbbf24', '#22c55e'] }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { max: 5 } } }
+        });
+        document.getElementById('ai-info').innerText = `✅ AI 已優化數據`;
     }
 </script>
 </body>
