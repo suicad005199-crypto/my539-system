@@ -1,238 +1,128 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>539 理性分析工具</title>
-
-<style>
-:root{
-  --bg:#f5f7fb;
-  --card:#ffffff;
-  --primary:#2563eb;
-  --text:#1f2937;
-  --muted:#6b7280;
-  --border:#e5e7eb;
-}
-
-*{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei";
-  background:var(--bg);
-  color:var(--text);
-}
-
-.container{
-  max-width:1100px;
-  margin:auto;
-  padding:32px 20px 60px;
-}
-
-h1{
-  text-align:center;
-  font-size:28px;
-  margin-bottom:8px;
-}
-.subtitle{
-  text-align:center;
-  color:var(--muted);
-  margin-bottom:32px;
-}
-
-.upload{
-  background:var(--card);
-  border:2px dashed var(--border);
-  padding:32px;
-  border-radius:16px;
-  text-align:center;
-  margin-bottom:40px;
-}
-
-button{
-  background:var(--primary);
-  border:none;
-  color:#fff;
-  padding:12px 28px;
-  font-size:16px;
-  border-radius:10px;
-  cursor:pointer;
-}
-button:hover{opacity:.9}
-
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-  gap:24px;
-}
-
-.card{
-  background:var(--card);
-  border-radius:18px;
-  padding:22px;
-  box-shadow:0 10px 25px rgba(0,0,0,.05);
-  display:flex;
-  flex-direction:column;
-}
-
-.card h3{
-  margin:0 0 6px;
-  font-size:18px;
-  cursor:pointer;
-  color:var(--primary);
-}
-
-.card .desc{
-  color:var(--muted);
-  font-size:14px;
-  margin-bottom:14px;
-}
-
-.balls{
-  margin:12px 0 18px;
-}
-.ball{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  width:34px;height:34px;
-  border-radius:50%;
-  background:#ec4899;
-  color:#fff;
-  font-weight:600;
-  margin:3px;
-}
-
-.stats{
-  font-size:14px;
-  line-height:1.8;
-  color:#374151;
-}
-
-.stats span{
-  color:var(--muted);
-}
-
-/* modal */
-.modal{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.4);
-  display:none;
-  align-items:center;
-  justify-content:center;
-  z-index:10;
-}
-.modal-content{
-  background:#fff;
-  border-radius:16px;
-  padding:28px;
-  max-width:420px;
-  width:90%;
-}
-.modal h4{margin-top:0}
-.close{
-  margin-top:20px;
-  background:#e5e7eb;
-  color:#111;
-}
-</style>
+    <meta charset="UTF-8">
+    <title>539 專業數據選牌器</title>
+    <style>
+        :root { --hot: #ff4757; --cold: #2f3542; --primary: #1e90ff; }
+        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 600px; }
+        .stats { display: flex; justify-content: space-around; background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; font-weight: bold; }
+        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+        .ball { height: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                border-radius: 50%; border: 1px solid #ddd; cursor: pointer; position: relative; font-size: 14px; }
+        .ball.selected { background: var(--hot); color: white; border-color: var(--hot); }
+        .freq-tag { font-size: 9px; color: #777; margin-top: -2px; }
+        .selected .freq-tag { color: white; }
+        .actions { display: flex; gap: 8px; margin-top: 20px; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-main { background: var(--primary); color: white; }
+        .btn-sec { background: #e0e0e0; }
+        .result { text-align: center; font-size: 28px; margin-top: 20px; color: var(--hot); letter-spacing: 2px; }
+    </style>
 </head>
-
 <body>
-<div class="container">
-  <h1>539 理性分析工具</h1>
-  <div class="subtitle">研究用途｜非預測｜隨機對照</div>
 
-  <div class="upload">
-    <input type="file" id="csvFile" accept=".csv"><br><br>
-    <button onclick="run()">開始分析</button>
-  </div>
+<div class="card">
+    <h2 style="text-align:center; margin-top:0;">539 數據選牌助手</h2>
+    
+    <div style="border: 2px dashed #ccc; padding: 10px; text-align: center;">
+        <small>請上傳 history_last30.csv</small><br>
+        <input type="file" id="csvFile" accept=".csv" onchange="process()">
+    </div>
 
-  <div id="cards" class="grid"></div>
-</div>
+    <div class="stats">
+        <span>平均值: <span id="avg">0</span></span>
+        <span>最熱門: <span id="top-num">-</span></span>
+    </div>
 
-<!-- modal -->
-<div id="modal" class="modal">
-  <div class="modal-content">
-    <h4 id="modalTitle"></h4>
-    <p id="modalText"></p>
-    <button class="close" onclick="closeModal()">關閉</button>
-  </div>
+    <div class="grid" id="grid"></div>
+
+    <div class="actions">
+        <button class="btn-main" onclick="smartPick()">智慧隨機 (依權重)</button>
+        <button class="btn-sec" onclick="reset()">重置</button>
+    </div>
+
+    <div class="result" id="res">00 00 00 00 00</div>
 </div>
 
 <script>
-const logic={
-A:"強制奇偶、區間、尾數分散，目標降低中0機率，而非提高命中率",
-B:"歷史頻率僅作權重混合，避免號碼過度集中",
-C:"模擬常見開獎結構比例，避免極端組合",
-D:"完全隨機，作為基準對照，驗證未作弊"
-};
+    let freq = {};
+    let selected = new Set();
 
-function openModal(k,title){
-  modal.style.display="flex";
-  modalTitle.textContent=title;
-  modalText.textContent=logic[k];
-}
-function closeModal(){modal.style.display="none"}
+    function process() {
+        const file = document.getElementById('csvFile').files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const lines = e.target.result.split('\n');
+            freq = {};
+            // 跳過第一行標題，解析數據
+            for(let i=1; i<lines.length; i++) {
+                const cols = lines[i].split(',');
+                if(cols.length < 6) continue;
+                for(let j=1; j<=5; j++) {
+                    const n = parseInt(cols[j]);
+                    if(n) freq[n] = (freq[n] || 0) + 1;
+                }
+            }
+            render();
+            updateStats();
+        };
+        reader.readAsText(file);
+    }
 
-function parseCSV(t){
-return t.split(/\r?\n/).map(r=>
-r.split(',').map(v=>parseInt(v)).filter(n=>n>=1&&n<=39)
-).filter(r=>r.length===5);
-}
+    function render() {
+        const g = document.getElementById('grid');
+        g.innerHTML = '';
+        for(let i=1; i<=39; i++) {
+            const b = document.createElement('div');
+            b.className = `ball ${selected.has(i) ? 'selected' : ''}`;
+            b.innerHTML = `<div>${i.toString().padStart(2,'0')}</div><div class="freq-tag">${freq[i] || 0}次</div>`;
+            b.onclick = () => {
+                if(selected.has(i)) selected.delete(i);
+                else if(selected.size < 5) selected.add(i);
+                render();
+                updateStats();
+            };
+            g.appendChild(b);
+        }
+    }
 
-function rand(){const s=new Set();while(s.size<5)s.add(Math.floor(Math.random()*39)+1);return [...s];}
-function pickA(){return rand();}
-function pickB(freq){
-let p=[];
-for(let i=1;i<=39;i++)for(let k=0;k<(freq[i]||1);k++)p.push(i);
-let s=new Set();while(s.size<5)s.add(p[Math.floor(Math.random()*p.length)]);
-return [...s];
-}
-function pickC(){return [...new Set([1,8,16,25,33].map(n=>n+Math.floor(Math.random()*3)))].slice(0,5);}
-function backtest(h,p){
-let z=0,o=0,t=0,m=0,c=0;
-for(let i=10;i<h.length;i++){
-let hit=h[i].filter(n=>p().includes(n)).length;
-if(hit===0){z++;c++;m=Math.max(m,c);}else{c=0;hit===1?o++:t++;}
-}
-let tot=z+o+t;
-return{z:(z/tot*100).toFixed(1),o:(o/tot*100).toFixed(1),t:(t/tot*100).toFixed(1),m};
-}
+    function smartPick() {
+        selected.clear();
+        let pool = [];
+        for(let i=1; i<=39; i++) {
+            // 基本權重 1 + 歷史出現次數
+            let weight = 1 + (freq[i] || 0);
+            for(let w=0; w<weight; w++) pool.push(i);
+        }
+        while(selected.size < 5) {
+            selected.add(pool[Math.floor(Math.random() * pool.length)]);
+        }
+        render();
+        updateStats();
+    }
 
-function run(){
-const f=csvFile.files[0]; if(!f)return alert("請先上傳 CSV");
-const r=new FileReader();
-r.onload=e=>{
-const h=parseCSV(e.target.result);
-const freq={}; h.flat().forEach(n=>freq[n]=(freq[n]||0)+1);
-const list=[
-{key:"A",name:"均勻覆蓋型",pick:pickA},
-{key:"B",name:"熱冷混合型",pick:()=>pickB(freq)},
-{key:"C",name:"結構平衡型",pick:pickC},
-{key:"D",name:"隨機對照組",pick:rand}
-];
-cards.innerHTML="";
-list.forEach(s=>{
-const r=backtest(h,s.pick);
-const demo=s.pick();
-cards.innerHTML+=`
-<div class="card">
-<h3 onclick="openModal('${s.key}','${s.name}')">${s.name}</h3>
-<div class="desc">點擊查看策略邏輯</div>
-<div class="balls">${demo.map(n=>`<span class="ball">${String(n).padStart(2,'0')}</span>`).join("")}</div>
-<div class="stats">
-<span>中0：</span>${r.z}%<br>
-<span>中1：</span>${r.o}%<br>
-<span>中≥2：</span>${r.t}%<br>
-<span>最大連槓：</span>${r.m}
-</div>
-</div>`;
-});
-};
-r.readAsText(f,"Big5");
-}
+    function updateStats() {
+        const arr = Array.from(selected).sort((a,b)=>a-b);
+        document.getElementById('res').innerText = arr.length ? arr.map(n=>n.toString().padStart(2,'0')).join(' ') : '00 00 00 00 00';
+        
+        if(Object.keys(freq).length > 0) {
+            const top = Object.keys(freq).reduce((a, b) => freq[a] > freq[b] ? a : b);
+            document.getElementById('top-num').innerText = top;
+        }
+        
+        const sum = arr.reduce((a,b)=>a+b, 0);
+        document.getElementById('avg').innerText = arr.length ? (sum/arr.length).toFixed(1) : 0;
+    }
+
+    function reset() {
+        selected.clear();
+        render();
+        updateStats();
+    }
+
+    render();
 </script>
 </body>
 </html>
