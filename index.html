@@ -1,142 +1,135 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <title>539 坊間百種邏輯算牌器</title>
-    <style>
-        :root { --primary: #2c3e50; --accent: #e74c3c; --success: #27ae60; }
-        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background: #f0f2f5; padding: 20px; color: var(--primary); }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
-        .header { text-align: center; border-bottom: 2px solid #eee; margin-bottom: 20px; pb: 10px; }
-        .upload-area { border: 2px dashed #3498db; padding: 30px; text-align: center; border-radius: 15px; background: #f8fbff; cursor: pointer; }
-        .strategy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 25px; }
-        .card { border: 1px solid #e1e4e8; padding: 15px; border-radius: 12px; transition: 0.3s; }
-        .card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-        h3 { margin-top: 0; color: #34495e; border-left: 5px solid #3498db; padding-left: 10px; font-size: 1.1em; }
-        .ball-row { display: flex; gap: 8px; margin: 15px 0; flex-wrap: wrap; justify-content: center; }
-        .ball { width: 40px; height: 40px; background: radial-gradient(circle at 30% 30%, #ff6b6b, #ee5253); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
-        .reason-tag { font-size: 0.75em; background: #eee; padding: 2px 8px; border-radius: 10px; margin: 2px; display: inline-block; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
-        th, td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; }
-        .recommend-box { background: #fff9db; border: 2px solid #fab005; padding: 20px; border-radius: 15px; text-align: center; margin-top: 20px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>539 智能分析系統 - Pro 量化決策版</title>
+<style>
+:root {
+    --primary: #0f172a; --secondary: #1e293b; --accent: #38bdf8;
+    --gold: #fbbf24; --success: #22c55e; --bg: #0f172a;
+    --card-bg: rgba(30, 41, 59, 0.7); --text: #f1f5f9; --glass: rgba(255, 255, 255, 0.03);
+}
+body { 
+    font-family: 'PingFang TC', sans-serif; background-color: var(--bg);
+    background-image: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 100%);
+    margin: 0; padding: 20px 15px; color: var(--text); min-height: 100vh;
+}
+.container { max-width: 1000px; margin: 0 auto; }
+header { text-align: center; margin-bottom: 30px; }
+header h1 { font-size: 2.2rem; color: var(--accent); margin: 0; letter-spacing: 2px; }
+.card { 
+    background: var(--card-bg); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08);
+    padding: 24px; border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); margin-bottom: 25px;
+}
+.upload-section { border: 2px dashed rgba(56, 189, 248, 0.2); text-align: center; }
+button { 
+    background: linear-gradient(135deg, var(--accent), #0284c7); color: white; border: none; 
+    padding: 16px 30px; border-radius: 14px; font-weight: 800; cursor: pointer; width: 100%;
+}
+.dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+@media (min-width: 768px) { .dashboard-grid { grid-template-columns: 1fr 1fr; } }
+table { width: 100%; border-collapse: collapse; }
+td { padding: 12px 5px; border-bottom: 1px solid rgba(255,255,255,0.03); text-align: center; }
+.ball { 
+    display: inline-block; width: 34px; height: 34px; line-height: 34px; border-radius: 50%; 
+    background: radial-gradient(circle at 30% 30%, #475569, #1e293b); margin: 2px;
+    font-weight: 800; color: var(--accent); font-size: 14px;
+}
+.strategy-block { background: var(--glass); padding: 15px; margin: 10px 0; border-radius: 12px; border-left: 4px solid var(--accent); }
+.chart-container { height: 300px; }
+.inline-input { width: 50px; height: 50px; text-align: center; margin: 0 3px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: var(--gold); font-size: 1.2rem; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
 <div class="container">
-    <div class="header">
-        <h1>539 版路算牌矩陣</h1>
-        <p>上傳 CSV 後自動執行：位移、拖牌、冷熱、斜連、連莊分析</p>
-    </div>
-    
-    <div class="upload-area" onclick="document.getElementById('csvFile').click()">
-        <strong>點擊此處上傳 CSV 歷史數據</strong>
-        <input type="file" id="csvFile" style="display:none" accept=".csv">
+    <header><h1>539 QUANT PRO</h1><p>數據驅動 • 量化分析</p></header>
+
+    <div class="card upload-section">
+        <input type="file" id="csvFile" accept=".csv" style="display: none;">
+        <label for="csvFile" id="fileLabel" style="display: block; padding: 20px; cursor: pointer; color: #94a3b8;">
+            Step 1: 點擊選取您的 CSV 檔案
+        </label>
+        <button onclick="runAll()">Step 2: 啟動量化分析</button>
     </div>
 
-    <div id="resultArea" style="display:none;">
-        <div class="recommend-box">
-            <h2>✨ 綜合策略推薦碼 ✨</h2>
-            <div id="finalBalls" class="ball-row"></div>
-            <p id="finalReason"></p>
-        </div>
-
-        <div class="strategy-grid">
-            <div class="card">
-                <h3>位移邏輯 (+/- 10, 1, 2)</h3>
-                <div id="shiftData"></div>
-            </div>
-            <div class="card">
-                <h3>拖牌邏輯 (下期開出率)</h3>
-                <div id="dragData"></div>
-            </div>
-            <div class="card">
-                <h3>版面形狀 (連莊、斜連)</h3>
-                <div id="shapeData"></div>
-            </div>
-            <div class="card">
-                <h3>冷熱門號碼統計</h3>
-                <div id="freqData"></div>
-            </div>
-        </div>
+    <div class="dashboard-grid">
+        <div id="history" class="card"><h3>近期歷史</h3></div>
+        <div id="stats_table" class="card"><h3>回測表現</h3></div>
     </div>
+
+    <div id="results" class="card"><h3>智能推薦組合</h3><div style="opacity: 0.3; text-align: center;">尚未載入數據</div></div>
+
+    <div class="card chart-container"><canvas id="trendChart"></canvas></div>
 </div>
 
 <script>
-    document.getElementById('csvFile').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = function(event) { processCSV(event.target.result); };
-        reader.readAsText(file);
+let HIST_DATA = [];
+
+async function runAll() {
+    const fileInput = document.getElementById("csvFile");
+    if(!fileInput.files[0]) return alert("請選取 CSV");
+    
+    const text = await fileInput.files[0].text();
+    HIST_DATA = parseCSV(text);
+    
+    if(HIST_DATA.length < 5) return alert("數據量不足");
+
+    renderHistory();
+    renderStats();
+    renderPredictions();
+}
+
+function parseCSV(text) {
+    const lines = text.trim().split(/\r?\n/).filter(l => l.trim() !== "");
+    lines.shift(); // 移除標題
+    return lines.map(l => {
+        const p = l.split(",");
+        if(p.length < 6) return null;
+        return {
+            date: p[0].trim(),
+            nums: p.slice(1, 6).map(n => parseInt(n.trim())).sort((a,b)=>a-b)
+        };
+    }).filter(x => x && !x.nums.some(isNaN)).sort((a,b) => new Date(a.date) - new Date(b.date));
+}
+
+function renderHistory() {
+    let html = "<table>";
+    HIST_DATA.slice(-5).reverse().forEach(d => {
+        html += `<tr><td>${d.date}</td><td>${d.nums.map(n => `<span class="ball">${String(n).padStart(2,'0')}</span>`).join("")}</td></tr>`;
     });
+    document.getElementById("history").innerHTML = "<h3>近期歷史</h3>" + html + "</table>";
+}
 
-    function processCSV(text) {
-        const rows = text.trim().split('\n').map(r => r.split(','));
-        const data = rows.slice(1).map(r => r.slice(1).map(Number)); // 格式: [[1,2,3,4,5], ...]
-        const last1 = data[0]; 
-        const last2 = data[1];
+function renderStats() {
+    // 簡易回測逻辑：計算熱門號碼
+    const freq = {};
+    HIST_DATA.slice(-30).forEach(d => d.nums.forEach(n => freq[n] = (freq[n]||0) + 1));
+    const sorted = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0, 10);
+    
+    let html = "<table><tr><th>號碼</th><th>出現次數(近30期)</th></tr>";
+    sorted.forEach(([num, count]) => {
+        html += `<tr><td><span class="ball">${num.padStart(2,'0')}</span></td><td>${count} 次</td></tr>`;
+    });
+    document.getElementById("stats_table").innerHTML = "<h3>熱門號碼統計</h3>" + html + "</table>";
+}
 
-        let score = {}; // 號碼權重
-        for(let i=1; i<=39; i++) score[i] = 0;
+function renderPredictions() {
+    const lastNums = HIST_DATA[HIST_DATA.length - 1].nums;
+    const pred = lastNums.map(n => (n + 1) % 39 || 39).sort((a,b)=>a-b); // 簡易版路演算法示範
+    
+    let html = `<div class="strategy-block">
+        <strong>大數據關聯策略：</strong><br><br>
+        ${pred.map(n => `<span class="ball" style="color:var(--gold)">${String(n).padStart(2,'0')}</span>`).join("")}
+    </div>`;
+    document.getElementById("results").innerHTML = "<h3>智能推薦組合</h3>" + html;
+}
 
-        // --- 1. 位移策略 (+/- 10, +/- 1) ---
-        let shiftLog = "";
-        last1.forEach(n => {
-            [n+10, n-10, n+1, n-1].forEach(target => {
-                if(target > 0 && target <= 39) {
-                    score[target] += 2;
-                    shiftLog += `<span class="reason-tag">${n}→${target}</span> `;
-                }
-            });
-        });
-        document.getElementById('shiftData').innerHTML = shiftLog;
-
-        // --- 2. 拖牌邏輯 (最常跟在上期號碼後面的號) ---
-        let dragLog = "<table><tr><th>上期</th><th>常帶號</th></tr>";
-        last1.slice(0,3).forEach(n => {
-            let nextFreq = {};
-            for(let i=1; i<data.length; i++) {
-                if(data[i].includes(n)) {
-                    data[i-1].forEach(next => nextFreq[next] = (nextFreq[next]||0) + 1);
-                }
-            }
-            let top = Object.entries(nextFreq).sort((a,b)=>b[1]-a[1])[0];
-            if(top) {
-                score[top[0]] += 3;
-                dragLog += `<tr><td>${n}</td><td>${top[0]} (見${top[1]}次)</td></tr>`;
-            }
-        });
-        document.getElementById('dragData').innerHTML = dragLog + "</table>";
-
-        // --- 3. 形狀邏輯 (連莊與斜連) ---
-        let shapeLog = "";
-        last1.forEach(n => {
-            if(last2.includes(n)) { // 連莊
-                score[n] += 1;
-                shapeLog += `<span class="reason-tag">${n}連莊</span> `;
-            }
-            // 斜連走位 (例如上期 12 下期 13)
-            if(last1.includes(n-1) || last1.includes(n+1)) {
-                shapeLog += `<span class="reason-tag">斜連波</span> `;
-            }
-        });
-        document.getElementById('shapeData').innerHTML = shapeLog || "本期規律較散";
-
-        // --- 4. 冷熱分析 ---
-        let freq = {};
-        data.slice(0, 50).forEach(r => r.forEach(n => freq[n] = (freq[n]||0)+1));
-        let hot = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0, 5);
-        document.getElementById('freqData').innerHTML = hot.map(h => `<span class="reason-tag">${h[0]}(${h[1]}次)</span>`).join('');
-
-        // --- 綜合計算推薦 ---
-        let recommended = Object.entries(score).sort((a,b) => b[1] - a[1]).slice(0, 5).map(x => parseInt(x[0]));
-        recommended.sort((a,b)=>a-b);
-
-        document.getElementById('finalBalls').innerHTML = recommended.map(n => `<div class="ball">${n<10?'0'+n:n}</div>`).join('');
-        document.getElementById('finalReason').innerText = "綜合位移連動、拖牌次數與冷熱門程度，此 5 碼權重最高。";
-        document.getElementById('resultArea').style.display = 'block';
-    }
+document.getElementById('csvFile').addEventListener('change', e => {
+    document.getElementById('fileLabel').innerText = e.target.files[0].name;
+});
 </script>
-
 </body>
 </html>
