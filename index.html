@@ -1,174 +1,146 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>539 智能分析系統 - Pro 量化決策版</title>
+<title>539 組合預測篩選器</title>
 <style>
-    :root {
-        --primary: #0f172a; --secondary: #1e293b; --accent: #38bdf8;
-        --gold: #fbbf24; --success: #22c55e; --error: #ef4444;
-        --bg: #0f172a; --card-bg: rgba(30, 41, 59, 0.7); --text: #f1f5f9;
-        --glass: rgba(255, 255, 255, 0.03);
-    }
-    body { 
-        font-family: 'PingFang TC', sans-serif; background-color: var(--bg);
-        background-image: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 100%);
-        margin: 0; padding: 20px 15px; color: var(--text); min-height: 100vh;
-    }
-    .container { max-width: 1000px; margin: 0 auto; }
-    header { text-align: center; margin-bottom: 30px; }
-    header h1 { font-size: 2.2rem; color: var(--accent); margin: 0; letter-spacing: 2px; }
-    .card { 
-        background: var(--card-bg); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08);
-        padding: 24px; border-radius: 24px; margin-bottom: 25px;
-    }
-    .scroll-view {
-        max-height: 400px; overflow-y: auto; padding-right: 8px; margin-top: 15px;
-    }
-    .scroll-view::-webkit-scrollbar { width: 5px; }
-    .scroll-view::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
-
-    .upload-section { border: 2px dashed rgba(56, 189, 248, 0.2); text-align: center; padding: 40px 20px; }
-    button { 
-        background: linear-gradient(135deg, var(--accent), #0284c7); color: white; border: none; 
-        padding: 16px; border-radius: 14px; font-weight: 800; cursor: pointer; width: 100%;
-    }
-    .dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
-    @media (min-width: 768px) { .dashboard-grid { grid-template-columns: 1.3fr 0.7fr; } }
-    
-    .ball { 
-        display: inline-block; width: 34px; height: 34px; line-height: 34px; text-align: center; 
-        border-radius: 50%; background: radial-gradient(circle at 30% 30%, #475569, #1e293b);
-        margin: 2px; font-weight: 800; color: var(--accent); font-size: 14px;
-    }
-    table { width: 100%; border-collapse: collapse; }
-    td { padding: 10px 5px; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: center; }
-    
-    /* 策略區塊樣式 */
-    .strategy-container { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 10px; }
-    @media (min-width: 768px) { .strategy-container { grid-template-columns: 1fr 1fr 1fr; } }
-    .strategy-card { 
-        background: var(--glass); padding: 20px; border-radius: 18px; 
-        border: 1px solid rgba(255,255,255,0.05); text-align: center;
-    }
-    .strategy-title { color: var(--gold); font-weight: 900; font-size: 1.2rem; margin-bottom: 15px; display: block; }
+  body { font-family: Arial, sans-serif; padding: 20px; background:#f4f4f4; }
+  h1 { color:#333; }
+  table { border-collapse: collapse; width: 100%; margin-top: 20px; background:#fff; }
+  th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+  th { background-color: #eee; }
+  input { margin: 5px 0; }
+  #results { margin-top: 20px; }
 </style>
 </head>
 <body>
 
-<div class="container">
-    <header><h1>539 QUANT PRO</h1><p>數據驅動 • 三大策略分析</p></header>
+<h1>539 組合預測篩選器</h1>
 
-    <div class="card upload-section">
-        <input type="file" id="csvFile" accept=".csv" style="display: none;">
-        <label for="csvFile" id="fileLabel" style="display: block; padding: 20px; background: var(--secondary); border-radius: 10px; cursor: pointer; margin-bottom: 20px; color: #94a3b8;">
-            選取歷史數據 CSV
-        </label>
-        <button onclick="runAll()">啟動策略決策分析</button>
-    </div>
+<label>上傳歷史開獎 CSV：</label>
+<input type="file" id="csvFile" accept=".csv"><br>
+<button onclick="processCSV()">生成預測組合</button>
 
-    <div class="dashboard-grid">
-        <div class="card">
-            <h3 style="margin-top:0; color:var(--accent);">📅 歷史開獎紀錄</h3>
-            <div id="history" class="scroll-view"><div style="text-align:center; opacity:0.3; padding:40px;">等待數據...</div></div>
-        </div>
-        <div class="card">
-            <h3 style="margin-top:0; color:var(--accent);">⚠️ 極冷號統計</h3>
-            <div id="coldList" style="display: flex; flex-direction: column; gap: 12px;"><div style="text-align:center; opacity:0.3;">等待計算...</div></div>
-        </div>
-    </div>
-
-    <div class="card">
-        <h3 style="margin-top:0; color:var(--accent);">量化策略組合</h3>
-        <div class="strategy-container">
-            <div class="strategy-card">
-                <span class="strategy-title">策略 A</span>
-                <div id="strat-A" style="opacity:0.3;">等待數據...</div>
-            </div>
-            <div class="strategy-card">
-                <span class="strategy-title">策略 B</span>
-                <div id="strat-B" style="opacity:0.3;">等待數據...</div>
-            </div>
-            <div class="strategy-card">
-                <span class="strategy-title">策略 C</span>
-                <div id="strat-C" style="opacity:0.3;">等待數據...</div>
-            </div>
-        </div>
-    </div>
-</div>
+<div id="results"></div>
 
 <script>
-let HIST_DATA = [];
+// 全局變數
+let historyData = [];
 
-function parseCSV(text) {
-    const lines = text.trim().split(/\r?\n/);
-    if (isNaN(parseInt(lines[0].split(',')[1]))) lines.shift(); 
-    return lines.map(l => {
-        const p = l.split(",");
-        if (p.length < 6) return null;
-        const nums = p.slice(1, 6).map(n => parseInt(n.trim())).filter(n => !isNaN(n)).sort((a,b)=>a-b);
-        return { date: p[0].trim(), nums };
-    }).filter(x => x !== null);
-}
-
-function showHistory(data) {
-    let html = "<table>";
-    data.forEach(d => {
-        html += `<tr><td style="font-size:12px;color:#94a3b8;width:90px;text-align:left;">${d.date}</td><td style="text-align:left;">${d.nums.map(n=>`<span class="ball">${String(n).padStart(2,'0')}</span>`).join('')}</td></tr>`;
-    });
-    document.getElementById("history").innerHTML = html + "</table>";
-}
-
-function updateColdRankUI(data) {
-    const map = {};
-    for(let i=1; i<=39; i++) {
-        const lastIdx = data.findIndex(d => d.nums.includes(i));
-        map[i] = (lastIdx === -1) ? data.length : lastIdx;
+function processCSV() {
+    const fileInput = document.getElementById('csvFile');
+    if (!fileInput.files[0]) {
+        alert('請先選擇 CSV 檔案');
+        return;
     }
-    const sorted = Object.entries(map).sort((a,b) => b[1] - a[1]).slice(0, 5);
-    document.getElementById("coldList").innerHTML = sorted.map(item => `
-        <div style="display:flex; align-items:center; justify-content: space-between; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
-            <div class="ball" style="border:1px solid var(--error); width:30px; height:30px; line-height:30px;">${String(item[0]).padStart(2,'0')}</div>
-            <div style="font-size:0.75rem; color:var(--error); font-weight:bold;">${item[1]} 期未開</div>
-        </div>`).join("");
-}
-
-// 策略計算核心 (待您定義邏輯)
-function runStrategies(data) {
-    // 預設為隨機選號作為佔位符
-    const getMockNums = () => {
-        let res = [];
-        while(res.length < 5) {
-            let n = Math.floor(Math.random() * 39) + 1;
-            if(!res.includes(n)) res.push(n);
-        }
-        return res.sort((a,b)=>a-b).map(n => `<span class="ball">${String(n).padStart(2,'0')}</span>`).join('');
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text = e.target.result;
+        historyData = parseCSV(text);
+        const combinations = generateCombinations();
+        displayResults(combinations);
     };
-
-    document.getElementById('strat-A').innerHTML = getMockNums();
-    document.getElementById('strat-A').style.opacity = "1";
-    document.getElementById('strat-B').innerHTML = getMockNums();
-    document.getElementById('strat-B').style.opacity = "1";
-    document.getElementById('strat-C').innerHTML = getMockNums();
-    document.getElementById('strat-C').style.opacity = "1";
+    reader.readAsText(fileInput.files[0]);
 }
 
-async function runAll() {
-    const fileInput = document.getElementById("csvFile");
-    if(!fileInput.files[0]) return alert("請選取 CSV");
-    const text = await fileInput.files[0].text();
-    HIST_DATA = parseCSV(text);
-    if(HIST_DATA.length === 0) return alert("解析失敗");
-
-    showHistory(HIST_DATA);
-    updateColdRankUI(HIST_DATA);
-    runStrategies(HIST_DATA);
+// 解析 CSV
+function parseCSV(text) {
+    const lines = text.trim().split('\n').slice(1); // 跳過標題
+    return lines.map(line => {
+        const parts = line.split(',');
+        return parts.slice(1).map(n => parseInt(n, 10)); // 取號碼1-5
+    });
 }
 
-document.getElementById('csvFile').addEventListener('change', e => {
-    document.getElementById('fileLabel').innerText = e.target.files[0] ? e.target.files[0].name : "選取歷史數據 CSV";
-});
+// 計算號碼熱度
+function getNumberHeat() {
+    const heat = Array(40).fill(0); // 1-39
+    historyData.forEach(row => {
+        row.forEach(n => heat[n]++);
+    });
+    return heat;
+}
+
+// 計算組合分數
+function scoreCombination(combo, heat) {
+    let heatScore = 0;
+    let versionScore = 0;
+    let stabilityScore = 0;
+
+    // 熱度分
+    combo.forEach(n => heatScore += heat[n]);
+
+    // 版路分: 偶奇平衡、尾數分散、連號
+    const odd = combo.filter(n => n % 2 !== 0).length;
+    const even = combo.length - odd;
+    versionScore += 3 - Math.abs(odd - even); // 奇偶差距越小越高
+
+    const tails = combo.map(n => n % 10);
+    const tailSet = new Set(tails);
+    versionScore += tailSet.size / 5 * 3; // 尾數分散越多越高
+
+    const sorted = [...combo].sort((a,b)=>a-b);
+    let consecutive = 0;
+    for (let i=1;i<sorted.length;i++) {
+        if(sorted[i]-sorted[i-1]===1) consecutive++;
+    }
+    versionScore += (2-consecutive); // 連號越少越高 (最多扣2分)
+
+    // 穩定度分: 近期出現號碼加分
+    const recentN = Math.min(historyData.length, 5); // 最近5期
+    let recentCount = 0;
+    for(let i=0;i<recentN;i++){
+        combo.forEach(n => { if(historyData[i].includes(n)) recentCount++; });
+    }
+    stabilityScore = recentCount; // 每個近期號碼 +1
+
+    // 總分
+    const total = heatScore + versionScore + stabilityScore;
+    return {heatScore, versionScore:versionScore.toFixed(2), stabilityScore, total};
+}
+
+// 生成候選組合
+function generateCombinations() {
+    const heat = getNumberHeat();
+    const candidateCombos = [];
+
+    // 隨機生成大量組合
+    const allNumbers = Array.from({length:39}, (_,i)=>i+1);
+    for(let i=0;i<1000;i++){
+        const combo = [];
+        const pool = [...allNumbers];
+        for(let j=0;j<5;j++){
+            const idx = Math.floor(Math.random()*pool.length);
+            combo.push(pool.splice(idx,1)[0]);
+        }
+        const score = scoreCombination(combo, heat);
+        if(score.total >= 8) candidateCombos.push({combo, ...score});
+    }
+
+    // 依總分排序，取前3組
+    candidateCombos.sort((a,b)=>b.total - a.total);
+    return candidateCombos.slice(0,3);
+}
+
+// 顯示結果
+function displayResults(combinations) {
+    let html = '<table>';
+    html += '<tr><th>組合</th><th>號碼</th><th>熱度分</th><th>版路分</th><th>穩定度分</th><th>總分</th><th>備註</th></tr>';
+    combinations.forEach((c,i)=>{
+        html += `<tr>
+            <td>${i+1}</td>
+            <td>${c.combo.join(' ')}</td>
+            <td>${c.heatScore}</td>
+            <td>${c.versionScore}</td>
+            <td>${c.stabilityScore}</td>
+            <td>${c.total.toFixed(2)}</td>
+            <td>符合熱號/版路/穩定性</td>
+        </tr>`;
+    });
+    html += '</table>';
+    document.getElementById('results').innerHTML = html;
+}
 </script>
+
 </body>
 </html>
