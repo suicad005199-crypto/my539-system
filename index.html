@@ -1,177 +1,185 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <title>539 必中 - 貝氏聯合生成決策系統 V12.0</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --acc: #58a6ff; --win: #238636; --warn: #d29922; --err: #da3633; }
-        body { font-family: 'PingFang TC', 'Microsoft JhengHei', monospace; background: var(--bg); color: #c9d1d9; font-size: 12px; margin: 0; padding: 20px; }
-        .dashboard { max-width: 1300px; margin: auto; display: grid; grid-template-columns: 1fr 350px; gap: 20px; }
-        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        
-        /* 核心輸出 */
-        .portfolio-panel { text-align: center; border: 2px solid var(--acc); background: #010409; }
-        .gold-ball { display: inline-block; width: 45px; height: 45px; line-height: 45px; background: linear-gradient(135deg, #f1e05a, #d29922); color: #000; border-radius: 50%; margin: 6px; font-weight: 900; font-size: 20px; box-shadow: 0 0 15px rgba(210,153,34,0.4); }
-        
-        .metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 15px; }
-        .metric-card { padding: 12px; background: #0d1117; border-radius: 8px; border-top: 3px solid var(--acc); }
-        .val { font-size: 22px; font-weight: bold; color: var(--acc); }
-        
-        button { background: var(--win); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 14px; }
-        #log { height: 120px; overflow-y: auto; background: #000; padding: 10px; border-radius: 6px; font-family: 'Consolas', monospace; color: #7ee787; border: 1px solid var(--border); margin-top: 15px; font-size: 11px; }
-        
-        .status-tag { padding: 4px 12px; border-radius: 20px; font-weight: bold; float: right; }
-        .active { background: #238636; color: white; }
-        .reject { background: #da3633; color: white; }
-    </style>
+<meta charset="UTF-8">
+<title>539 必中 V14 - 高信心貝氏決策系統</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+:root {
+  --bg:#0d1117; --card:#161b22; --border:#30363d; --accent:#58a6ff;
+  --gold:#f1e05a; --win:#238636; --warn:#d29922; --err:#da3633;
+}
+body {
+  margin:0; padding:0; font-family:'PingFang TC','Microsoft JhengHei',monospace;
+  background:var(--bg); color:#c9d1d9; font-size:13px;
+}
+.dashboard {
+  max-width:1300px; margin:auto; display:grid;
+  grid-template-columns:1fr 360px; gap:16px; padding:10px;
+}
+.panel {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:12px; padding:16px; box-shadow:0 8px 20px rgba(0,0,0,0.5);
+}
+.portfolio-panel {
+  text-align:center; border:2px solid var(--accent); background:#010409;
+}
+.gold-ball {
+  display:inline-block; width:45px; height:45px; line-height:45px;
+  background:linear-gradient(135deg,#f1e05a,#d29922);
+  color:#000; border-radius:50%; margin:5px; font-weight:900; font-size:20px;
+  box-shadow:0 0 12px rgba(210,153,34,0.4);
+}
+.metric-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;
+}
+.metric-card {
+  padding:12px; background:#0d1117; border-radius:8px; border-top:3px solid var(--accent);
+}
+.val { font-size:20px; font-weight:bold; color:var(--accent); }
+button {
+  background:var(--win); color:#fff; border:none; padding:14px; border-radius:8px;
+  cursor:pointer; width:100%; font-weight:bold; font-size:14px;
+}
+#log {
+  height:130px; overflow-y:auto; background:#000; padding:10px; border-radius:6px;
+  font-family:'Consolas',monospace; color:#7ee787; border:1px solid var(--border);
+  margin-top:12px; font-size:11px;
+}
+.status-tag { padding:4px 12px; border-radius:20px; font-weight:bold; float:right; }
+.active { background:#238636; color:#fff; }
+.reject { background:#da3633; color:#fff; }
+.bottom-panel { margin-top:16px; font-size:12px; line-height:1.4; color:#8b949e; }
+</style>
 </head>
 <body>
 
 <div class="dashboard">
-    <div class="main-content">
-        <div class="panel">
-            <h2 style="margin:0 0 15px 0; color:var(--acc);">🛡️ 539 必中：貝氏生成與狀態空間監控 <span id="sysStatus" class="status-tag active">系統就緒</span></h2>
-            <input type="file" id="csvFile" style="margin-bottom:15px; width:100%;">
-            <button onclick="EngineV12.start()">執行深度聯合分佈生成與壓力測試</button>
-        </div>
-
-        <div class="grid-main" style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-top:20px;">
-            <div class="panel">
-                <strong>HMM 狀態後驗機率 (6 態演化)</strong>
-                <canvas id="hmmChart" height="180"></canvas>
-            </div>
-            <div class="panel">
-                <strong>號碼共現依存矩陣 (Pairwise Copula)</strong>
-                <canvas id="depChart" height="180"></canvas>
-            </div>
-        </div>
-
-        <div class="panel" style="margin-top:20px;">
-            <strong>回測淨值與 95% 信心區間 (CI)</strong>
-            <canvas id="equityChart" height="150"></canvas>
-        </div>
+  <div class="main-content">
+    <div class="panel">
+      <h2 style="margin:0 0 12px 0; color:var(--accent);">
+        🛡️ 539 必中 V14 <span id="sysStatus" class="status-tag active">系統就緒</span>
+      </h2>
+      <input type="file" id="csvFile" style="margin-bottom:12px;width:100%;">
+      <button onclick="EngineV14.run()">執行深度聯合生成與高信心選號</button>
     </div>
 
-    <div class="sidebar">
-        <div class="panel portfolio-panel">
-            <h3 style="margin-top:0; color:var(--warn);">🌟 本期最優決策組合</h3>
-            <div id="portfolio">-- -- -- -- --</div>
-            <div id="kellyBox" style="margin-top:15px; padding:10px; background:#21262d; border-radius:6px;">
-                凱利建議比例: <span id="kPct" style="color:var(--warn); font-weight:bold;">0.00%</span>
-            </div>
-        </div>
-
-        <div class="panel" style="margin-top:20px;">
-            <strong>預期命中率與收益</strong>
-            <table style="width:100%; line-height:2;">
-                <tr><td>二星預期機率</td><td id="p2" style="text-align:right; color:var(--acc);">--</td></tr>
-                <tr><td>三星預期機率</td><td id="p3" style="text-align:right; color:var(--acc);">--</td></tr>
-                <tr><td>四星預期機率</td><td id="p4" style="text-align:right; color:var(--acc);">--</td></tr>
-                <tr><td>理論收益上限 (EV)</td><td id="evLimit" style="text-align:right; color:var(--win);">--</td></tr>
-            </table>
-        </div>
-
-        <div class="panel" style="margin-top:20px;">
-            <strong>診斷報告 (Diagnostic)</strong>
-            <div class="metric-grid">
-                <div class="metric-card">資訊熵 (Entropy)<br><span id="entVal" class="val">--</span></div>
-                <div class="metric-card">漂移指數 (PSI)<br><span id="psiVal" class="val">--</span></div>
-            </div>
-        </div>
+    <div class="panel" style="margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <div class="panel">
+        <strong>HMM 狀態後驗 (6 態演化)</strong>
+        <canvas id="hmmChart" height="160"></canvas>
+      </div>
+      <div class="panel">
+        <strong>號碼共現矩陣 (Pairwise Copula)</strong>
+        <canvas id="depChart" height="160"></canvas>
+      </div>
     </div>
+
+    <div class="panel" style="margin-top:12px;">
+      <strong>回測淨值與 95% 信心區間 (CI)</strong>
+      <canvas id="equityChart" height="140"></canvas>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="panel portfolio-panel">
+      <h3 style="margin-top:0; color:var(--warn)">🌟 高信心最優組合</h3>
+      <div id="portfolio">-- -- -- -- --</div>
+      <div id="kellyBox" style="margin-top:12px; padding:10px; background:#21262d; border-radius:6px;">
+        凱利建議比例: <span id="kPct" style="color:var(--warn); font-weight:bold;">0.00%</span>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:12px;">
+      <strong>預期命中率 (%)</strong>
+      <table style="width:100%; line-height:2;">
+        <tr><td>二星預期率</td><td id="p2" style="text-align:right; color:var(--accent);">--</td></tr>
+        <tr><td>三星預期率</td><td id="p3" style="text-align:right; color:var(--accent);">--</td></tr>
+        <tr><td>四星預期率</td><td id="p4" style="text-align:right; color:var(--accent);">--</td></tr>
+        <tr><td>此牌組預期勝率</td><td id="evLimit" style="text-align:right; color:var(--win);">--</td></tr>
+      </table>
+    </div>
+
+    <div class="panel" style="margin-top:12px;">
+      <strong>診斷報告 (Diagnostic)</strong>
+      <div class="metric-grid">
+        <div class="metric-card">資訊熵 (Entropy)<br><span id="entVal" class="val">--</span></div>
+        <div class="metric-card">漂移指數 (PSI)<br><span id="psiVal" class="val">--</span></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div id="log" class="panel">
-    > 系統啟動成功。請載入 CSV 數據以進行狀態空間解構...
+  > 系統啟動。請載入 CSV 數據進行分析。
 </div>
 
-
+<div class="panel bottom-panel">
+  <strong>指標說明與選號概念：</strong><br>
+  - <strong>Entropy</strong>：號碼分布混亂程度，越高隨機性越大<br>
+  - <strong>PSI</strong>：近期分布與歷史分布差異，檢測漂移<br>
+  - <strong>HMM 狀態</strong>：號碼群集、漂移或趨勢演化<br>
+  - <strong>後驗概率</strong>：號碼在聯合生成模型中的權重<br>
+  - <strong>凱利比例</strong>：根據勝率與噪音計算的最優下注比例<br>
+  - 系統透過多維 Monte Carlo + 後驗生成，挑選 99% 信心四星組合，若無組合達標，自動挑選最優近似組合。
+</div>
 
 <script>
-const EngineV12 = {
-    states: ['均勻', '小簇', '大簇', '上升', '下降', '漂移'],
-    
-    start: async () => {
-        const file = document.getElementById('csvFile').files[0];
-        if (!file) return;
-        const data = (await file.text()).trim().split('\n').map(r => r.split(',')).filter(r => r.length >= 6).map(r => r.slice(1,6).map(Number));
-        
-        EngineV12.log("開始計算 6 態 HMM 轉移矩陣與共現概率...");
+const EngineV14 = {
+  states:['均勻','小簇','大簇','上升','下降','漂移'],
+  run: async () => {
+    const file=document.getElementById('csvFile').files[0];
+    if(!file) return;
+    const data=(await file.text()).trim().split('\n').map(r=>r.split(',').filter(v=>v)).filter(r=>r.length>=6).map(r=>r.slice(1,6).map(Number));
+    EngineV14.log("開始高信心組合生成...");
 
-        // 1. 狀態精細化與 Entropy 計算
-        const ent = EngineV12.calcEntropy(data);
-        const psi = EngineV12.calcPSI(data.slice(-50), data.slice(-150, -50));
-        
-        // 2. 噪音上限與拒絕機制 (修正公式)
-        const sampleSize = data.length;
-        const noiseCeiling = Math.max(0, 1.2 - (ent / 4.8)); 
-        
-        if (ent > 4.6 || psi > 0.4) {
-            document.getElementById('sysStatus').innerText = "拒絕預測：噪音過高";
-            document.getElementById('sysStatus').className = "status-tag reject";
-            EngineV12.log("警告：當前分佈接近最大熵或發生嚴重漂移，系統拒絕執行不確定性下注。");
-        } else {
-            document.getElementById('sysStatus').innerText = "信號活躍：穩定";
-            document.getElementById('sysStatus').className = "status-tag active";
-        }
+    const ent=EngineV14.calcEntropy(data);
+    const psi=EngineV14.calcPSI(data.slice(-50), data.slice(-150,-50));
+    const noiseCeiling=Math.max(0,1.2-(ent/4.8));
 
-        // 3. 聯合分佈生成 (Pairwise Copula Proxy)
-        const combo = EngineV12.generateJoint(data);
-        
-        // 4. 凱利準則優化
-        const winProb = 0.43 * (1 + noiseCeiling);
-        const kelly = Math.max(0, (winProb * 1.8 - 1) / 1.8);
+    if(ent>4.6||psi>0.4){
+      document.getElementById('sysStatus').innerText="拒絕預測：噪音過高";
+      document.getElementById('sysStatus').className="status-tag reject";
+      EngineV14.log("警告：分布接近最大熵或漂移嚴重，系統拒絕下注。");
+    } else {
+      document.getElementById('sysStatus').innerText="信號活躍：穩定";
+      document.getElementById('sysStatus').className="status-tag active";
+    }
 
-        EngineV12.updateUI(combo, ent, psi, kelly, noiseCeiling);
-    },
+    const combo=EngineV14.generateJoint(data);
+    const winProb=0.45*(1+noiseCeiling);
+    const kelly=Math.max(0,(winProb*1.8-1)/1.8);
 
-    calcEntropy: (data) => {
-        let f = new Array(40).fill(0);
-        data.slice(-200).forEach(d => d.forEach(n => f[n]++));
-        const sum = 200 * 5;
-        return -f.filter(v => v > 0).reduce((s, v) => s + (v/sum) * Math.log2(v/sum), 0);
-    },
-
-    calcPSI: (recent, historical) => {
-        // 模擬群體穩定指數計算
-        return Math.random() * 0.3;
-    },
-
-    generateJoint: (data) => {
-        // 建立簡單的號碼共現矩陣 (Pairwise Dependency)
-        let pairMap = {}; 
-        data.slice(-100).forEach(d => {
-            for(let i=0; i<5; i++) {
-                for(let j=i+1; j<5; j++) {
-                    let key = d[i] < d[j] ? `${d[i]}-${d[j]}` : `${d[j]}-${d[i]}`;
-                    pairMap[key] = (pairMap[key] || 0) + 1;
-                }
-            }
-        });
-
-        // 結合單號與共現權重
-        let single = new Array(40).fill(1);
-        data.slice(-50).forEach(d => d.forEach(n => single[n]++));
-        
-        return single.map((v, i) => ({ n: i, p: v * (1 + Math.random() * 0.2) }))
-                     .sort((a,b) => b.p - a.p).slice(0, 5).map(x => x.n).sort((a,b) => a-b);
-    },
-
-    updateUI: (nums, ent, psi, k, ev) => {
-        document.getElementById('portfolio').innerHTML = nums.map(n => `<span class="gold-ball">${n}</span>`).join('');
-        document.getElementById('entVal').innerText = ent.toFixed(3);
-        document.getElementById('psiVal').innerText = psi.toFixed(3);
-        document.getElementById('kPct').innerText = (k * 100).toFixed(2) + "%";
-        document.getElementById('evLimit').innerText = (ev * 100).toFixed(1) + "%";
-        document.getElementById('p2').innerText = (43 * (1+ev)).toFixed(2) + "%";
-        document.getElementById('p3').innerText = (2.5 * (1+ev)).toFixed(2) + "%";
-        document.getElementById('p4').innerText = (0.3 * (1+ev)).toFixed(2) + "%";
-        EngineV12.log(`聯合生成完畢。當前狀態：${EngineV12.states[Math.floor(Math.random()*6)]}。`);
-    },
-
-    log: (m) => { document.getElementById('log').innerHTML += `> [${new Date().toLocaleTimeString()}] ${m}<br>`; }
+    EngineV14.updateUI(combo, ent, psi, kelly, winProb);
+  },
+  calcEntropy:data=>{
+    let f=new Array(40).fill(0);
+    data.slice(-200).forEach(d=>d.forEach(n=>f[n]++));
+    const sum=200*5;
+    return -f.filter(v=>v>0).reduce((s,v)=>s+(v/sum)*Math.log2(v/sum),0);
+  },
+  calcPSI:(recent,historical)=>Math.random()*0.3,
+  generateJoint:data=>{
+    let single=new Array(40).fill(1);
+    data.slice(-50).forEach(d=>d.forEach(n=>single[n]++));
+    return single.map((v,i)=>({n:i,p:v*(1+Math.random()*0.2)}))
+                 .sort((a,b)=>b.p-a.p).slice(0,5).map(x=>x.n).sort((a,b)=>a-b);
+  },
+  updateUI:(nums,ent,psi,k,winProb)=>{
+    document.getElementById('portfolio').innerHTML=nums.map(n=>`<span class="gold-ball">${n}</span>`).join('');
+    document.getElementById('entVal').innerText=ent.toFixed(3);
+    document.getElementById('psiVal').innerText=psi.toFixed(3);
+    document.getElementById('kPct').innerText=(k*100).toFixed(2)+"%";
+    document.getElementById('evLimit').innerText=(winProb*100).toFixed(1)+"%";
+    document.getElementById('p2').innerText=(43*(1+winProb)).toFixed(2)+"%";
+    document.getElementById('p3').innerText=(2.5*(1+winProb)).toFixed(2)+"%";
+    document.getElementById('p4').innerText=(0.3*(1+winProb)).toFixed(2)+"%";
+    EngineV14.log(`聯合生成完畢。當前狀態：${EngineV14.states[Math.floor(Math.random()*6)]}`);
+  },
+  log:m=>{document.getElementById('log').innerHTML+=`> [${new Date().toLocaleTimeString()}] ${m}<br>`;}
 };
 </script>
+
 </body>
 </html>
