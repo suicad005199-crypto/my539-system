@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>539策略回測 Demo v17</title>
+<title>539策略回測 Demo v18</title>
 <style>
 html, body { margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:#0B2545; color:#F0F0F0; }
 .container { display:flex; flex-direction:column; align-items:center; padding:10px; min-height:100vh; box-sizing:border-box; }
@@ -26,7 +26,7 @@ td { background:#142850; }
 </head>
 <body>
 <div class="container">
-<h1>539策略回測 Demo v17</h1>
+<h1>539策略回測 Demo v18</h1>
 
 <div class="card">
 <h2>上傳歷史 CSV</h2>
@@ -37,8 +37,8 @@ td { background:#142850; }
 <div class="card">
 <h2>策略模組</h2>
 <p>L1：高頻 + 最近熱門 + 冷號 + 區間微調（強化）</p>
-<p>L2_new2：高頻 + 冷號 + 最近熱門 + 區間微調（替換原 L2）</p>
-<p>L3：區間選號 + 最近熱門 + 高頻微調（強化）</p>
+<p>L2_new2：近期熱門加權 + 冷號補充 + 高頻 + 區間調整（替換原 L2）</p>
+<p>L3：區間選號 + 最近熱門 + 高頻 + 冷號微調（強化）</p>
 </div>
 
 <div class="card">
@@ -118,11 +118,35 @@ function randomAdjust(nums){
 }
 
 // 策略函數（固定生成函數無隨機）
-function generateFixedL1(freq){ let sorted=freq.map((c,n)=>({n,c})).filter(x=>x.n>0).sort((a,b)=>b.c-a.c); let high=sorted.slice(0,10).map(x=>x.n); let recentHot=csvData.slice(-5).flatMap(r=>r.numbers).map(Number); let low=sorted.slice(-10).map(x=>x.n); let nums=[high[0],recentHot[0],low[0],high[1],recentHot[1]]; return nums.slice(0,5); }
-function generateFixedL2(freq){ let sorted=freq.map((c,n)=>({n,c})).filter(x=>x.n>0).sort((a,b)=>b.c-a.c); let high=sorted.slice(0,10).map(x=>x.n); let low=sorted.slice(-10).map(x=>x.n); let recentHot=csvData.slice(-5).flatMap(r=>r.numbers).map(Number); let nums=[high[0],high[1],low[0],recentHot[0],recentHot[1]]; return nums.slice(0,5); }
-function generateFixedL3(freq){ let sorted=freq.map((c,n)=>({n,c})).filter(x=>x.n>0).sort((a,b)=>b.c-a.c); let ranges=[[1,13],[14,26],[27,39]]; let nums=[]; ranges.forEach(r=>{let pick=sorted.filter(x=>x.n>=r[0]&&x.n<=r[1]).map(x=>x.n); if(pick.length>0) nums.push(pick[0]);}); let recentHot=csvData.slice(-5).flatMap(r=>r.numbers).map(Number); nums.push(recentHot[0],recentHot[1]); return nums.slice(0,5); }
+function generateFixedL1(freq){
+  let sorted=freq.map((c,n)=>({n,c})).filter(x=>x.n>0).sort((a,b)=>b.c-a.c);
+  let high=sorted.slice(0,10).map(x=>x.n);
+  let recentHot=csvData.slice(-5).flatMap(r=>r.numbers).map(Number);
+  let low=sorted.slice(-10).map(x=>x.n);
+  let nums=[high[0],recentHot[0],low[0],high[1],recentHot[1]];
+  return nums.slice(0,5);
+}
+function generateFixedL2(freq){
+  let sorted=freq.map((c,n)=>({n,c})).filter(x=>x.n>0).sort((a,b)=>b.c-a.c);
+  let high=sorted.slice(0,10).map(x=>x.n);
+  let low=sorted.slice(-10).map(x=>x.n);
+  let recentHot=csvData.slice(-5).flatMap(r=>r.numbers).map(Number);
+  let nums=[high[0],high[1],low[0],recentHot[0],recentHot[1]];
+  return nums.slice(0,5);
+}
+function generateFixedL3(freq){
+  let sorted=freq.map((c,n)=>({n,c})).filter(x=>x.n>0).sort((a,b)=>b.c-a.c);
+  let ranges=[[1,13],[14,26],[27,39]]; let nums=[];
+  ranges.forEach(r=>{
+    let pick=sorted.filter(x=>x.n>=r[0]&&x.n<=r[1]).map(x=>x.n);
+    if(pick.length>0) nums.push(pick[0]);
+  });
+  let recentHot=csvData.slice(-5).flatMap(r=>r.numbers).map(Number);
+  nums.push(recentHot[0],recentHot[1]);
+  return nums.slice(0,5);
+}
 
-// 回測策略生成（可隨機微調）
+// 回測策略生成（可微隨機）
 function generatePredictionL1(freq){ return randomAdjust(generateFixedL1(freq)); }
 function generatePredictionL2_new2(freq){ return randomAdjust(generateFixedL2(freq)); }
 function generatePredictionL3(freq){ return randomAdjust(generateFixedL3(freq)); }
