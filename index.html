@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>539策略回測 Demo v11</title>
+<title>539策略回測 Demo v12</title>
 <style>
 html, body { margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:#0B2545; color:#F0F0F0; }
 .container { display:flex; flex-direction:column; align-items:center; padding:10px; min-height:100vh; box-sizing:border-box; }
@@ -13,6 +13,7 @@ h1 { font-size:1.8em; margin:10px 0; text-align:center; }
 .card p { margin:5px 0; font-size:1em; line-height:1.4; }
 button, select { background:#1B3B6F; color:#F0F0F0; border:none; border-radius:10px; padding:10px; margin:5px 5px 5px 0; font-size:1em; width:48%; box-sizing:border-box; }
 span.rateDisplay { display:inline-block; width:48%; text-align:center; font-weight:bold; font-size:1em; color:#FFD700; line-height:2.2em; vertical-align:middle; }
+#nextPrediction { margin-top:8px; font-size:1.1em; font-weight:bold; color:#00FFCC; }
 .table-container { width:100%; overflow-x:auto; }
 table { width:100%; border-collapse:collapse; margin-top:10px; }
 th, td { border:1px solid #334A69; padding:8px; text-align:center; }
@@ -23,7 +24,7 @@ td { background:#142850; }
 </head>
 <body>
 <div class="container">
-<h1>539策略回測 Demo v11</h1>
+<h1>539策略回測 Demo v12</h1>
 
 <div class="card">
 <h2>上傳歷史 CSV</h2>
@@ -42,6 +43,16 @@ td { background:#142850; }
 <h2>回測控制</h2>
 <button onclick="runBacktest()">執行回測</button>
 <p id="backtestCount">回測筆數：0</p>
+</div>
+
+<div class="card">
+<h2>下期預測號碼</h2>
+<select id="strategySelectPrediction" onchange="updateNextPrediction()">
+  <option value="L1">L1</option>
+  <option value="L2_new2">L2_new2</option>
+  <option value="L3">L3</option>
+</select>
+<p id="nextPrediction">預測號碼: --</p>
 </div>
 
 <div class="card">
@@ -71,7 +82,7 @@ td { background:#142850; }
 let csvData = [];
 let backtestResults = [];
 
-// 上傳 CSV
+// CSV 上傳
 document.getElementById('csvFile').addEventListener('change', function(e){
   const file = e.target.files[0];
   if(!file) return;
@@ -83,11 +94,12 @@ document.getElementById('csvFile').addEventListener('change', function(e){
       return {date, numbers:[n1,n2,n3,n4,n5]};
     });
     document.getElementById('csvCount').innerText = `CSV 筆數：${csvData.length}`;
+    updateNextPrediction();
   };
   reader.readAsText(file);
 });
 
-// 計算號碼出現頻率
+// 計算號碼頻率
 function computeFrequency(data){
   const freq = Array(40).fill(0);
   data.forEach(row=>{
@@ -118,15 +130,13 @@ function generatePredictionL1(freq){
   return nums;
 }
 
-// L2_new2 替換策略
+// L2_new2 替代策略
 function generatePredictionL2_new2(freq){
   let sorted = freq.map((c,n)=>({n,c})).filter(x=>x.n>0).sort((a,b)=>b.c - a.c);
   let high = sorted.slice(0,10).map(x=>x.n);
   let low = sorted.slice(-10).map(x=>x.n);
   let mid = sorted.slice(10,30).map(x=>x.n);
-  let recentHot = csvData.slice(-5).flatMap(r=>r.numbers).map(Number).sort((a,b)=>
-    mid.includes(a)?-1:1
-  );
+  let recentHot = csvData.slice(-5).flatMap(r=>r.numbers).map(Number).sort((a,b)=> mid.includes(a)?-1:1);
   let nums = [];
   nums.push(...high.slice(0,2));
   nums.push(...low.slice(0,2));
@@ -145,7 +155,7 @@ function generatePredictionL3(freq){
       if(nums.length<5 && !nums.includes(n)) nums.push(n);
     }
   });
-  // 補齊5號碼時加入最近熱門號碼
+  // 最近熱門號碼補充
   let recentHot = csvData.slice(-5).flatMap(r=>r.numbers).map(Number);
   recentHot.forEach(n=>{ if(nums.length<5 && !nums.includes(n)) nums.push(n); });
   if(nums.length<5){
@@ -173,6 +183,7 @@ function runBacktest(){
   });
   document.getElementById('backtestCount').innerText = `回測筆數：${backtestResults.length}`;
   updateLog();
+  updateNextPrediction();
 }
 
 // 更新 Log
@@ -191,6 +202,18 @@ function updateLog(){
   const rate = recent5.length>0 ? (twoStarHits / recent5.length * 100).toFixed(1) + '%' : '--';
   document.getElementById('recent5Rate').innerText = `近5期命中率: ${rate}`;
 }
+
+// 下期預測號碼
+function updateNextPrediction(){
+  const select = document.getElementById('strategySelectPrediction').value;
+  const freq = computeFrequency(csvData);
+  let pred = [];
+  if(select==='L1') pred = generatePredictionL1(freq);
+  else if(select==='L2_new2') pred = generatePredictionL2_new2(freq);
+  else if(select==='L3') pred = generatePredictionL3(freq);
+  document.getElementById('nextPrediction').innerText = `預測號碼: ${pred.join(',')}`;
+}
+
 </script>
 </body>
 </html>
