@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>539策略回測 Demo v2</title>
+<title>539策略回測 Demo v4</title>
 <style>
 html, body { margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:#0B2545; color:#F0F0F0; }
 .container { display:flex; flex-direction:column; align-items:center; padding:10px; min-height:100vh; box-sizing:border-box; }
@@ -11,18 +11,18 @@ h1 { font-size:1.8em; margin:10px 0; text-align:center; }
 .card { background:#142850; border-radius:12px; padding:15px; margin:10px 0; width:90%; max-width:500px; box-shadow:0 4px 8px rgba(0,0,0,0.3); }
 .card h2 { margin:0 0 10px 0; font-size:1.2em; color:#F8F8FF; }
 .card p { margin:5px 0; font-size:1em; line-height:1.4; }
-button { background:#1B3B6F; color:#F0F0F0; border:none; border-radius:10px; padding:12px 20px; margin:8px 0; font-size:1em; width:100%; max-width:500px; }
-button:active { background:#1F4B99; }
+button, select { background:#1B3B6F; color:#F0F0F0; border:none; border-radius:10px; padding:10px; margin:5px 0; font-size:1em; width:100%; max-width:500px; }
+button:active, select:active { background:#1F4B99; }
 table { width:100%; border-collapse:collapse; margin-top:10px; }
 th, td { border:1px solid #334A69; padding:8px; text-align:center; }
 th { background:#1B3B6F; }
 td { background:#142850; }
-@media(max-width:400px){ h1{font-size:1.5em;} .card{padding:12px;} button{padding:10px;font-size:0.9em;} }
+@media(max-width:400px){ h1{font-size:1.5em;} .card{padding:12px;} button, select{padding:8px;font-size:0.9em;} }
 </style>
 </head>
 <body>
 <div class="container">
-<h1>539策略回測 Demo v2</h1>
+<h1>539策略回測 Demo v4</h1>
 
 <div class="card">
 <h2>上傳歷史 CSV</h2>
@@ -44,7 +44,13 @@ td { background:#142850; }
 </div>
 
 <div class="card">
-<h2>回測 Log</h2>
+<h2>回測 Log (近30期)</h2>
+<label for="strategySelect">選擇策略：</label>
+<select id="strategySelect" onchange="updateLog()">
+  <option value="L1">L1</option>
+  <option value="L2">L2</option>
+  <option value="L3">L3</option>
+</select>
 <table>
 <thead>
 <tr><th>日期</th><th>開獎號碼</th><th>預測號碼</th><th>命中數量</th></tr>
@@ -56,6 +62,7 @@ td { background:#142850; }
 
 <script>
 let csvData = [];
+let backtestResults = []; // 存所有回測資料
 
 document.getElementById('csvFile').addEventListener('change', function(e){
   const file = e.target.files[0];
@@ -95,31 +102,32 @@ function generatePredictionL3(){
   return nums;
 }
 
-// 計算命中數量
 function hitCount(actual, pred){
   return pred.filter(n => actual.includes(n.toString())).length;
 }
 
-// 回測
 function runBacktest(){
+  backtestResults = [];
+  csvData.forEach(row=>{
+    backtestResults.push({date:row.date, actual:row.numbers, strategy:'L1', pred:generatePredictionL1(), hits:0});
+    backtestResults.push({date:row.date, actual:row.numbers, strategy:'L2', pred:generatePredictionL2(), hits:0});
+    backtestResults.push({date:row.date, actual:row.numbers, strategy:'L3', pred:generatePredictionL3(), hits:0});
+  });
+  backtestResults.forEach(r=> r.hits = hitCount(r.actual, r.pred));
+  document.getElementById('backtestCount').innerText = `回測筆數：${backtestResults.length}`;
+  updateLog();
+}
+
+function updateLog(){
+  const select = document.getElementById('strategySelect').value;
   const logBody = document.getElementById('backtestLog');
   logBody.innerHTML = '';
-  let count = 0;
-  csvData.forEach(row=>{
-    const preds = [
-      {name:'L1', numbers:generatePredictionL1()},
-      {name:'L2', numbers:generatePredictionL2()},
-      {name:'L3', numbers:generatePredictionL3()}
-    ];
-    preds.forEach(p=>{
-      const hits = hitCount(row.numbers, p.numbers);
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${row.date}</td><td>${row.numbers.join(',')}</td><td>${p.numbers.join(',')}</td><td>${hits}</td>`;
-      logBody.appendChild(tr);
-      count++;
-    });
+  const filtered = backtestResults.filter(r=>r.strategy===select).slice(-30); // 最近30期
+  filtered.forEach(r=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.date}</td><td>${r.actual.join(',')}</td><td>${r.pred.join(',')}</td><td>${r.hits}</td>`;
+    logBody.appendChild(tr);
   });
-  document.getElementById('backtestCount').innerText = `回測筆數：${count}`;
 }
 </script>
 </body>
