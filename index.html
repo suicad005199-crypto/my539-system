@@ -1,151 +1,85 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539 AI 驗證預測系統</title>
-    <style>
-        :root { --ios-blue: #007AFF; --ios-green: #34C759; --ios-orange: #FF9500; --ios-red: #FF3B30; --ios-bg: #F2F2F7; }
-        body { font-family: -apple-system, sans-serif; background: var(--ios-bg); margin: 0; padding: 10px; color: #1c1c1e; }
-        .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        h2 { font-size: 16px; text-align: center; margin: 0 0 12px 0; }
-        label { font-size: 12px; font-weight: 600; color: #8e8e93; display: block; margin-bottom: 4px; }
-        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; margin-bottom: 10px; }
-        
-        /* 按鈕佈局 */
-        .btn-stack { display: flex; flex-direction: column; gap: 8px; }
-        .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        button { padding: 12px; border-radius: 10px; border: none; font-weight: 600; font-size: 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-        .btn-main { background: var(--ios-blue); color: white; }
-        .btn-tune { background: var(--ios-orange); color: white; }
-        .btn-verify { background: var(--ios-green); color: white; }
-        button:active { opacity: 0.6; }
-
-        /* 結果顯示 */
-        #resultArea { display: none; }
-        .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
-        .stat-item { background: #f8f9fa; padding: 8px; border-radius: 8px; text-align: center; }
-        .stat-val { display: block; font-size: 16px; font-weight: bold; color: var(--ios-blue); }
-        .stat-lbl { font-size: 10px; color: #8e8e93; }
-
-        /* 球號樣式 */
-        .ball-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin: 8px 0; }
-        .ball { width: 28px; height: 28px; line-height: 28px; text-align: center; border-radius: 50%; background: #e5e5ea; font-size: 12px; font-weight: bold; }
-        .hit { background: var(--ios-red) !important; color: white !important; }
-        
-        .log-row { font-size: 12px; padding: 8px 0; border-bottom: 1px solid #f2f2f7; }
-        .star-tag { font-size: 10px; padding: 1px 4px; border-radius: 4px; background: #fff2cc; color: #d6a100; font-weight: bold; margin-left: 4px; }
-    </style>
+<meta charset="UTF-8">
+<title>539 版路模擬驗證系統</title>
+<style>
+body { font-family: Arial; padding: 20px; }
+textarea { width: 100%; height: 160px; }
+button { padding: 8px 16px; margin-top: 10px; }
+.result { margin-top: 20px; line-height: 1.8; }
+.code { background: #f5f5f5; padding: 10px; }
+</style>
 </head>
 <body>
 
-<div class="card">
-    <h2>539 數據分析系統</h2>
-    <label>步驟 1: 匯入 CSV</label>
-    <input type="file" id="csvFile" accept=".csv">
-    
-    <div style="display:flex; gap:8px;">
-        <div style="flex:1"><label>冷熱權重</label><input type="number" id="wHot" value="5"></div>
-        <div style="flex:1"><label>拖牌權重</label><input type="number" id="wFollow" value="8"></div>
-    </div>
+<h2>539 下期預測版路模擬系統</h2>
 
-    <div class="btn-stack">
-        <button class="btn-tune" onclick="autoTune()">1. 自動優化權重 (AI 尋優)</button>
-        <div class="btn-row">
-            <button class="btn-verify" onclick="runAction('backtest')">2. 驗證回測</button>
-            <button class="btn-main" onclick="runAction('predict')">3. 預測下期</button>
-        </div>
-    </div>
-</div>
+<p>貼上 CSV 歷史資料：</p>
+<textarea id="csvInput">
+開獎日期,獎號1,獎號2,獎號3,獎號4,獎號5
+2025/01/01,2,7,8,10,14
+2025/01/02,12,26,30,32,33
+2025/01/03,5,6,8,11,14
+</textarea>
 
-<div id="resultArea" class="card">
-    <div id="summary"></div>
-    <div id="logs"></div>
-</div>
+<br>
+<button onclick="runSimulation()">執行模擬驗證</button>
+
+<div class="result" id="output"></div>
 
 <script>
-let rawData = [];
+function runSimulation() {
+    const csv = document.getElementById("csvInput").value.trim();
+    const rows = csv.split("\n").slice(1).map(r => r.split(","));
 
-document.getElementById('csvFile').addEventListener('change', async (e) => {
-    const text = await e.target.files[0].text();
-    rawData = text.trim().split('\n').slice(1).map(l => {
-        const c = l.split(',');
-        return { date: c[0], nums: c.slice(1, 6).map(Number) };
-    }).filter(d => d.nums.length === 5);
-    alert('載入成功');
-});
-
-function getTop5(data, wh, wf) {
-    let stats = Array.from({length: 40}, (_, i) => ({ n: i, s: 0, h: 0, f: 0 }));
-    const last = data[data.length - 1];
-    data.forEach(d => d.nums.forEach(v => { if(v < 40) stats[v].h++; }));
-    for(let i=0; i < data.length - 1; i++) {
-        if(data[i].nums.some(n => last.nums.includes(n))) {
-            data[i+1].nums.forEach(n => stats[n].f++);
-        }
+    if (rows.length < 3) {
+        alert("資料至少需要 3 期以上");
+        return;
     }
-    stats.forEach(s => s.s = (s.h * wh) + (s.f * wf));
-    return stats.slice(1).sort((a,b) => b.s - a.s).slice(0, 5).map(x => x.n);
-}
 
-function autoTune() {
-    if(!rawData.length) return alert('請先匯入資料');
-    let best = { wh: 5, wf: 8, score: -1 };
-    for(let h=1; h<=15; h+=2) {
-        for(let f=1; f<=15; f+=2) {
-            let score = 0;
-            for(let i=1; i<=10; i++) {
-                const train = rawData.slice(0, rawData.length - i);
-                const actual = rawData[rawData.length - i].nums;
-                const hits = getTop5(train, h, f).filter(n => actual.includes(n)).length;
-                score += (hits * 2) + (hits >= 2 ? 10 : 0) + (hits >= 3 ? 50 : 0);
-            }
-            if(score > best.score) best = { wh: h, wf: f, score: score };
-        }
-    }
-    document.getElementById('wHot').value = best.wh;
-    document.getElementById('wFollow').value = best.wf;
-    alert(`優化完成！最優參數：冷熱 ${best.wh}, 拖牌 ${best.wf}`);
-}
+    // 取最後一期做驗證
+    const actual = rows[rows.length - 1].slice(1).map(Number);
 
-function runAction(mode) {
-    if(!rawData.length) return alert('請匯入資料');
-    const wh = parseFloat(document.getElementById('wHot').value);
-    const wf = parseFloat(document.getElementById('wFollow').value);
-    const resDiv = document.getElementById('resultArea');
-    const summary = document.getElementById('summary');
-    const logs = document.getElementById('logs');
-    
-    resDiv.style.display = 'block';
-    logs.innerHTML = '';
+    // 訓練資料（不含最後一期）
+    const training = rows.slice(0, rows.length - 1);
 
-    if(mode === 'predict') {
-        const pred = getTop5(rawData, wh, wf).sort((a,b)=>a-b);
-        summary.innerHTML = `<b>下期預測參考</b><div class="ball-row">` + 
-            pred.map(n => `<div class="ball hit">${n}</div>`).join('') + `</div>`;
-    } else {
-        let h2=0, h3=0, totalH=0;
-        let html = '<b>最近 10 期回測驗證</b>';
-        for(let i=1; i<=10; i++) {
-            const train = rawData.slice(0, rawData.length - i);
-            const actual = rawData[rawData.length - i];
-            const pred = getTop5(train, wh, wf);
-            const hits = pred.filter(n => actual.nums.includes(n));
-            if(hits.length === 2) h2++; else if(hits.length >= 3) h3++;
-            totalH += hits.length;
-            html += `<div class="log-row">${actual.date} <br> ` + 
-                pred.map(n => `<span class="ball ${actual.nums.includes(n)?'hit':''}">${n}</span>`).join('') +
-                (hits.length >= 2 ? `<span class="star-tag">中 ${hits.length} 星</span>` : '') + `</div>`;
-        }
-        summary.innerHTML = `<div class="stat-grid">
-            <div class="stat-item"><span class="stat-val">${h2}</span><span class="stat-lbl">中二星</span></div>
-            <div class="stat-item"><span class="stat-val">${h3}</span><span class="stat-lbl">中三星+</span></div>
-            <div class="stat-item"><span class="stat-val">${totalH}</span><span class="stat-lbl">總中球</span></div>
-        </div>`;
-        logs.innerHTML = html;
-    }
-    window.scrollTo({ top: resDiv.offsetTop, behavior: 'smooth' });
+    // === 版路示範：近 N 期熱號 ===
+    const N = 10;
+    const freq = {};
+
+    training.slice(-N).forEach(row => {
+        row.slice(1).forEach(num => {
+            freq[num] = (freq[num] || 0) + 1;
+        });
+    });
+
+    // 排除上一期已開過的號碼
+    const lastDraw = training[training.length - 1].slice(1).map(Number);
+
+    const candidates = Object.entries(freq)
+        .filter(([n]) => !lastDraw.includes(Number(n)))
+        .sort((a, b) => b[1] - a[1])
+        .map(e => Number(e[0]));
+
+    const prediction = candidates.slice(0, 5);
+
+    // 命中計算
+    const hit = prediction.filter(n => actual.includes(n));
+
+    document.getElementById("output").innerHTML = `
+        <b>驗證期實際開獎：</b> ${actual.join(", ")}<br>
+        <b>預測號碼：</b> ${prediction.join(", ")}<br>
+        <b>命中號碼：</b> ${hit.join(", ") || "無"}<br>
+        <b>命中顆數：</b> ${hit.length} / 5
+        <hr>
+        <b>使用版路：</b>
+        <div class="code">
+        近 ${N} 期熱號 + 排除上一期號碼
+        </div>
+    `;
 }
 </script>
+
 </body>
 </html>
