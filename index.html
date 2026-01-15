@@ -3,169 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539 全策略分析儀</title>
+    <title>539 策略驗證面板</title>
     <style>
-        :root {
-            --bg: #0a192f;
-            --card: #172a45;
-            --gold: #c5a059;
-            --cyan: #64ffda;
-            --text: #e6f1ff;
-        }
-        body {
-            font-family: -apple-system, sans-serif;
-            background-color: var(--bg); color: var(--text);
-            margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh;
-        }
-        .header { padding: 20px; text-align: center; }
-        .header h1 { font-size: 1.2rem; color: var(--gold); margin: 0; letter-spacing: 2px; }
-
-        .scroll-area { flex-grow: 1; overflow-y: auto; padding: 10px 15px; }
-
-        .upload-section {
-            background: rgba(197, 160, 89, 0.1); border: 1px dashed var(--gold);
-            border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 15px;
-        }
-        
-        /* 策略牌組顯示卡片 */
-        .strategy-card {
-            background: var(--card); border-radius: 16px; padding: 15px;
-            margin-bottom: 15px; border-left: 4px solid var(--gold);
-        }
-        .strat-header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 12px; border-bottom: 1px solid #233554; padding-bottom: 8px;
-        }
-        .strat-title { font-weight: bold; font-size: 0.95rem; color: var(--gold); }
-        .strat-rate { font-size: 0.8rem; color: var(--cyan); }
-
-        .ball-row { display: flex; gap: 8px; justify-content: flex-start; }
-        .ball {
-            width: 42px; height: 42px; background: var(--gold); border-radius: 50%;
-            color: var(--bg); display: flex; align-items: center; justify-content: center;
-            font-weight: 800; font-size: 1.1rem;
-        }
-
-        .footer-nav { padding: 20px; background: var(--bg); }
-        .main-btn {
-            width: 100%; padding: 18px; border-radius: 35px; border: none;
-            background: var(--gold); color: var(--bg); font-size: 1.1rem; font-weight: bold;
-        }
-        .main-btn:disabled { background: #444; color: #8892b0; }
+        :root { --bg: #0a192f; --card: #172a45; --gold: #c5a059; --cyan: #64ffda; --text: #e6f1ff; }
+        body { font-family: -apple-system, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        .header { padding: 20px; text-align: center; border-bottom: 1px solid #233554; }
+        .header h1 { font-size: 1.1rem; color: var(--gold); margin: 0; }
+        .scroll-area { flex-grow: 1; overflow-y: auto; padding: 15px; }
+        .upload-box { background: rgba(197, 160, 89, 0.05); border: 1px dashed var(--gold); border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 15px; }
+        .strategy-card { background: var(--card); border-radius: 16px; padding: 15px; margin-bottom: 12px; }
+        .strat-info { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+        .strat-name { font-weight: bold; color: var(--gold); font-size: 0.9rem; }
+        .strat-stats { font-size: 0.75rem; color: var(--cyan); text-align: right; }
+        .ball-row { display: flex; gap: 8px; }
+        .ball { width: 42px; height: 42px; background: var(--gold); border-radius: 50%; color: var(--bg); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; }
+        .footer { padding: 20px; background: var(--bg); }
+        .main-btn { width: 100%; padding: 18px; border-radius: 35px; border: none; background: var(--gold); color: var(--bg); font-size: 1rem; font-weight: bold; }
+        .main-btn:disabled { background: #333; color: #777; }
         input[type="file"] { display: none; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <h1>539 多策略預測面板</h1>
-    <div id="status" style="font-size: 0.7rem; color: #8892b0; margin-top: 5px;">請先上傳歷史數據</div>
+    <h1>539 強化型回測系統 (去隨機化)</h1>
 </div>
 
 <div class="scroll-area">
-    <div class="upload-section">
-        <label style="color: var(--gold); cursor: pointer;">
-            📂 點擊上傳 CSV 歷史檔
-            <input type="file" accept=".csv" onchange="initApp(this)">
-        </label>
+    <div class="upload-box">
+        <label style="cursor: pointer;">📂 載入歷史 CSV 進行分析<input type="file" accept=".csv" onchange="runAnalysis(this)"></label>
     </div>
-
-    <div id="resultsContainer">
-        </div>
+    <div id="results"></div>
 </div>
 
-<div class="footer-nav">
-    <button id="runBtn" class="main-btn" onclick="generateAll()" disabled>一次生成所有策略牌組</button>
+<div class="footer">
+    <button id="runBtn" class="main-btn" disabled>數據未載入</button>
 </div>
 
 <script>
-    let historyData = [];
-    let stats = { hot: [], cold: [] };
-    let backtestRates = {};
+    let history = [];
+    let weights = { freq: {}, lastSeen: {}, tails: {} };
 
-    function initApp(input) {
-        const file = input.files[0];
+    function runAnalysis(input) {
         const reader = new FileReader();
         reader.onload = function(e) {
             const lines = e.target.result.split('\n');
-            historyData = lines.map(line => line.split(',').map(v => parseInt(v.trim())).filter(n => n >= 1 && n <= 39)).filter(arr => arr.length === 5);
-            
-            if (historyData.length > 0) {
-                analyzeHistory();
-                runGlobalBacktest();
-                document.getElementById('status').innerText = `已分析 ${historyData.length} 期數據`;
-                document.getElementById('runBtn').disabled = false;
-                generateAll(); // 初始生成一次
+            history = lines.map(l => l.split(',').map(v => parseInt(v.trim())).filter(n => n >= 1 && n <= 39)).filter(a => a.length === 5);
+            if (history.length > 0) {
+                calculateWeights();
+                displayStrategies();
+                document.getElementById('runBtn').innerText = "策略已根據數據固定";
             }
         };
-        reader.readAsText(file);
+        reader.readAsText(input.files[0]);
     }
 
-    // 自動從 CSV 分析熱門與冷門號碼
-    function analyzeHistory() {
-        let counts = {};
-        historyData.flat().forEach(num => counts[num] = (counts[num] || 0) + 1);
-        let sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-        stats.hot = sorted.slice(0, 12).map(i => parseInt(i[0]));
-        stats.cold = sorted.slice(-12).map(i => parseInt(i[0]));
-    }
-
-    // 預先計算全量回測命中率
-    function runGlobalBacktest() {
-        const types = ['random', 'hot', 'cold', 'mix'];
-        types.forEach(t => {
-            let hits = 0;
-            const simRounds = 100;
-            for(let i=0; i<simRounds; i++) {
-                const pick = getPick(t);
-                historyData.forEach(actual => {
-                    if (pick.filter(n => actual.includes(n)).length >= 2) hits++;
-                });
-            }
-            backtestRates[t] = ((hits / (historyData.length * simRounds)) * 100).toFixed(2);
+    function calculateWeights() {
+        // 初始化 1-39 數據
+        for(let i=1; i<=39; i++) {
+            weights.freq[i] = 0;
+            weights.lastSeen[i] = history.length; 
+            weights.tails[i%10] = 0;
+        }
+        // 統計頻率與最後出現期數
+        history.forEach((draw, idx) => {
+            draw.forEach(num => {
+                weights.freq[num]++;
+                weights.lastSeen[num] = idx; // 越小代表越近開出
+                weights.tails[num%10]++;
+            });
         });
     }
 
-    function getPick(type) {
-        const pickRand = (arr, n) => [...arr].sort(() => Math.random() - 0.5).slice(0, n);
-        const allNums = Array.from({length: 39}, (_, i) => i + 1);
+    function getStrategyPick(type) {
+        let pool = Array.from({length: 39}, (_, i) => i + 1);
         
-        if (type === 'random') return pickRand(allNums, 5);
-        if (type === 'hot') return pickRand(stats.hot, 5);
-        if (type === 'cold') return pickRand(stats.cold, 5);
-        if (type === 'mix') return [...pickRand(stats.hot, 3), ...pickRand(stats.cold, 2)];
+        if (type === 'HOT') {
+            return pool.sort((a,b) => weights.freq[b] - weights.freq[a]).slice(0, 5);
+        }
+        if (type === 'COLD') {
+            // 取最久沒出的 (lastSeen 數值最大的)
+            return pool.sort((a,b) => weights.lastSeen[b] - weights.lastSeen[a]).slice(0, 5);
+        }
+        if (type === 'TAIL') {
+            // 找出最強尾數，取該尾數中頻率最高者
+            let topTail = Object.entries(weights.tails).sort((a,b) => b[1] - a[1])[0][0];
+            return pool.filter(n => n%10 == topTail).sort((a,b) => weights.freq[b] - weights.freq[a]).slice(0, 5);
+        }
+        if (type === 'MIX') {
+            let h = pool.sort((a,b) => weights.freq[b] - weights.freq[a]).slice(0, 3);
+            let c = pool.sort((a,b) => weights.lastSeen[b] - weights.lastSeen[a]).filter(n => !h.includes(n)).slice(0, 2);
+            return [...h, ...c];
+        }
     }
 
-    function generateAll() {
-        const container = document.getElementById('resultsContainer');
+    function backtest(pick) {
+        let count2 = history.filter(draw => pick.filter(n => draw.includes(n)).length >= 2).length;
+        return ((count2 / history.length) * 100).toFixed(2);
+    }
+
+    function displayStrategies() {
+        const container = document.getElementById('results');
         container.innerHTML = '';
-        const configs = [
-            { id: 'random', name: '隨機策略', desc: '全號碼隨機分佈' },
-            { id: 'hot', name: '熱門策略', desc: '根據歷史高頻號碼' },
-            { id: 'cold', name: '冷門策略', desc: '根據歷史低頻號碼' },
-            { id: 'mix', name: '混合策略 (3+2)', desc: '熱門號 x3 + 冷門號 x2' }
+        const strats = [
+            { id: 'HOT', name: '高頻熱門 (Top 5 頻率)', desc: '選取歷史出現次數最多的號碼' },
+            { id: 'COLD', name: '深層冷門 (遺漏補償)', desc: '選取最久未開出的號碼' },
+            { id: 'TAIL', name: '尾數強攻 (最強尾數)', desc: '根據最強熱門尾數進行分佈' },
+            { id: 'MIX', name: '平衡混合 (3熱+2冷)', desc: '兼顧熱度與回補機率' }
         ];
 
-        configs.forEach(conf => {
-            const nums = getPick(conf.id).sort((a,b) => a-b);
-            const html = `
+        strats.forEach(s => {
+            const pick = getStrategyPick(s.id).sort((a,b) => a-b);
+            const rate = backtest(pick);
+            container.innerHTML += `
                 <div class="strategy-card">
-                    <div class="strat-header">
-                        <div>
-                            <div class="strat-title">${conf.name}</div>
-                            <div style="font-size:0.7rem; color:#8892b0">${conf.desc}</div>
-                        </div>
-                        <div class="strat-rate">>2星回測率: ${backtestRates[conf.id]}%</div>
+                    <div class="strat-info">
+                        <div><div class="strat-name">${s.name}</div><div style="font-size:0.7rem; color:#8892b0">${s.desc}</div></div>
+                        <div class="strat-stats">命中率(>2星)<br><span style="font-size:1.1rem">${rate}%</span></div>
                     </div>
-                    <div class="ball-row">
-                        ${nums.map(n => `<div class="ball">${n < 10 ? '0'+n : n}</div>`).join('')}
-                    </div>
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', html);
+                    <div class="ball-row">${pick.map(n => `<div class="ball">${n<10?'0'+n:n}</div>`).join('')}</div>
+                </div>`;
         });
     }
 </script>
-
 </body>
 </html>
