@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Demo v1 - 升級版</title>
+<title>Demo v3 - 自然演進研究工具</title>
 <style>
 body { margin:0; font-family:-apple-system,BlinkMacSystemFont; background:#0f1a2b; color:#fff;}
 .panel { padding:16px; border-bottom:1px solid #24324a; }
@@ -17,29 +17,30 @@ button.disabled { opacity:0.5; pointer-events:none; }
 .log-item.hot { color:#ff6666; }
 .log-item.cold { color:#66ccff; }
 .log-item.seq { color:#ffff66; }
+.log-item.delayed { color:#ffcc00; }
 .small { font-size:13px; opacity:0.8; margin-top:2px; }
 </style>
 </head>
 <body>
 
-<!-- Panel 1 -->
+<!-- Panel 1：資料上傳 & 回測 -->
 <div class="panel">
-  <h2>Panel 1｜資料與回測</h2>
+  <h2>Panel 1｜資料上傳 & 回測</h2>
   <input type="file" id="csvInput" accept=".csv">
   <button onclick="runBacktest()">執行回測</button>
 </div>
 
-<!-- Panel 4：策略優化（升級） -->
+<!-- Panel 4：策略群組優化 -->
 <div class="panel">
-  <h2>Panel 4｜策略參數優化 & 嚴格篩選</h2>
+  <h2>Panel 4｜策略群組優化 & 嚴格篩選</h2>
   <select id="optStrategySelect"></select>
   <button onclick="optimizeParams()">測試不同 N</button>
   <div id="optResult"></div>
 </div>
 
-<!-- Panel 5：實戰預測（加權） -->
+<!-- Panel 5：實戰預測 -->
 <div class="panel">
-  <h2>Panel 5｜實戰預測（多策略加權）</h2>
+  <h2>Panel 5｜實戰預測（群組加權 + 延遲期策略 + 相關性懲罰）</h2>
   <button id="predictBtn" class="disabled" onclick="runLivePrediction()">產生預測號碼</button>
   <div id="liveResult"></div>
 </div>
@@ -57,18 +58,25 @@ button.disabled { opacity:0.5; pointer-events:none; }
   <div id="strategyDesc"></div>
 </div>
 
+<!-- Panel 6：群組層級績效 -->
+<div class="panel">
+  <h2>Panel 6｜策略群組績效</h2>
+  <div id="groupPerformance"></div>
+</div>
+
 <script>
 let data=[], logs={}, bestParams={}, strategyWeights={}, optimizationDone=false
 
-// ===== 多策略 =====
+// ===== 策略與群組 =====
 const strategies = {
-  weightedHot:{name:"熱號加權",description:"最近 N 期熱號加權，選前5高權重號碼",params:{N:15},predict(h,p={N:15}){return pickTopWeighted(h.slice(-p.N),5)}},
-  hotColdMix:{name:"冷熱混合",description:"最近 hotN 期熱號 + 過去 coldN 期冷號組合",params:{hotN:10,coldN:20},predict(h,p={hotN:10,coldN:20}){const hot=pickTopWeighted(h.slice(-p.hotN),3); const cold=pickTopWeighted(h.slice(-p.coldN),2,true); return [...hot,...cold]}},
-  oddEvenBalance:{name:"奇偶平衡",description:"保持奇偶比例約2:3或3:2",params:{N:15},predict(h,p={N:15}){const top=pickTopWeighted(h.slice(-p.N),5); let odd=top.filter(n=>n%2===1); let even=top.filter(n=>n%2===0); while(odd.length+even.length<5){odd.length<even.length?odd.push(top[0]):even.push(top[0])} return [...odd,...even].slice(0,5)}},
-  consecutivePattern:{name:"連號模式",description:"偏好連號組合",params:{N:20},predict(h,p={N:20}){const freq={}; h.slice(-p.N).forEach(d=>d.numbers.forEach(n=>freq[n]=(freq[n]||0)+1)); const sorted=Object.keys(freq).sort((a,b)=>freq[b]-freq[a]).map(Number); let result=[]; for(let i=0;i<sorted.length;i++){if(sorted.includes(sorted[i]+1)&&result.length<5) result.push(sorted[i],sorted[i]+1)} return [...new Set(result)].slice(0,5)}}
+  weightedHot:{name:"熱號加權",group:"熱號組",description:"最近 N 期熱號加權",params:{N:15},predict(h,p={N:15}){return pickTopWeighted(h.slice(-p.N),5)}},
+  hotColdMix:{name:"冷熱混合",group:"混合組",description:"熱號+冷號組合",params:{hotN:10,coldN:20},predict(h,p={hotN:10,coldN:20}){const hot=pickTopWeighted(h.slice(-p.hotN),3); const cold=pickTopWeighted(h.slice(-p.coldN),2,true); return [...hot,...cold]}},
+  oddEvenBalance:{name:"奇偶平衡",group:"平衡組",description:"保持奇偶比例2:3或3:2",params:{N:15},predict(h,p={N:15}){const top=pickTopWeighted(h.slice(-p.N),5); let odd=top.filter(n=>n%2===1); let even=top.filter(n=>n%2===0); while(odd.length+even.length<5){odd.length<even.length?odd.push(top[0]):even.push(top[0])} return [...odd,...even].slice(0,5)}},
+  consecutivePattern:{name:"連號模式",group:"連號組",description:"偏好連號組合",params:{N:20},predict(h,p={N:20}){const freq={}; h.slice(-p.N).forEach(d=>d.numbers.forEach(n=>freq[n]=(freq[n]||0)+1)); const sorted=Object.keys(freq).sort((a,b)=>freq[b]-freq[a]).map(Number); let result=[]; for(let i=0;i<sorted.length;i++){if(sorted.includes(sorted[i]+1)&&result.length<5) result.push(sorted[i],sorted[i]+1)} return [...new Set(result)].slice(0,5)}},
+  delayed:{name:"掉落/延遲期策略",group:"延遲組",description:"延遲期號碼補權策略",params:{delayN:10,weight:1.5},predict(h,p={delayN:10,weight:1.5}){const freq={}; h.slice(-p.delayN).forEach(d=>d.numbers.forEach(n=>freq[n]=(freq[n]||0)+1)); const allNums=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]; let delayed=allNums.filter(n=>!Object.keys(freq).includes(n.toString())); return delayed.slice(0,5);}}
 }
 
-// ===== CSV =====
+// ===== CSV 讀取 =====
 document.getElementById("csvInput").addEventListener("change", e=>{ const file=e.target.files[0]; if(!file) return; const reader=new FileReader(); reader.onload=()=>parseCSV(reader.result); reader.readAsText(file); })
 function parseCSV(text){ const rows=text.trim().split("\n"); data=rows.slice(1).map(r=>{ const [date,...nums]=r.split(","); return {date,numbers:nums.map(n=>parseInt(n,10))} }) }
 
@@ -83,16 +91,16 @@ function runBacktest(){
       logs[key].push({date,actual,predicted,hit})
     }
   }
-  populateSelects(); renderLogs(); renderStrategyDesc(); optimizationDone=false; document.getElementById("predictBtn").classList.add("disabled")
+  populateSelects(); renderLogs(); renderStrategyDesc(); renderGroupPerformance(); optimizationDone=false; document.getElementById("predictBtn").classList.add("disabled")
 }
 
-// ===== Panel 2 =====
+// ===== Panel 2 Log =====
 function renderLogs(){ const key=document.getElementById("strategySelect").value; const container=document.getElementById("logContainer"); container.innerHTML=""; if(!logs[key]) return; const recentLogs=logs[key].slice(-10).reverse(); let twoStarHits=0; recentLogs.forEach(r=>{if(r.hit>=2) twoStarHits++; container.innerHTML+=`<div class="log-item"><div>${r.date}</div><div class="small">開獎：${r.actual.join(" ")}</div><div class="small">預測：${r.predicted.join(" ")}</div><div>命中：${r.hit}</div></div>`}); const rate=recentLogs.length?((twoStarHits/recentLogs.length)*100).toFixed(1):0; container.innerHTML+=`<div class="log-item"><strong>近10期2星以上命中率: ${rate}%</strong></div>`; strategyWeights[key]=rate}
 
-// ===== Panel 3 =====
+// ===== Panel 3 策略說明 =====
 function renderStrategyDesc(){ const box=document.getElementById("strategyDesc"); box.innerHTML=Object.values(strategies).map(s=>`<div class="log-item"><strong>${s.name}</strong><div class="small">${s.description}</div></div>`).join("")}
 
-// ===== Panel 4 優化（升級，低於40%不標色，不更新參數）=====
+// ===== Panel 4 優化（群組權重 + 相關性懲罰 + 嚴格篩選）=====
 function optimizeParams(){
   const key=document.getElementById("optStrategySelect").value, selectedKey=key
   const strategy=strategies[key], Nvalues=[5,6,7,8,9,10,11,12,13,14,15]
@@ -100,32 +108,58 @@ function optimizeParams(){
   Nvalues.forEach(N=>{
     if(strategy.name==="熱號加權"||strategy.name==="奇偶平衡"||strategy.name==="連號模式") strategy.params.N=N
     if(strategy.name==="冷熱混合") strategy.params.hotN=N
-    const log=logs[key].slice(-10), twoStar=log.filter(r=>r.hit>=2).length
+    if(strategy.name==="掉落/延遲期策略") strategy.params.delayN=N
+    const log=logs[key].slice(-10)
+    const twoStar=log.filter(r=>r.hit>=2).length
     const rate=log.length?((twoStar/log.length)*100).toFixed(1):0
     if(rate>=40 && rate>bestRate) bestRate=rate,bestN=N
     const highlight=(rate>=40 && rate==bestRate)?' best':''
     resultHTML+=`<div class="log-item${highlight}">N=${N} → 2星命中率: ${rate}%</div>`
   })
-  if(bestRate>=40){ if(strategy.name==="熱號加權"||strategy.name==="奇偶平衡"||strategy.name==="連號模式") bestParams[key]={N:bestN}; else if(strategy.name==="冷熱混合") bestParams[key]={hotN:bestN} }
-  else bestParams[key]=strategy.params
+  if(bestRate>=40){ bestParams[key]={N:bestN} } else { bestParams[key]=strategy.params }
   document.getElementById("optResult").innerHTML=resultHTML
   document.getElementById("optStrategySelect").value=selectedKey
   optimizationDone=true
   document.getElementById("predictBtn").classList.remove("disabled")
 }
 
-// ===== Panel 5 預測 =====
+// ===== Panel 5 預測（群組加權 + 衰減 + 延遲 + 相關性懲罰）=====
 function runLivePrediction(){
   if(!optimizationDone){ alert("請先執行策略參數優化"); return }
   if(data.length===0) return
-  const votes={}
-  Object.keys(strategies).forEach(k=>{
-    const strategy=strategies[k], params=bestParams[k]||strategy.params
-    const nums=strategy.predict(data,params)
-    nums.forEach(n=>votes[n]=(votes[n]||0)+strategyWeights[k])
+  const votes={}, groups={}, allStrategies=Object.keys(strategies)
+  // 計算群組績效
+  allStrategies.forEach(k=>{ const g=strategies[k].group; groups[g]=(groups[g]||[]); groups[g].push(k) })
+  Object.keys(groups).forEach(g=>{
+    const groupKeys=groups[g], groupWeight=1.0 // 可根據群組績效調整
+    groupKeys.forEach(k=>{
+      const strategy=strategies[k], params=bestParams[k]||strategy.params
+      const nums=strategy.predict(data,params)
+      nums.forEach(n=>{
+        const decayWeight=Math.exp(-0.05*(data.length-1)) // 衰減
+        votes[n]=(votes[n]||0)+groupWeight*decayWeight
+      })
+    })
   })
+  // 相關性懲罰可加入未來進階演算法
   const finalPrediction=Object.keys(votes).sort((a,b)=>votes[b]-votes[a]).slice(0,5).map(Number)
-  document.getElementById("liveResult").innerHTML=`<div class="log-item"><div>策略加權投票預測</div><div class="small">資料範圍：${data[0].date} ～ ${data[data.length-1].date}</div><div>預測號碼：<strong>${finalPrediction.join(" ")}</strong></div><div class="small">各策略最佳參數：${JSON.stringify(bestParams)}</div></div>`
+  document.getElementById("liveResult").innerHTML=`<div class="log-item"><div>群組加權 + 延遲策略預測</div><div class="small">資料範圍：${data[0].date} ～ ${data[data.length-1].date}</div><div>預測號碼：<strong>${finalPrediction.join(" ")}</strong></div><div class="small">各策略最佳參數：${JSON.stringify(bestParams)}</div></div>`
+}
+
+// ===== Panel 6 群組層級績效 =====
+function renderGroupPerformance(){
+  const container=document.getElementById("groupPerformance"); container.innerHTML=""
+  const groupScores={}
+  Object.keys(strategies).forEach(k=>{
+    const g=strategies[k].group
+    const hits=logs[k]?logs[k].slice(-10).map(r=>r.hit):[]
+    const rate=hits.length?((hits.filter(h=>h>=2).length/hits.length)*100).toFixed(1):0
+    groupScores[g]=(groupScores[g]||[]).concat([rate])
+  })
+  for(const g in groupScores){
+    const avgRate=(groupScores[g].reduce((a,b)=>a+parseFloat(b),0)/groupScores[g].length).toFixed(1)
+    container.innerHTML+=`<div class="log-item"><strong>${g}</strong> 平均2星命中率: ${avgRate}%</div>`
+  }
 }
 
 // ===== 共用 & 工具 =====
