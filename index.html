@@ -3,84 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539 數據核心 v13.0</title>
+    <title>539 數據分析系統 v14.0</title>
     <style>
         :root { --bg: #0a192f; --card: #172a45; --gold: #c5a059; --cyan: #64ffda; --text: #e6f1ff; }
-        body { font-family: -apple-system, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        .header { padding: 15px; text-align: center; border-bottom: 1px solid #233554; }
-        .header h1 { font-size: 1.1rem; color: var(--gold); margin: 0; }
-        .scroll-area { flex-grow: 1; overflow-y: auto; padding: 15px; padding-bottom: 120px; }
+        body { font-family: -apple-system, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 15px; box-sizing: border-box; }
+        h2 { font-size: 0.9rem; color: var(--gold); margin-bottom: 12px; border-left: 3px solid var(--gold); padding-left: 8px; }
+        .panel { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #233554; }
         
-        .control-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
-        .select-wrapper { display: flex; gap: 10px; align-items: center; }
-        select { background: var(--card); color: var(--gold); border: 1px solid var(--gold); padding: 10px; border-radius: 8px; flex-grow: 1; font-size: 0.9rem; }
-        
-        .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        .status-item { background: var(--card); padding: 12px; border-radius: 10px; text-align: center; border: 1px solid #233554; }
-        .status-val { color: var(--gold); font-weight: bold; font-size: 1.1rem; }
+        /* Panel 1 & 2 */
+        .upload-btn { width: 100%; padding: 15px; background: rgba(197, 160, 89, 0.1); border: 1px dashed var(--gold); border-radius: 8px; color: var(--gold); cursor: pointer; font-weight: bold; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .stat-box { text-align: center; }
+        .stat-val { font-size: 1.2rem; font-weight: bold; color: var(--cyan); }
 
-        .log-panel { background: var(--card); border-radius: 12px; padding: 12px; margin-bottom: 20px; border: 1px solid var(--gold); }
-        .log-stat-bar { display: flex; justify-content: space-between; padding: 5px 0 10px; border-bottom: 1px solid #233554; margin-bottom: 10px; }
-        .log-stat-label { font-size: 0.8rem; color: var(--cyan); font-weight: bold; }
+        /* Panel 3: Log Table */
+        .log-ctrl { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        select { background: var(--bg); color: var(--gold); border: 1px solid var(--gold); padding: 5px; border-radius: 5px; font-size: 0.8rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.7rem; }
+        th { color: var(--gold); border-bottom: 1px solid #233554; padding: 5px; text-align: left; }
+        td { padding: 8px 5px; border-bottom: 1px solid #0a192f; }
+        .hit { color: var(--cyan); font-weight: bold; }
 
-        table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
-        th { color: var(--gold); padding: 8px 4px; border-bottom: 1px solid #233554; text-align: left; }
-        td { padding: 8px 4px; border-bottom: 1px solid #0a192f; }
-        .hit-tag { color: var(--cyan); font-weight: bold; }
+        /* Panel 4: Strategy Cards */
+        .strat-card { background: var(--bg); border-radius: 10px; padding: 12px; margin-bottom: 10px; border-left: 4px solid var(--gold); }
+        .strat-header { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px; }
+        .ball-row { display: flex; gap: 6px; }
+        .ball { width: 35px; height: 35px; background: var(--gold); border-radius: 50%; color: var(--bg); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9rem; }
 
-        .strat-card { background: var(--card); border-radius: 15px; padding: 15px; margin-bottom: 12px; border-left: 4px solid var(--gold); }
-        .strat-info { display: flex; justify-content: space-between; margin-bottom: 10px; }
-        .strat-name { font-weight: bold; color: var(--gold); font-size: 0.95rem; }
-        .strat-rate { color: var(--cyan); font-size: 0.8rem; text-align: right; }
-        .ball-row { display: flex; gap: 8px; }
-        .ball { width: 40px; height: 40px; background: var(--gold); border-radius: 50%; color: var(--bg); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; }
-
-        .upload-btn { background: rgba(197, 160, 89, 0.1); border: 1px dashed var(--gold); padding: 15px; border-radius: 12px; text-align: center; color: var(--gold); cursor: pointer; margin-bottom: 15px; }
-        .footer { position: fixed; bottom: 0; width: 100%; padding: 20px; background: rgba(10,25,47,0.95); box-sizing: border-box; }
-        .main-btn { width: 100%; padding: 18px; border-radius: 35px; border: none; background: var(--gold); color: var(--bg); font-weight: bold; font-size: 1.1rem; }
+        .main-btn { width: 100%; padding: 18px; border-radius: 30px; border: none; background: var(--gold); color: var(--bg); font-weight: bold; font-size: 1rem; cursor: pointer; }
         input[type="file"] { display: none; }
     </style>
 </head>
 <body>
 
-<div class="header"><h1>539 數據核心 v13.0</h1></div>
-
-<div class="scroll-area">
-    <div class="upload-btn" onclick="document.getElementById('fileInput').click()">
-        📂 載入 CSV 數據
-        <input type="file" id="fileInput" accept=".csv" onchange="handleCSV(this)">
-    </div>
-
-    <div class="status-grid">
-        <div class="status-item"><div>總筆數</div><div class="status-val" id="readCount">0</div></div>
-        <div class="status-item"><div>數據完整度</div><div class="status-val" style="color:var(--cyan)">100%</div></div>
-    </div>
-
-    <div class="log-panel">
-        <div class="control-row">
-            <div class="select-wrapper">
-                <select id="stratSelector" onchange="refreshLog()">
-                    <option value="mix">平衡混合 (3熱+2冷)</option>
-                    <option value="hot">高頻熱門 (Top 5)</option>
-                    <option value="cold">深層冷門 (遺漏)</option>
-                    <option value="repeat">連莊優化策略</option>
-                </select>
-            </div>
-            <div class="log-stat-bar">
-                <div class="log-stat-label">近 30 期 Log</div>
-                <div class="log-stat-label" id="periodRate">30期命中率: --</div>
-            </div>
-        </div>
-        <table id="logTable">
-            <thead><tr><th>日期</th><th>開獎號</th><th>預測</th><th>中</th></tr></thead>
-            <tbody></tbody>
-        </table>
-    </div>
-
-    <div id="stratContainer"></div>
+<div class="panel">
+    <h2>1. 數據來源</h2>
+    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">📂 點擊上傳 CSV 檔案</button>
+    <input type="file" id="fileInput" accept=".csv" onchange="handleCSV(this)">
 </div>
 
-<div class="footer"><button id="runBtn" class="main-btn" onclick="renderAll()" disabled>執行全量分析</button></div>
+<div class="panel">
+    <h2>2. 數據統計</h2>
+    <div class="stats-grid">
+        <div class="stat-box"><div>讀取筆數</div><div class="stat-val" id="readCount">0</div></div>
+        <div class="stat-box"><div>回測次數</div><div class="stat-val" id="backCount">0</div></div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="log-ctrl">
+        <h2>3. 近 30 期回測 Log</h2>
+        <select id="stratSel" onchange="updateLog()">
+            <option value="mix">平衡混合 (3熱+2冷)</option>
+            <option value="hot">高頻熱門</option>
+            <option value="repeat">連莊優化</option>
+        </select>
+    </div>
+    <div id="periodRate" style="font-size: 0.75rem; color: var(--cyan); margin-bottom: 5px;">30期命中率: --</div>
+    <table>
+        <thead><tr><th>日期</th><th>開獎號</th><th>前一日預測</th><th>中</th></tr></thead>
+        <tbody id="logBody"></tbody>
+    </table>
+</div>
+
+<div class="panel">
+    <h2>4. 下期開獎預測</h2>
+    <button id="runBtn" class="main-btn" onclick="renderPredictions()" disabled>生成預測牌組</button>
+    <div id="stratContainer" style="margin-top: 15px;"></div>
+</div>
 
 <script>
     let history = []; 
@@ -96,67 +86,63 @@
 
             if (history.length > 0) {
                 document.getElementById('readCount').innerText = history.length;
+                document.getElementById('backCount').innerText = history.length * 3;
                 document.getElementById('runBtn').disabled = false;
-                renderAll();
+                updateLog();
+                renderPredictions();
             }
         };
         reader.readAsText(input.files[0]);
     }
 
-    function getStaticPick(type, historyIndex = -1) {
-        const targetHistory = historyIndex === -1 ? history : history.slice(0, historyIndex);
-        if (targetHistory.length === 0) return [1,2,3,4,5];
-
+    // 純數據邏輯提取 (不含隨機)
+    function getLogicNumbers(type, dataSubset) {
+        if (dataSubset.length === 0) return [1,2,3,4,5];
         let counts = {};
         let lastPos = {};
         for(let i=1; i<=39; i++) { counts[i] = 0; lastPos[i] = -1; }
-        targetHistory.forEach((item, idx) => {
+        dataSubset.forEach((item, idx) => {
             item.nums.forEach(n => { counts[n]++; lastPos[n] = idx; });
         });
         const h = Object.entries(counts).sort((a,b) => b[1] - a[1]).map(i => parseInt(i[0]));
         const c = Object.entries(lastPos).sort((a,b) => a[1] - b[1]).map(i => parseInt(i[0]));
-        const lastNums = targetHistory[targetHistory.length - 1].nums;
+        const last = dataSubset[dataSubset.length - 1].nums;
 
         if (type === 'hot') return h.slice(0, 5);
-        if (type === 'cold') return c.slice(0, 5);
         if (type === 'mix') return [...h.slice(0, 3), ...c.slice(0, 2)];
-        if (type === 'repeat') return [...lastNums.slice(0, 2), ...h.slice(0, 3)];
+        if (type === 'repeat') return [...last.slice(0, 2), ...h.slice(0, 3)];
     }
 
-    function refreshLog() {
-        const type = document.getElementById('stratSelector').value;
-        const tbody = document.querySelector('#logTable tbody');
+    function updateLog() {
+        const type = document.getElementById('stratSel').value;
+        const tbody = document.getElementById('logBody');
         const recent = [...history].reverse().slice(0, 30);
-        let periodHits = 0;
-        
-        tbody.innerHTML = recent.map((item, idx) => {
-            const actualIdx = history.length - 1 - idx;
-            const predict = getStaticPick(type, actualIdx).sort((a,b)=>a-b);
-            const hit = predict.filter(n => item.nums.includes(n)).length;
-            if (hit >= 2) periodHits++;
-            return `<tr><td>${item.date}</td><td>${item.nums.join(',')}</td><td>${predict.slice(0,2).join(',')}..</td><td class="hit-tag">中 ${hit}</td></tr>`;
-        }).join('');
+        let hitsCount = 0;
 
-        const periodRate = ((periodHits / recent.length) * 100).toFixed(2);
-        document.getElementById('periodRate').innerText = `30期命中(>2星): ${periodRate}%`;
+        tbody.innerHTML = recent.map((item, idx) => {
+            const dayBeforeIdx = history.length - 1 - idx;
+            const prediction = getLogicNumbers(type, history.slice(0, dayBeforeIdx)).sort((a,b)=>a-b);
+            const hit = prediction.filter(n => item.nums.includes(n)).length;
+            if (hit >= 2) hitsCount++;
+            return `<tr><td>${item.date}</td><td>${item.nums.join(',')}</td><td>${prediction.slice(0,2).join(',')}..</td><td class="hit">中 ${hit}</td></tr>`;
+        }).join('');
+        document.getElementById('periodRate').innerText = `30期命中(>2星)概率: ${((hitsCount/recent.length)*100).toFixed(2)}%`;
     }
 
-    function renderAll() {
+    function renderPredictions() {
         const types = [
-            { id: 'mix', name: '平衡混合 (3熱+2冷)', rate: '13.90%' },
-            { id: 'hot', name: '高頻熱門 (Top 5)', rate: '13.67%' },
-            { id: 'repeat', name: '連莊優化策略', rate: '14.21%' },
-            { id: 'cold', name: '遺漏補償 (冷門)', rate: '15.00%' }
+            { id: 'mix', name: '平衡混合 (3熱+2冷)' },
+            { id: 'hot', name: '高頻熱門 (Top 5)' },
+            { id: 'repeat', name: '連莊優化策略' }
         ];
-
-        document.getElementById('stratContainer').innerHTML = types.map(t => {
-            const nums = getStaticPick(t.id).sort((a,b)=>a-b);
+        const container = document.getElementById('stratContainer');
+        container.innerHTML = types.map(t => {
+            const nums = getLogicNumbers(t.id, history).sort((a,b)=>a-b);
             return `<div class="strat-card">
-                <div class="strat-info"><div class="strat-name">${t.name}</div><div class="strat-rate">全回測勝率<br><b>${t.rate}</b></div></div>
+                <div class="strat-header"><span>${t.name}</span> <span style="color:var(--cyan)">下期預測</span></div>
                 <div class="ball-row">${nums.map(n => `<div class="ball">${n<10?'0'+n:n}</div>`).join('')}</div>
             </div>`;
         }).join('');
-        refreshLog();
     }
 </script>
 </body>
