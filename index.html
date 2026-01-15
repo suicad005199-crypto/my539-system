@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>539 核心數據儀 v6.0</title>
+    <title>539 數據核心 v6.2</title>
     <style>
         :root { --bg: #0a192f; --card: #172a45; --gold: #c5a059; --cyan: #64ffda; --text: #e6f1ff; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -12,91 +12,89 @@
             margin: 0; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
             display: flex; flex-direction: column; height: 100vh; overflow: hidden; 
         }
-        .header { padding: 15px; text-align: center; border-bottom: 1px solid #233554; flex-shrink: 0; }
+        .header { padding: 12px; text-align: center; border-bottom: 1px solid #233554; flex-shrink: 0; }
         .scroll-area { flex-grow: 1; overflow-y: auto; padding: 10px; -webkit-overflow-scrolling: touch; }
         
-        /* 面板設計 */
-        .panel { background: var(--card); border-radius: 15px; padding: 12px; margin-bottom: 10px; border: 1px solid #233554; }
+        /* 面板與卡片 */
+        .panel { background: var(--card); border-radius: 12px; padding: 12px; margin-bottom: 10px; border: 1px solid #233554; }
         .panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-        .info-box { text-align: center; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 10px; }
-        .label { font-size: 0.65rem; color: #8892b0; margin-bottom: 4px; }
-        .val { font-size: 1.1rem; font-weight: bold; color: var(--gold); }
+        .info-box { text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 8px; }
+        .label { font-size: 0.65rem; color: #8892b0; margin-bottom: 2px; }
+        .val { font-size: 1rem; font-weight: bold; color: var(--gold); }
 
-        /* Log 面板 */
+        /* Log 面板優化 */
         .log-panel { border: 1px solid var(--gold); }
-        .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        select { background: var(--bg); color: var(--gold); border: 1px solid var(--gold); padding: 5px 10px; border-radius: 8px; font-size: 0.8rem; outline: none; }
-        .log-list { height: 180px; overflow-y: auto; font-size: 0.7rem; font-family: 'Courier New', monospace; }
-        .log-item { display: grid; grid-template-columns: 1.5fr 2fr 2fr 0.8fr; gap: 4px; padding: 8px 0; border-bottom: 1px solid #ffffff08; align-items: center; }
+        .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        select { background: var(--bg); color: var(--gold); border: 1px solid var(--gold); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; outline: none; }
+        .log-list { height: 160px; overflow-y: auto; font-size: 0.65rem; font-family: monospace; }
+        .log-item { display: grid; grid-template-columns: 1.2fr 1.8fr 1.8fr 0.6fr; gap: 4px; padding: 6px 0; border-bottom: 1px solid #ffffff08; align-items: center; }
         .hit-tag { color: var(--cyan); font-weight: bold; }
 
-        /* 策略卡片 */
-        .strat-card { border-left: 5px solid var(--gold); }
-        .ball-row { display: flex; gap: 5px; justify-content: space-between; margin-top: 10px; }
-        .ball { width: 18%; aspect-ratio: 1/1; background: var(--gold); border-radius: 50%; color: var(--bg); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; }
+        /* 策略球體 */
+        .ball-row { display: flex; gap: 4px; justify-content: space-between; margin-top: 8px; }
+        .ball { width: 18%; aspect-ratio: 1/1; background: var(--gold); border-radius: 50%; color: var(--bg); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1rem; }
 
-        .footer { padding: 15px 20px calc(10px + env(safe-area-inset-bottom)); flex-shrink: 0; }
-        .main-btn { width: 100%; padding: 18px; border-radius: 40px; border: none; background: var(--gold); color: var(--bg); font-size: 1.1rem; font-weight: bold; }
-        .upload-btn { background: rgba(197, 160, 89, 0.1); border: 1.5px dashed var(--gold); color: var(--gold); padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 10px; cursor: pointer; display: block; }
+        .footer { padding: 10px 15px calc(5px + env(safe-area-inset-bottom)); flex-shrink: 0; }
+        .main-btn { width: 100%; padding: 16px; border-radius: 30px; border: none; background: var(--gold); color: var(--bg); font-size: 1rem; font-weight: bold; }
+        .upload-btn { background: rgba(197, 160, 89, 0.1); border: 1px dashed var(--gold); color: var(--gold); padding: 12px; border-radius: 10px; text-align: center; margin-bottom: 10px; cursor: pointer; display: block; font-size: 0.9rem; }
         input[type="file"] { display: none; }
     </style>
 </head>
 <body>
 
-<div class="header"><h1 style="font-size:1.1rem; color:var(--gold); margin:0;">539 數據核心分析 v6.0</h1></div>
+<div class="header"><h1 style="font-size:1rem; color:var(--gold); margin:0;">539 數據核心 v6.2</h1></div>
 
 <div class="scroll-area">
-    <label class="upload-btn">
-        📂 載入歷史 CSV (包含日期與號碼)
-        <input type="file" accept=".csv" onchange="handleFile(this)">
-    </label>
+    <label class="upload-btn">📂 點擊上傳 CSV 檔案<input type="file" accept=".csv" onchange="handleFile(this)"></label>
 
     <div class="panel-grid">
-        <div class="panel info-box"><div class="label">CSV 讀取筆數</div><div id="cnt-csv" class="val">0</div></div>
-        <div class="panel info-box"><div class="label">總回測計算</div><div id="cnt-bt" class="val">0</div></div>
+        <div class="panel info-box"><div class="label">讀取筆數</div><div id="cnt-csv" class="val">0</div></div>
+        <div class="panel info-box"><div class="label">回測筆數</div><div id="cnt-bt" class="val">0</div></div>
     </div>
 
     <div class="panel log-panel">
         <div class="log-header">
-            <span style="font-size: 0.85rem; font-weight: bold; color: var(--gold);">近 30 期預測對照 Log</span>
-            <select id="stratSelect" onchange="updateLogView()">
-                <option value="hot">高頻最優</option>
-                <option value="missing">冷熱平衡</option>
-                <option value="neighbors">鄰位聯動</option>
-                <option value="weighted">多維加權</option>
-            </select>
+            <span style="font-size: 0.8rem; font-weight: bold; color: var(--gold);">近 30 期策略 Log</span>
+            <select id="stratSelect" onchange="updateLogView()"></select>
         </div>
-        <div class="log-item" style="border-bottom: 1px solid var(--gold); color: #8892b0; font-weight: bold;">
-            <div>日期/期</div><div>開獎號碼</div><div>昨日預測</div><div>命中</div>
+        <div class="log-item" style="border-bottom: 1px solid var(--gold); color: #8892b0; font-weight: bold; font-size: 0.6rem;">
+            <div>日期</div><div>開獎號</div><div>預測號</div><div>中</div>
         </div>
-        <div id="logList" class="log-list">請先上傳檔案...</div>
+        <div id="logList" class="log-list">請上傳資料...</div>
     </div>
 
     <div id="stratResults"></div>
 </div>
 
 <div class="footer">
-    <button id="runBtn" class="main-btn" onclick="runAnalysis()" disabled>執行全量策略分析</button>
+    <button id="runBtn" class="main-btn" onclick="runAnalysis()" disabled>執行策略回測</button>
 </div>
 
 <script>
-    let rawHistory = []; // 包含原始資料
-    let cleanHistory = []; // 僅包含號碼
-    let dates = [];
-    let backtestRates = {};
+    let cleanHistory = [], dates = [], backtestRates = {};
+    const strats = [
+        { id: 'hot', name: '高頻最優 (Top 5)', desc: '出現頻率最高排名' },
+        { id: 'missing', name: '遺漏補償 (最久未開)', desc: '自動鎖定最長遺漏號碼' },
+        { id: 'neighbors', name: '鄰位聯動 (鄰號擴散)', desc: '熱號及其相鄰數字' },
+        { id: 'weighted', name: '多維加權 (動能整合)', desc: '綜合評分最高組合' }
+    ];
+
+    // 初始化下拉選單
+    const sel = document.getElementById('stratSelect');
+    strats.forEach(s => sel.innerHTML += `<option value="${s.id}">${s.name}</option>`);
 
     function handleFile(input) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            const lines = e.target.result.split('\n').filter(l => l.trim() !== '');
-            rawHistory = []; cleanHistory = []; dates = [];
+            const lines = e.target.result.split(/\r?\n/).filter(l => l.trim() !== '');
+            cleanHistory = []; dates = [];
             
-            lines.forEach((line, idx) => {
+            lines.forEach((line) => {
                 const cells = line.split(',');
                 const nums = cells.map(v => parseInt(v.trim())).filter(n => n >= 1 && n <= 39);
                 if (nums.length === 5) {
                     cleanHistory.push(nums);
-                    dates.push(cells[0].trim().substring(5) || `期-${idx+1}`); // 截取日期月日或顯示期數
+                    dates.push(cells[0].trim()); 
                 }
             });
 
@@ -110,79 +108,70 @@
         reader.readAsText(input.files[0]);
     }
 
+    function getNumbers(type, offset) {
+        const subHistory = cleanHistory.slice(offset);
+        if (subHistory.length < 1) return [1,2,3,4,5];
+
+        let counts = {}, lastSeen = {};
+        for(let i=1; i<=39; i++) { counts[i] = 0; lastSeen[i] = subHistory.length; }
+        
+        subHistory.forEach((draw, idx) => {
+            draw.forEach(n => {
+                counts[n]++;
+                if (lastSeen[n] === subHistory.length) lastSeen[n] = idx;
+            });
+        });
+
+        const sortedFreq = Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(i=>parseInt(i[0]));
+        const sortedMissing = Object.entries(lastSeen).sort((a,b)=>b[1]-a[1]).map(i=>parseInt(i[0]));
+
+        if (type === 'hot') return sortedFreq.slice(0, 5);
+        if (type === 'missing') return sortedMissing.slice(0, 5);
+        if (type === 'neighbors') {
+            const top = sortedFreq[0];
+            return [top, top-1<1?39:top-1, top+1>39?1:top+1, sortedFreq[1], sortedFreq[2]];
+        }
+        return [...sortedFreq.slice(0, 3), ...sortedMissing.slice(0, 2)];
+    }
+
     function runAnalysis() {
-        calculateAllRates();
+        strats.forEach(s => {
+            let hits = 0, range = Math.min(100, cleanHistory.length - 1);
+            for(let i=1; i<=range; i++) {
+                if (getNumbers(s.id, i).filter(n => cleanHistory[i-1].includes(n)).length >= 2) hits++;
+            }
+            backtestRates[s.id] = ((hits / range) * 100).toFixed(2);
+        });
         renderStrats();
         updateLogView();
     }
 
-    // 去隨機化策略引擎
-    function getNumbers(type, offset) {
-        const subHistory = cleanHistory.slice(offset);
-        if (subHistory.length < 5) return [1,2,3,4,5];
-
-        let counts = {};
-        for(let i=1; i<=39; i++) counts[i] = 0;
-        subHistory.forEach(draw => draw.forEach(n => counts[n]++));
-        const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(i=>parseInt(i[0]));
-
-        if (type === 'hot') return sorted.slice(0, 5);
-        if (type === 'missing') return [...sorted.slice(0, 3), ...sorted.slice(-2)];
-        if (type === 'neighbors') {
-            const top = sorted[0];
-            return [top, top-1<1?39:top-1, top+1>39:1:top+1, sorted[1], sorted[2]];
-        }
-        return [sorted[0], sorted[1], sorted[2], sorted[3], sorted[4]];
-    }
-
-    function calculateAllRates() {
-        ['hot','missing','neighbors','weighted'].forEach(t => {
-            let hits = 0, range = Math.min(100, cleanHistory.length - 1);
-            for(let i=1; i<=range; i++) {
-                const pred = getNumbers(t, i);
-                if (pred.filter(n => cleanHistory[i-1].includes(n)).length >= 2) hits++;
-            }
-            backtestRates[t] = ((hits / range) * 100).toFixed(2);
-        });
-    }
-
     function updateLogView() {
-        const type = document.getElementById('stratSelect').value;
-        const list = document.getElementById('logList');
+        const type = sel.value, list = document.getElementById('logList');
         list.innerHTML = '';
-        
         for(let i=0; i<30; i++) {
             if(!cleanHistory[i+1]) break;
-            const actual = cleanHistory[i];
-            const pred = getNumbers(type, i+1); // 基於前一天數據
+            const actual = cleanHistory[i], pred = getNumbers(type, i+1);
             const matches = pred.filter(n => actual.includes(n));
-            const hitClass = matches.length >= 2 ? 'hit-tag' : '';
-
             list.innerHTML += `
                 <div class="log-item">
-                    <div style="color:#8892b0">${dates[i]}</div>
+                    <div style="color:#8892b0">${dates[i].split('/').slice(1).join('/')}</div>
                     <div>${actual.map(n=>n<10?'0'+n:n).join(',')}</div>
-                    <div>${pred.slice(0,3).join(',')}.</div>
-                    <div class="${hitClass}">中 ${matches.length}</div>
+                    <div>${pred.slice(0,2).join(',')},..</div>
+                    <div class="${matches.length>=2?'hit-tag':''}">中 ${matches.length}</div>
                 </div>`;
         }
     }
 
     function renderStrats() {
         const container = document.getElementById('stratResults');
-        const confs = [
-            { id: 'hot', name: '高頻最優 (精選 Top5)', desc: '根據全歷史出現頻率最高排名' },
-            { id: 'missing', name: '冷熱平衡 (動能補償)', desc: '熱門前3碼 + 冷門末2碼組合' },
-            { id: 'neighbors', name: '鄰位聯動 (關聯擴散)', desc: '最強號碼及其左右鄰號鎖定' },
-            { id: 'weighted', name: '多維加權 (大數據解)', desc: '排除隨機波動後的穩定解' }
-        ];
-        container.innerHTML = confs.map(c => `
-            <div class="panel strat-card">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start">
-                    <div><div style="font-weight:bold; color:var(--gold); font-size:0.95rem;">${c.name}</div><div style="font-size:0.7rem; color:#8892b0; margin-top:3px;">${c.desc}</div></div>
-                    <div style="text-align:right"><span style="font-size:0.65rem; color:#8892b0">回測率</span><br><span style="color:var(--cyan); font-weight:bold; font-size:0.9rem;">${backtestRates[c.id]}%</span></div>
+        container.innerHTML = strats.map(s => `
+            <div class="panel" style="border-left:4px solid var(--gold)">
+                <div style="display:flex; justify-content:space-between">
+                    <div><b style="color:var(--gold); font-size:0.9rem;">${s.name}</b><br><small style="color:#8892b0">${s.desc}</small></div>
+                    <div style="text-align:right"><small style="color:#8892b0">回測</small><br><b style="color:var(--cyan)">${backtestRates[s.id]}%</b></div>
                 </div>
-                <div class="ball-row">${getNumbers(c.id, 0).sort((a,b)=>a-b).map(n=>`<div class="ball">${n<10?'0'+n:n}</div>`).join('')}</div>
+                <div class="ball-row">${getNumbers(s.id, 0).sort((a,b)=>a-b).map(n=>`<div class="ball">${n<10?'0'+n:n}</div>`).join('')}</div>
             </div>`).join('');
     }
 </script>
