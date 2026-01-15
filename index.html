@@ -2,46 +2,89 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539 數據核心 v3.0</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>539 數據核心 v4.0</title>
     <style>
         :root { --bg: #0a192f; --card: #172a45; --gold: #c5a059; --cyan: #64ffda; --text: #e6f1ff; }
-        body { font-family: -apple-system, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        .header { padding: 20px; text-align: center; border-bottom: 1px solid #233554; }
-        .header h1 { font-size: 1.1rem; color: var(--gold); margin: 0; letter-spacing: 2px; }
-        .scroll-area { flex-grow: 1; overflow-y: auto; padding: 10px 15px 120px; }
-        .upload-box { background: rgba(197, 160, 89, 0.1); border: 1px dashed var(--gold); border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 15px; cursor: pointer; }
-        .strat-card { background: var(--card); border-radius: 15px; padding: 15px; margin-bottom: 12px; border-left: 4px solid var(--gold); }
+        
+        /* iOS 全滿版優化 */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            font-family: -apple-system, system-ui, sans-serif; 
+            background-color: var(--bg); color: var(--text); 
+            margin: 0; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+            display: flex; flex-direction: column; height: 100vh; width: 100vw;
+            overflow: hidden; 
+        }
+
+        .header { padding: 15px; text-align: center; flex-shrink: 0; }
+        .header h1 { font-size: 1.1rem; color: var(--gold); margin: 0; letter-spacing: 1px; }
+        
+        .scroll-area { 
+            flex-grow: 1; overflow-y: auto; padding: 10px 15px;
+            -webkit-overflow-scrolling: touch; /* iOS 平滑滾動 */
+        }
+
+        .upload-box { 
+            background: rgba(197, 160, 89, 0.1); border: 1.5px dashed var(--gold); 
+            border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 15px; 
+        }
+
+        /* 策略卡片適配 */
+        .strat-card { 
+            background: var(--card); border-radius: 16px; padding: 16px; 
+            margin-bottom: 12px; border-left: 5px solid var(--gold);
+            width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
         .strat-info { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-        .strat-name { font-weight: bold; font-size: 0.9rem; color: var(--gold); }
-        .strat-rate { font-size: 0.8rem; color: var(--cyan); text-align: right; }
-        .ball-row { display: flex; gap: 8px; }
-        .ball { width: 42px; height: 42px; background: var(--gold); border-radius: 50%; color: var(--bg); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; }
-        .footer { position: fixed; bottom: 0; width: 100%; padding: 20px; box-sizing: border-box; background: linear-gradient(transparent, var(--bg) 40%); }
-        .main-btn { width: 100%; padding: 20px; border-radius: 40px; border: none; background: var(--gold); color: var(--bg); font-size: 1.1rem; font-weight: bold; box-shadow: 0 5px 20px rgba(0,0,0,0.4); }
-        .main-btn:disabled { background: #333; color: #666; }
+        .strat-name { font-weight: bold; font-size: 0.95rem; color: var(--gold); }
+        .strat-desc { font-size: 0.75rem; color: #8892b0; margin-top: 4px; }
+        .strat-rate { font-size: 0.8rem; color: var(--cyan); text-align: right; line-height: 1.4; }
+
+        /* 球體 iOS 適配大小 */
+        .ball-row { display: flex; gap: 8px; justify-content: space-between; }
+        .ball { 
+            width: 18%; aspect-ratio: 1/1; background: var(--gold); 
+            border-radius: 50%; color: var(--bg); 
+            display: flex; align-items: center; justify-content: center; 
+            font-weight: 800; font-size: 1.2rem; 
+        }
+
+        /* 底部按鈕 iOS 單手熱區 */
+        .footer { 
+            padding: 15px 20px calc(15px + env(safe-area-inset-bottom)); 
+            background: linear-gradient(transparent, var(--bg) 50%);
+            flex-shrink: 0;
+        }
+        .main-btn { 
+            width: 100%; padding: 18px; border-radius: 40px; border: none; 
+            background: var(--gold); color: var(--bg); 
+            font-size: 1.1rem; font-weight: bold; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+        .main-btn:active { transform: scale(0.97); opacity: 0.9; }
         input[type="file"] { display: none; }
     </style>
 </head>
 <body>
 
-<div class="header"><h1>539 智慧去隨機化系統</h1></div>
+<div class="header"><h1>539 精英回測核心 v4.0</h1></div>
 
 <div class="scroll-area">
     <div class="upload-box" onclick="document.getElementById('fileInput').click()">
-        <span style="color: var(--gold); font-size: 0.9rem;">📂 載入 CSV 數據進行精準運算</span>
+        <span style="color: var(--gold); font-size: 0.9rem;">📂 點擊載入 CSV (自動適配 iOS)</span>
         <input type="file" id="fileInput" accept=".csv" onchange="processData(this)">
     </div>
     <div id="results"></div>
 </div>
 
 <div class="footer">
-    <button id="runBtn" class="main-btn" onclick="displayBest()" disabled>計算並顯示最優牌組</button>
+    <button id="runBtn" class="main-btn" onclick="render()" disabled>計算並產出最優牌組</button>
 </div>
 
 <script>
     let history = [];
-    let stats = { hot: [], cold: [], last: [] };
+    let stats = { hot: [], missing: [], neighbors: [], weighted: [] };
     let backtestRates = {};
 
     function processData(input) {
@@ -49,74 +92,78 @@
         reader.onload = function(e) {
             const lines = e.target.result.split('\n');
             history = lines.map(l => l.split(',').map(v => parseInt(v.trim())).filter(n => n >= 1 && n <= 39)).filter(a => a.length === 5);
-            if (history.length > 10) {
-                analyzeStats();
-                runBacktest();
+            if (history.length > 5) {
+                analyze();
+                runBT();
                 document.getElementById('runBtn').disabled = false;
-                displayBest();
+                render();
             }
         };
         reader.readAsText(input.files[0]);
     }
 
-    function analyzeStats() {
-        let counts = {};
-        // 初始化 01-39
-        for(let i=1; i<=39; i++) counts[i] = 0;
-        history.flat().forEach(n => counts[n]++);
+    function analyze() {
+        let counts = {}, lastSeen = {};
+        for(let i=1; i<=39; i++) { counts[i] = 0; lastSeen[i] = history.length; }
         
-        let sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]);
-        stats.hot = sorted.slice(0, 10).map(i => parseInt(i[0])); // 頻率最高 10 碼
-        stats.cold = sorted.slice(-10).map(i => parseInt(i[0])); // 頻率最低 10 碼
-        stats.last = history[0]; // 上期號碼
+        history.forEach((draw, index) => {
+            draw.forEach(n => {
+                counts[n]++;
+                if (lastSeen[n] === history.length) lastSeen[n] = index;
+            });
+        });
+
+        // 1. 高頻熱門
+        stats.hot = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0, 10).map(i=>parseInt(i[0]));
+        
+        // 2. 遺漏回補 (最久未開)
+        stats.missing = Object.entries(lastSeen).sort((a,b)=>b[1]-a[1]).slice(0, 10).map(i=>parseInt(i[0]));
+
+        // 3. 鄰號關聯 (熱號左右)
+        let top1 = stats.hot[0];
+        let n1 = top1 - 1 < 1 ? 39 : top1 - 1;
+        let n2 = top1 + 1 > 39 ? 1 : top1 + 1;
+        stats.neighbors = [top1, n1, n2, stats.hot[1], stats.hot[2]];
+
+        // 4. 大數據加權
+        stats.weighted = stats.hot.slice(0, 3).concat(stats.missing.slice(0, 2));
     }
 
-    function runBacktest() {
-        // 模擬近 100 期使用該固定策略的表現
-        const types = ['hot', 'mix', 'repeat', 'weighted'];
-        types.forEach(type => {
+    function runBT() {
+        ['missing', 'hot', 'neighbors', 'weighted'].forEach(type => {
             const pick = getPick(type);
-            let hits = 0;
-            const testRange = Math.min(100, history.length - 1);
-            for(let i=1; i<=testRange; i++) {
+            let hits = 0, range = Math.min(100, history.length-1);
+            for(let i=1; i<=range; i++) {
                 if (pick.filter(n => history[i].includes(n)).length >= 2) hits++;
             }
-            backtestRates[type] = ((hits / testRange) * 100).toFixed(2);
+            backtestRates[type] = ((hits / range) * 100).toFixed(2);
         });
     }
 
-    // 去隨機化：直接取統計結果的前 N 名
     function getPick(type) {
+        if (type === 'missing') return stats.missing.slice(0, 5);
         if (type === 'hot') return stats.hot.slice(0, 5);
-        if (type === 'mix') return [...stats.hot.slice(0, 3), ...stats.cold.slice(0, 2)];
-        if (type === 'repeat') return [stats.last[0], ...stats.hot.slice(0, 4)];
-        if (type === 'weighted') return stats.hot.slice(0, 5).map(n => n); // 此處可擴展複雜加權
-        return [];
+        if (type === 'neighbors') return stats.neighbors;
+        return stats.weighted;
     }
 
-    function displayBest() {
+    function render() {
         const container = document.getElementById('results');
-        const configs = [
-            { id: 'mix', name: '平衡混合 (Top 熱+冷)', desc: '固定取熱頻前3與冷頻前2' },
-            { id: 'hot', name: '高頻最優解 (Top 5)', desc: '完全鎖定歷史出現率最高號碼' },
-            { id: 'repeat', name: '規律補償 (連莊追蹤)', desc: '上期首號 + 熱頻前4組合' },
-            { id: 'weighted', name: '大數據權重 (去隨機)', desc: '排除低效能波動後的固定解' }
+        const confs = [
+            { id: 'missing', name: '遺漏回補 (數據補償)', desc: '選取歷史遺漏值最高號碼' },
+            { id: 'hot', name: '高頻最優 (Top 5)', desc: '固定鎖定出現頻率最高組合' },
+            { id: 'neighbors', name: '鄰號關連 (熱號擴散)', desc: '根據最強熱號及其鄰位推算' },
+            { id: 'weighted', name: '全量加權 (去隨機)', desc: '綜合頻率與回補動能最高分' }
         ];
-
-        container.innerHTML = configs.map(c => {
-            const nums = getPick(c.id).sort((a,b)=>a-b);
-            return `
-                <div class="strat-card">
-                    <div class="strat-info">
-                        <div><div class="strat-name">${c.name}</div><div class="strat-desc">${c.desc}</div></div>
-                        <div class="strat-rate">回測命中率<br><b style="color:var(--cyan)">${backtestRates[c.id]}%</b></div>
-                    </div>
-                    <div class="ball-row">
-                        ${nums.map(n => `<div class="ball">${n<10?'0'+n:n}</div>`).join('')}
-                    </div>
+        container.innerHTML = confs.map(c => `
+            <div class="strat-card">
+                <div class="strat-info">
+                    <div><div class="strat-name">${c.name}</div><div class="strat-desc">${c.desc}</div></div>
+                    <div class="strat-rate">回測率<br><b style="color:var(--cyan)">${backtestRates[c.id]}%</b></div>
                 </div>
-            `;
-        }).join('');
+                <div class="ball-row">${getPick(c.id).sort((a,b)=>a-b).map(n=>`<div class="ball">${n<10?'0'+n:n}</div>`).join('')}</div>
+            </div>
+        `).join('');
     }
 </script>
 </body>
