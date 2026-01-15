@@ -13,6 +13,7 @@ button { background:#1e3a5f; color:#fff; }
 .log-item { background:#16253d; padding:12px; border-radius:10px; margin-bottom:10px; }
 .log-item.best { border:2px solid #00ff99; }
 .small { font-size:13px; opacity:0.8; }
+.disabled { opacity:0.5; pointer-events:none; }
 </style>
 </head>
 <body>
@@ -22,6 +23,21 @@ button { background:#1e3a5f; color:#fff; }
   <h2>Panel 1｜資料與回測</h2>
   <input type="file" id="csvInput" accept=".csv">
   <button onclick="runBacktest()">執行回測</button>
+</div>
+
+<!-- Panel 4 現在是 Panel 5 功能 -->
+<div class="panel">
+  <h2>Panel 4｜策略參數優化 & 自動套用最佳 N</h2>
+  <select id="optStrategySelect"></select>
+  <button id="optBtn" onclick="optimizeParams()">測試不同 N</button>
+  <div id="optResult"></div>
+</div>
+
+<!-- Panel 5 現在是 Panel 4 功能 -->
+<div class="panel">
+  <h2>Panel 5｜實戰預測（多策略加權）</h2>
+  <button id="predictBtn" class="disabled" onclick="runLivePrediction()">產生預測號碼</button>
+  <div id="liveResult"></div>
 </div>
 
 <!-- Panel 2 -->
@@ -37,44 +53,28 @@ button { background:#1e3a5f; color:#fff; }
   <div id="strategyDesc"></div>
 </div>
 
-<!-- Panel 4 -->
-<div class="panel">
-  <h2>Panel 4｜實戰預測（多策略加權）</h2>
-  <button onclick="runLivePrediction()">產生預測號碼</button>
-  <div id="liveResult"></div>
-</div>
-
-<!-- Panel 5 -->
-<div class="panel">
-  <h2>Panel 5｜策略參數優化 & 自動套用最佳 N</h2>
-  <select id="optStrategySelect"></select>
-  <button onclick="optimizeParams()">測試不同 N</button>
-  <div id="optResult"></div>
-</div>
-
 <script>
 let data=[]
 let logs={}
 let bestParams={}
 let strategyWeights={}
+let optimizationDone=false
 
-// ===== 策略定義 =====
+// ===== 多策略定義 =====
 const strategies = {
   weightedHot: {
     name:"熱號加權",
     description:"最近 N 期熱號加權，選前5高權重號碼",
     params:{N:15},
-    predict(history, params={N:15}) {
-      return pickTopWeighted(history.slice(-params.N),5)
-    }
+    predict(history, params={N:15}) { return pickTopWeighted(history.slice(-params.N),5) }
   },
   hotColdMix: {
     name:"冷熱混合",
     description:"最近 hotN 期熱號 + 過去 coldN 期冷號組合",
     params:{hotN:10,coldN:20},
     predict(history, params={hotN:10,coldN:20}) {
-      const hot = pickTopWeighted(history.slice(-params.hotN),3)
-      const cold = pickTopWeighted(history.slice(-params.coldN),2,true)
+      const hot=pickTopWeighted(history.slice(-params.hotN),3)
+      const cold=pickTopWeighted(history.slice(-params.coldN),2,true)
       return [...hot,...cold]
     }
   },
@@ -83,10 +83,10 @@ const strategies = {
     description:"保持奇偶比例約2:3或3:2",
     params:{N:15},
     predict(history, params={N:15}) {
-      const top = pickTopWeighted(history.slice(-params.N),5)
-      let odd = top.filter(n=>n%2===1)
-      let even = top.filter(n=>n%2===0)
-      while(odd.length+even.length<5) { odd.length<even.length?odd.push(top[0]):even.push(top[0]) }
+      const top=pickTopWeighted(history.slice(-params.N),5)
+      let odd=top.filter(n=>n%2===1)
+      let even=top.filter(n=>n%2===0)
+      while(odd.length+even.length<5){odd.length<even.length?odd.push(top[0]):even.push(top[0])}
       return [...odd,...even].slice(0,5)
     }
   },
@@ -97,7 +97,7 @@ const strategies = {
     predict(history, params={N:20}) {
       const freq={}
       history.slice(-params.N).forEach(d=>d.numbers.forEach(n=>freq[n]=(freq[n]||0)+1))
-      const sorted = Object.keys(freq).sort((a,b)=>freq[b]-freq[a]).map(Number)
+      const sorted=Object.keys(freq).sort((a,b)=>freq[b]-freq[a]).map(Number)
       let result=[]
       for(let i=0;i<sorted.length;i++){
         if(sorted.includes(sorted[i]+1) && result.length<5) result.push(sorted[i],sorted[i]+1)
@@ -128,7 +128,7 @@ function runBacktest(){
   logs={}
   Object.keys(strategies).forEach(k=>{
     logs[k]=[]
-    strategyWeights[k]=1 // 初始化權重
+    strategyWeights[k]=1
   })
   for(let i=3;i<data.length;i++){
     const history=data.slice(0,i)
@@ -143,6 +143,8 @@ function runBacktest(){
   populateSelects()
   renderLogs()
   renderStrategyDesc()
+  optimizationDone=false
+  document.getElementById("predictBtn").classList.add("disabled")
 }
 
 // ===== Panel 2 =====
@@ -180,18 +182,16 @@ function renderStrategyDesc(){
   `).join("")
 }
 
-// ===== Panel 4 =====
+// ===== Panel 5 =====
 function runLivePrediction(){
+  if(!optimizationDone){ alert("請先執行策略參數優化"); return }
   if(data.length===0) return
   const votes={}
-  // 加權投票
   Object.keys(strategies).forEach(k=>{
     const strategy=strategies[k]
-    const params = bestParams[k] || strategy.params
+    const params=bestParams[k]||strategy.params
     const nums=strategy.predict(data,params)
-    nums.forEach(n=>{
-      votes[n]=(votes[n]||0)+strategyWeights[k] // 權重累加
-    })
+    nums.forEach(n=>votes[n]=(votes[n]||0)+strategyWeights[k])
   })
   const finalPrediction=Object.keys(votes).sort((a,b)=>votes[b]-votes[a]).slice(0,5).map(Number)
   document.getElementById("liveResult").innerHTML=`
@@ -204,7 +204,7 @@ function runLivePrediction(){
   `
 }
 
-// ===== Panel 5 優化 =====
+// ===== Panel 4 優化 =====
 function optimizeParams(){
   const key=document.getElementById("optStrategySelect").value
   const strategy=strategies[key]
@@ -222,24 +222,19 @@ function optimizeParams(){
     const highlight=rate==bestRate?' best':''
     resultHTML+=`<div class="log-item${highlight}">N=${N} → 2星命中率: ${rate}%</div>`
   })
-  if(strategy.name==="熱號加權" || strategy.name==="奇偶平衡" || strategy.name==="連號模式")
-    bestParams[key]={N:bestN}
-  else if(strategy.name==="冷熱混合")
-    bestParams[key]={hotN:bestN}
+  if(strategy.name==="熱號加權" || strategy.name==="奇偶平衡" || strategy.name==="連號模式") bestParams[key]={N:bestN}
+  else if(strategy.name==="冷熱混合") bestParams[key]={hotN:bestN}
   document.getElementById("optResult").innerHTML=resultHTML
+  optimizationDone=true
+  document.getElementById("predictBtn").classList.remove("disabled")
 }
 
 // ===== 共用 =====
 function populateSelects(){
-  const selects=[
-    document.getElementById("strategySelect"),
-    document.getElementById("optStrategySelect")
-  ]
+  const selects=[document.getElementById("strategySelect"),document.getElementById("optStrategySelect")]
   selects.forEach(sel=>{
     sel.innerHTML=""
-    for(const k in strategies){
-      sel.innerHTML+=`<option value="${k}">${strategies[k].name}</option>`
-    }
+    for(const k in strategies){ sel.innerHTML+=`<option value="${k}">${strategies[k].name}</option>` }
   })
 }
 
@@ -247,10 +242,7 @@ function populateSelects(){
 function pickTopWeighted(history,count,reverse=false){
   const freq={}
   history.forEach(d=>d.numbers.forEach(n=>freq[n]=(freq[n]||0)+1))
-  return Object.keys(freq)
-    .sort((a,b)=>reverse?freq[a]-freq[b]:freq[b]-freq[a])
-    .slice(0,count)
-    .map(Number)
+  return Object.keys(freq).sort((a,b)=>reverse?freq[a]-freq[b]:freq[b]-freq[a]).slice(0,count).map(Number)
 }
 </script>
 
