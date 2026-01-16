@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 雙重心共振系統 - 優化 v25</title>
+    <title>AI 尾數循環共振系統 - 優化 v26</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e74c3c; --success: #27ae60; --bg: #f4f7f6; }
         body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 20px; }
@@ -23,13 +23,13 @@
 <body>
 
     <div class="panel">
-        <h3 class="panel-title">1. 數據解析 (v25 雙重心共振版)</h3>
+        <h3 class="panel-title">1. 數據解析 (v26 尾數循環版)</h3>
         <input type="file" id="csvFile" accept=".csv">
     </div>
 
     <div id="analysisSection" style="display:none;">
         <div class="panel">
-            <h3 class="panel-title">2. AI 雙重心預測 (下一期建議)</h3>
+            <h3 class="panel-title">2. AI 循環共振預測 (下一期建議)</h3>
             <div id="predictionResults"></div>
         </div>
 
@@ -41,10 +41,10 @@
         </div>
 
         <div class="panel">
-            <h3 class="panel-title">4. 滾動回測 (目標：集彈性強制突破)</h3>
+            <h3 class="panel-title">4. 滾動回測 (目標：兼顧 3 號命中與穩定度)</h3>
             <div class="table-container">
                 <table>
-                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v25)</th><th>命中</th></tr></thead>
+                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v26)</th><th>命中</th></tr></thead>
                     <tbody id="backtestBody"></tbody>
                 </table>
             </div>
@@ -70,53 +70,49 @@
             if (data.length > 0) processSystem(data);
         }
 
-        function getResonancePick(history) {
+        function getCycleResonancePick(history) {
             let scores = Array(40).fill(0);
             const lastNums = history[history.length - 1].nums;
+            const recentHistory = history.slice(-15);
             
+            // 尾數循環計算
+            const tailCycle = Array(10).fill(0);
+            recentHistory.forEach(h => h.nums.forEach(n => tailCycle[n % 10]++));
+
             for (let i = 1; i <= 39; i++) {
                 let miss = 0;
                 for (let j = history.length - 1; j >= 0; j--) {
                     if (!history[j].nums.includes(i)) miss++; else break;
                 }
-                // A. 遺漏權重：黃金回歸 (6-9期) 或 極熱 (0-1期)
-                if (miss >= 6 && miss <= 9) scores[i] += 220;
-                else if (miss <= 1) scores[i] += 150;
-                else scores[i] += 40;
+                // A. 遺漏權重修正
+                if (miss >= 6 && miss <= 10) scores[i] += 230;
+                else if (miss <= 1) scores[i] += 140;
+                else scores[i] += 30;
 
-                // B. 鄰號加成 (N±1)
-                if (lastNums.some(n => Math.abs(n - i) === 1)) scores[i] += 100;
+                // B. 鄰號動力 (N±1)
+                if (lastNums.some(n => Math.abs(n - i) === 1)) scores[i] += 90;
+
+                // C. 尾數反彈 (近期少出的尾數給予補償，避免單一熱尾)
+                if (tailCycle[i % 10] < 4) scores[i] += 50;
             }
 
-            // C. 雙重心聚類選號
-            let final = [];
             let sorted = Array.from({length: 39}, (_, i) => i + 1).sort((a, b) => scores[b] - scores[a]);
+            let final = [];
             
-            // 先選出全場最高分作為種子
-            let seed = sorted[0];
-            final.push(seed);
+            // 1. 選出種子 (最高分)
+            final.push(sorted[0]);
 
-            // 即時補償種子的同尾號與鄰號
-            for (let i = 1; i <= 39; i++) {
-                if (i % 10 === seed % 10) scores[i] *= 1.3;
-                if (Math.abs(i - seed) === 1) scores[i] *= 1.2;
+            // 2. 選出與種子有關係的號碼 (鄰號或同尾) 衝刺 3 號
+            for (let n of sorted.slice(1)) {
+                if (final.length >= 3) break;
+                const hasRelation = final.some(f => (f % 10 === n % 10) || (Math.abs(f - n) === 1));
+                if (hasRelation) final.push(n);
             }
 
-            // 重新排序並限制區間比例 (3:2)
-            sorted = Array.from({length: 39}, (_, i) => i + 1).sort((a, b) => scores[b] - scores[a]);
-            
+            // 3. 補齊剩餘名額 (選取全域最高分，找回覆蓋率)
             for (let n of sorted) {
                 if (final.length >= 5) break;
-                if (final.includes(n)) continue;
-
-                let frontCount = final.filter(x => x <= 19).length;
-                let backCount = final.filter(x => x >= 20).length;
-
-                // 限制單區最多 3 個，製造跨區平衡中的局部集彈
-                if (n <= 19 && frontCount >= 3) continue;
-                if (n >= 20 && backCount >= 3) continue;
-
-                final.push(n);
+                if (!final.includes(n)) final.push(n);
             }
 
             return final.sort((a, b) => a - b);
@@ -127,7 +123,7 @@
             const tbody = document.getElementById('backtestBody');
             tbody.innerHTML = '';
             for (let i = data.length - 1; i > data.length - 11; i--) {
-                const pred = getResonancePick(data.slice(0, i));
+                const pred = getCycleResonancePick(data.slice(0, i));
                 const hits = pred.filter(n => data[i].nums.includes(n));
                 const tr = document.createElement('tr');
                 if (hits.length >= 3) tr.className = 'best-hit';
@@ -135,7 +131,7 @@
                 tr.innerHTML = `<td>${data[i].date}</td><td>${data[i].nums}</td><td>${pred.map(n=>`<span class="num-badge ${data[i].nums.includes(n)?'hit-badge':''}">${n}</span>`).join('')}</td><td class="hit-count">${hits.length}</td>`;
                 tbody.appendChild(tr);
             }
-            const nextP = getResonancePick(data);
+            const nextP = getCycleResonancePick(data);
             document.getElementById('predictionResults').innerHTML = nextP.map(n=>`<span class="num-badge" style="font-size:1.2rem">${n}</span>`).join('');
             document.getElementById('analysisSection').style.display = 'block';
         }
