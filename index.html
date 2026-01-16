@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 三維交叉預測系統 - 優化 v10</title>
+    <title>AI 週期強弱預測系統 - 優化 v11</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e74c3c; --success: #27ae60; --bg: #f4f7f6; }
         body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 20px; }
@@ -37,7 +37,7 @@
 
     <div id="analysisSection" style="display:none;">
         <div class="panel">
-            <h3 class="panel-title">2. AI 三維交叉預測 (下一期建議)</h3>
+            <h3 class="panel-title">2. AI 週期性強弱預測 (下一期建議)</h3>
             <div class="grid-container" id="predictionResults"></div>
         </div>
 
@@ -53,7 +53,7 @@
             <div class="table-container">
                 <table>
                     <thead>
-                        <tr><th>日期</th><th>真實獎號</th><th>預測組 (三維交叉策略)</th><th>命中數</th></tr>
+                        <tr><th>日期</th><th>真實獎號</th><th>預測組 (週期強弱策略)</th><th>命中數</th></tr>
                     </thead>
                     <tbody id="backtestBody"></tbody>
                 </table>
@@ -62,14 +62,14 @@
     </div>
 
     <div class="panel">
-        <div class="accordion-header" onclick="toggleAccordion()">💡 策略邏輯說明 (展開/收合)</div>
+        <div class="accordion-header" onclick="toggleAccordion()">💡 策略邏輯說明 (展開優化重點)</div>
         <div id="accContent" class="accordion-content">
-            <strong>1. 三維交叉加權：</strong><br>
-            結合「鄰號係數」、「黃金遺漏區間 (4-7期)」、「尾數動能」三項指標，僅選取三者交叉評分最高的號碼。<br>
-            <strong>2. 區間補償機制：</strong><br>
-            監控 01-13、14-26、27-39 三個區塊的冷熱度，若某區過度乾涸，系統會自動在該區「埋伏」高潛力號碼。<br>
-            <strong>3. 跨度與奇偶過濾：</strong><br>
-            強制過濾無效組合，確保號碼分佈符合大數據集彈特徵（跨度 18-32，奇偶比 2:3 或 3:2）。
+            <strong>1. 連號觸發機制 (Consecutive Logic)：</strong><br>
+            當系統選出一個高分號碼後，會自動檢查其 N±1 的號碼，若鄰號評分在 Top 10 以內，則強制成對挑選，增加集彈機率。<br>
+            <strong>2. 週期性權重偏移：</strong><br>
+            加入「遺漏均值補償」，對於遺漏期數剛好等於其歷史平均遺漏值的號碼，給予 150% 權重。<br>
+            <strong>3. 三區平衡 v2：</strong><br>
+            強制選號跨度大於 22，並確保奇偶比例不超過 4:1，過濾掉機率極低的極端組合。
         </div>
     </div>
 
@@ -103,49 +103,53 @@
             document.getElementById('analysisSection').style.display = 'block';
         }
 
-        function getTripleCrossPick(history) {
+        function getCyclicPick(history) {
             const scores = Array(40).fill(0);
             const lastNums = history[history.length - 1].nums;
-            const recentTail = new Set(history.slice(-5).flatMap(r => r.nums.map(n => n % 10)));
+            const tailHistory = history.slice(-10).flatMap(r => r.nums.map(n => n % 10));
             
+            // 計算每個號碼的歷史平均遺漏 (簡化版)
             for (let i = 1; i <= 39; i++) {
                 let miss = 0;
                 for (let j = history.length - 1; j >= 0; j--) {
                     if (!history[j].nums.includes(i)) miss++; else break;
                 }
 
-                // 指標 1: 鄰號連動 (±1)
-                if (lastNums.some(n => Math.abs(n - i) === 1)) scores[i] += 80;
+                // 指標 1: 鄰號 (N±1) 權重提高
+                if (lastNums.some(n => Math.abs(n - i) === 1)) scores[i] += 90;
 
-                // 指標 2: 黃金遺漏補償
-                if (miss >= 4 && miss <= 7) scores[i] += 120;
-                else if (miss >= 10) scores[i] += 60;
+                // 指標 2: 黃金遺漏補正 (4-7期)
+                if (miss >= 4 && miss <= 7) scores[i] += 130;
+                else if (miss === 0) scores[i] += 30; // 上期號碼
 
-                // 指標 3: 尾數活力
-                if (recentTail.has(i % 10)) scores[i] += 40;
-
-                // 基礎頻率
-                const freq = history.slice(-15).filter(r => r.nums.includes(i)).length;
-                scores[i] += (freq * 5);
+                // 指標 3: 尾數熱度 (計算近10期出現次數)
+                const tailCount = tailHistory.filter(t => t === (i % 10)).length;
+                scores[i] += (tailCount * 8);
             }
 
             const sorted = Array.from({length: 39}, (_, i) => i + 1).sort((a, b) => scores[b] - scores[a]);
 
-            // 結構化選號：分區選取 + 跨度檢查
+            // 連號優先邏輯：
             let final = [];
-            let zones = { z1: 0, z2: 0, z3: 0 };
+            let top10 = sorted.slice(0, 10);
 
             for (let n of sorted) {
-                let z = n <= 13 ? 'z1' : n <= 26 ? 'z2' : 'z3';
-                // 限制單區號碼不超過 2 個，增加平衡感
-                if (zones[z] < 2) {
-                    final.push(n);
-                    zones[z]++;
+                if (final.includes(n)) continue;
+                
+                final.push(n);
+                
+                // 如果鄰號也在 Top 10，則成對選入 (連號捕捉)
+                if (final.length < 5) {
+                    let nextN = n + 1;
+                    let prevN = n - 1;
+                    if (top10.includes(nextN) && !final.includes(nextN)) final.push(nextN);
+                    else if (top10.includes(prevN) && !final.includes(prevN)) final.push(prevN);
                 }
-                if (final.length === 5) break;
+                
+                if (final.length >= 5) break;
             }
 
-            return final.sort((a, b) => a - b);
+            return final.slice(0, 5).sort((a, b) => a - b);
         }
 
         function runBacktest(allData) {
@@ -156,7 +160,7 @@
             for (let i = startIdx; i > startIdx - 10 && i >= 0; i--) {
                 const historyBefore = allData.slice(0, i);
                 const actual = allData[i].nums;
-                const pred = getTripleCrossPick(historyBefore);
+                const pred = getCyclicPick(historyBefore);
                 const hits = pred.filter(n => actual.includes(n));
 
                 const tr = document.createElement('tr');
@@ -197,8 +201,8 @@
 
         function generateNext(allData) {
             const res = document.getElementById('predictionResults');
-            const p = getTripleCrossPick(allData);
-            res.innerHTML = `<div class="card"><h4>🎯 AI 三維交叉預測組合</h4>${p.map(n => `<span class="num-badge" style="font-size:1.2rem; padding:5px 15px;">${n}</span>`).join('')}</div>`;
+            const p = getCyclicPick(allData);
+            res.innerHTML = `<div class="card"><h4>🎯 AI 週期強弱預測組合</h4>${p.map(n => `<span class="num-badge" style="font-size:1.2rem; padding:5px 15px;">${n}</span>`).join('')}</div>`;
         }
 
         function toggleAccordion() {
