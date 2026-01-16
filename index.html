@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 金字塔聯動系統 - 優化 v42</title>
+    <title>AI 彈性張力網系統 - 優化 v43</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e74c3c; --success: #27ae60; --bg: #f4f7f6; }
         body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 20px; }
@@ -22,21 +22,21 @@
 <body>
 
     <div class="panel">
-        <h3 class="panel-title">1. 數據解析 (v42 金字塔版)</h3>
+        <h3 class="panel-title">1. 數據解析 (v43 彈性張力版)</h3>
         <input type="file" id="csvFile" accept=".csv">
     </div>
 
     <div id="analysisSection" style="display:none;">
         <div class="panel">
-            <h3 class="panel-title">2. AI 金字塔預測 (下一期建議)</h3>
+            <h3 class="panel-title">2. AI 張力預測 (下一期建議)</h3>
             <div id="predictionResults"></div>
         </div>
 
         <div class="panel">
-            <h3 class="panel-title">3. 滾動回測 (衝刺命中 3 號)</h3>
+            <h3 class="panel-title">3. 滾動回測 (目標：找回命中 2-3)</h3>
             <div class="table-container">
                 <table>
-                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v42)</th><th>命中</th></tr></thead>
+                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v43)</th><th>命中</th></tr></thead>
                     <tbody id="backtestBody"></tbody>
                 </table>
             </div>
@@ -62,59 +62,49 @@
             if (data.length > 0) processSystem(data);
         }
 
-        function getPyramidPick(history) {
+        function getElasticPick(history) {
             let scores = Array(40).fill(0);
             const lastNums = history[history.length - 1].nums;
-            const recentHistory = history.slice(-3);
             
-            // 區間斷點分析 (0-9, 10-19, 20-29, 30-39)
-            let zoneCounts = [0, 0, 0, 0];
-            recentHistory.forEach(h => h.nums.forEach(n => zoneCounts[Math.floor(n/10)]++));
-
             for (let i = 1; i <= 39; i++) {
                 let miss = 0;
                 for (let j = history.length - 1; j >= 0; j--) {
                     if (!history[j].nums.includes(i)) miss++; else break;
                 }
                 
-                // 1. 基礎遺漏分
-                if (miss === 1) scores[i] += 400;       // 極強斜連
-                else if (miss === 6) scores[i] += 320;  // 關鍵反彈點
-                else if (miss >= 5 && miss <= 9) scores[i] += 280;
-                else if (miss === 0) scores[i] += 200;  // 連莊
-                else if (miss >= 12) scores[i] = 0;     // 剔除極冷
-                else scores[i] += 60;
+                // 動態加權
+                if (miss === 1) scores[i] += 420;       // 斜連
+                else if (miss >= 5 && miss <= 7) scores[i] += 350; // 黃金爆發區
+                else if (miss === 0) scores[i] += 250;  // 連莊補強
+                else if (miss >= 11) scores[i] = 0;     // 嚴格過濾
+                else scores[i] += 80;
 
-                // 2. 區間補償
-                if (zoneCounts[Math.floor(i/10)] === 0) scores[i] += 80;
-
-                // 3. 鄰域動力
-                if (lastNums.some(n => Math.abs(n - i) === 1)) scores[i] += 120;
+                if (lastNums.some(n => Math.abs(n - i) === 1)) scores[i] += 100;
             }
 
             let sorted = Array.from({length: 39}, (_, i) => i + 1).sort((a, b) => scores[b] - scores[a]);
             let final = [];
             
-            // --- 金字塔聯動結構 ---
-            // 頂層: 全域種子
-            let seed = sorted[0];
-            final.push(seed);
+            // 1. 核心 A
+            let coreA = sorted[0];
+            final.push(coreA);
 
-            // 中層: 強斜連 + 強同尾 (繞著 Seed 轉)
-            let mid1 = sorted.find(n => !final.includes(n) && Math.abs(n - seed) === 1); // 鄰號
-            if (mid1) final.push(mid1);
+            // 2. 互補核心 B (遠距離 + 不同尾)
+            let coreB = sorted.find(n => !final.includes(n) && Math.abs(n - coreA) > 12 && (n % 10 !== coreA % 10));
+            if (!coreB) coreB = sorted.find(n => !final.includes(n));
+            final.push(coreB);
+
+            // 3. 張力延伸 (核心 A & B 的最強關聯)
+            let ext1 = sorted.find(n => !final.includes(n) && (Math.abs(n - coreA) === 1 || n % 10 === coreA % 10));
+            if (ext1) final.push(ext1);
             
-            let mid2 = sorted.find(n => !final.includes(n) && (n % 10 === seed % 10)); // 同尾
-            if (mid2) final.push(mid2);
+            let ext2 = sorted.find(n => !final.includes(n) && (Math.abs(n - coreB) === 1 || n % 10 === coreB % 10));
+            if (ext2) final.push(ext2);
 
-            // 底層: 補足高分且具備位移跨度的號碼
+            // 4. 全域補齊
             for (let n of sorted) {
                 if (final.length >= 5) break;
-                if (!final.includes(n)) {
-                    // 確保與現有號碼有一定距離，增加覆蓋
-                    let minDist = Math.min(...final.map(f => Math.abs(f - n)));
-                    if (minDist > 5 || final.length >= 4) final.push(n);
-                }
+                if (!final.includes(n)) final.push(n);
             }
 
             return final.sort((a, b) => a - b);
@@ -124,7 +114,7 @@
             const tbody = document.getElementById('backtestBody');
             tbody.innerHTML = '';
             for (let i = data.length - 1; i > data.length - 11; i--) {
-                const pred = getPyramidPick(data.slice(0, i));
+                const pred = getElasticPick(data.slice(0, i));
                 const hits = pred.filter(n => data[i].nums.includes(n));
                 const tr = document.createElement('tr');
                 if (hits.length >= 3) tr.className = 'best-hit';
@@ -132,7 +122,7 @@
                 tr.innerHTML = `<td>${data[i].date}</td><td>${data[i].nums}</td><td>${pred.map(n=>`<span class="num-badge ${data[i].nums.includes(n)?'hit-badge':''}">${n}</span>`).join('')}</td><td class="hit-count">${hits.length}</td>`;
                 tbody.appendChild(tr);
             }
-            const nextP = getPyramidPick(data);
+            const nextP = getElasticPick(data);
             document.getElementById('predictionResults').innerHTML = nextP.map(n=>`<span class="num-badge" style="font-size:1.2rem">${n}</span>`).join('');
             document.getElementById('analysisSection').style.display = 'block';
         }
