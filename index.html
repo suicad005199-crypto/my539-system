@@ -1,99 +1,48 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-<meta charset="UTF-8">
-<title>模擬預測系統</title>
-<style>
-  body { font-family: Arial, sans-serif; margin: 20px; }
-  table { border-collapse: collapse; margin-top: 10px; }
-  th, td { border: 1px solid #ccc; padding: 5px 10px; text-align: center; }
-  #results { margin-top: 20px; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>539 牌組產生器</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #f4f4f9; }
+        .container { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
+        button { padding: 10px 20px; font-size: 1rem; cursor: pointer; background: #d32f2f; color: white; border: none; border-radius: 5px; transition: 0.3s; }
+        button:hover { background: #b71c1c; }
+        .result { margin-top: 20px; display: flex; gap: 10px; justify-content: center; }
+        .ball { width: 40px; height: 40px; line-height: 40px; background: #ffc107; border-radius: 50%; font-weight: bold; border: 2px solid #ffa000; }
+    </style>
 </head>
 <body>
 
-<h1>模擬預測系統</h1>
-
-<input type="file" id="csvFile" accept=".csv" />
-<button onclick="processCSV()">上傳並分析</button>
-
-<div id="results"></div>
+<div class="container">
+    <h2>今彩 539 產生器</h2>
+    <button onclick="generateNumbers()">產生幸運號碼</button>
+    <div class="result" id="result">
+        </div>
+</div>
 
 <script>
-function processCSV() {
-    const fileInput = document.getElementById('csvFile');
-    if (!fileInput.files.length) {
-        alert("請選擇 CSV 檔案");
-        return;
-    }
-
-    const file = fileInput.files[0];
-    const reader = new FileReader();
-
-    reader.onload = function(e) {
-        const text = e.target.result;
-        const data = parseCSV(text);
-        const analysis = analyzeData(data);
-        displayResults(data, analysis);
-    };
-
-    reader.readAsText(file);
-}
-
-// CSV 解析
-function parseCSV(text) {
-    const lines = text.trim().split('\n');
-    return lines.map(line => line.split(',').map(x => x.trim()));
-}
-
-// 策略分析
-function analyzeData(data) {
-    // 假設每行是 [期號,號碼1,號碼2,...]
-    const counts = {};
-    const totalNumbers = [];
-
-    data.forEach(row => {
-        const numbers = row.slice(1).map(Number);
-        numbers.forEach(n => {
-            counts[n] = (counts[n] || 0) + 1;
-            totalNumbers.push(n);
+    function generateNumbers() {
+        const numbers = [];
+        while(numbers.length < 5) {
+            const r = Math.floor(Math.random() * 39) + 1;
+            if(numbers.indexOf(r) === -1) numbers.push(r);
+        }
+        
+        // 排序
+        numbers.sort((a, b) => a - b);
+        
+        // 渲染畫面
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = '';
+        numbers.forEach(num => {
+            const ball = document.createElement('div');
+            ball.className = 'ball';
+            ball.innerText = num < 10 ? '0' + num : num;
+            resultDiv.appendChild(ball);
         });
-    });
-
-    // 最常出現號碼
-    const sortedCounts = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
-    const mostFrequent = sortedCounts.slice(0, 5).map(x => x[0]);
-
-    // 冷門號碼
-    const leastFrequent = sortedCounts.slice(-5).map(x => x[0]);
-
-    // 奇偶比
-    const odd = totalNumbers.filter(n => n%2===1).length;
-    const even = totalNumbers.filter(n => n%2===0).length;
-
-    return {mostFrequent, leastFrequent, odd, even};
-}
-
-// 顯示結果
-function displayResults(data, analysis) {
-    let html = `<h2>分析結果</h2>`;
-    html += `<p>最常出現號碼: ${analysis.mostFrequent.join(', ')}</p>`;
-    html += `<p>冷門號碼: ${analysis.leastFrequent.join(', ')}</p>`;
-    html += `<p>奇數總數: ${analysis.odd}, 偶數總數: ${analysis.even}</p>`;
-
-    // 模擬下一期預測號碼（簡單策略: 結合最常 + 冷門號碼）
-    const predicted = [...analysis.mostFrequent.slice(0,3), ...analysis.leastFrequent.slice(0,2)];
-    html += `<p>模擬下一期預測號碼: ${predicted.join(', ')}</p>`;
-
-    // 顯示原始資料
-    html += `<h3>歷史資料</h3><table><tr>${data[0].map(h=>`<th>${h}</th>`).join('')}</tr>`;
-    data.slice(1).forEach(row=>{
-        html += `<tr>${row.map(cell=>`<td>${cell}</td>`).join('')}</tr>`;
-    });
-    html += `</table>`;
-
-    document.getElementById('results').innerHTML = html;
-}
+    }
 </script>
 
 </body>
