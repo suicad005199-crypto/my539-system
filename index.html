@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CSV 號碼生成器</title>
+<title>CSV 號碼檢驗器</title>
 <style>
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -33,20 +33,22 @@
   #result {
     margin-top: 20px;
     text-align: center;
-    font-size: 20px;
+    font-size: 18px;
     word-break: break-word;
   }
 </style>
 </head>
 <body>
 
-<h1>CSV 號碼生成器</h1>
+<h1>CSV 號碼檢驗器</h1>
 <input type="file" id="csvFile" accept=".csv">
-<button id="generateBtn">生成號碼組合</button>
+<button id="checkBtn">檢驗號碼</button>
 <div id="result"></div>
 
 <script>
-// 解析 CSV，取得每列號碼
+const targetNumbers = [6,18,28,32,36];
+
+// 解析 CSV
 function parseCSV(text) {
   const rows = text.trim().split(/\r?\n/);
   const data = [];
@@ -58,8 +60,8 @@ function parseCSV(text) {
   return data;
 }
 
-// 根據區間 + 出現次數生成號碼組合
-function getNextNumbers(data) {
+// 根據區間 + 出現次數生成號碼
+function generateNumbers(data) {
   const ranges = [
     [1,10],
     [11,20],
@@ -68,7 +70,6 @@ function getNextNumbers(data) {
     [41,50]
   ];
 
-  // 統計每個號碼出現次數
   const freq = {};
   data.flat().forEach(n => freq[n] = (freq[n] || 0) + 1);
 
@@ -80,7 +81,7 @@ function getNextNumbers(data) {
     for (let i=min; i<=max; i++) {
       candidates.push({num:i, count: freq[i]||0});
     }
-    // 選出出現次數最少的號碼（未出現優先）
+    // 選出出現次數最少的號碼
     candidates.sort((a,b) => a.count - b.count);
     nextNumbers.push(candidates[0].num);
   });
@@ -88,7 +89,17 @@ function getNextNumbers(data) {
   return nextNumbers;
 }
 
-document.getElementById('generateBtn').addEventListener('click', () => {
+// 檢驗是否符合目標號碼
+function checkNumbers(generated) {
+  const sortedGen = [...generated].sort((a,b)=>a-b);
+  const sortedTarget = [...targetNumbers].sort((a,b)=>a-b);
+  for (let i=0;i<5;i++) {
+    if (sortedGen[i] !== sortedTarget[i]) return false;
+  }
+  return true;
+}
+
+document.getElementById('checkBtn').addEventListener('click', () => {
   const fileInput = document.getElementById('csvFile');
   const file = fileInput.files[0];
   const resultDiv = document.getElementById('result');
@@ -102,8 +113,19 @@ document.getElementById('generateBtn').addEventListener('click', () => {
   reader.onload = function(e) {
     const text = e.target.result;
     const data = parseCSV(text);
-    const nextNumbers = getNextNumbers(data);
-    resultDiv.innerHTML = '生成號碼組合：<strong>' + nextNumbers.join(', ') + '</strong>';
+    const generated = generateNumbers(data);
+
+    if (checkNumbers(generated)) {
+      resultDiv.innerHTML = `<strong>生成號碼：${generated.join(', ')} ✅</strong><br>
+      規則：將號碼分為 5 個區間（1–10、11–20、21–30、31–40、41–50），每區挑選近期未出現或出現最少的號碼。`;
+    } else {
+      resultDiv.innerHTML = `<strong>生成號碼：${generated.join(', ')} ❌</strong><br>
+      不符合目標號碼 [${targetNumbers.join(', ')}]。<br>
+      可能原因：<br>
+      1. 某些區間所有號碼都已出現過，無法生成未出現號碼<br>
+      2. 歷史出現次數平分，導致選出的號碼與目標號碼不同<br>
+      3. 區間挑號規則無法保證固定生成特定組合`;
+    }
   };
   reader.readAsText(file);
 });
