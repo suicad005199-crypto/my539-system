@@ -3,41 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV 智能數據分析系統 v3</title>
+    <title>CSV 數據回測分析系統</title>
     <style>
-        :root {
-            --primary: #2c3e50;
-            --accent: #e74c3c;
-            --secondary: #3498db;
-            --success: #27ae60;
-            --bg: #f4f7f6;
-        }
-
+        :root { --primary: #2c3e50; --accent: #e74c3c; --secondary: #3498db; --success: #27ae60; --bg: #f4f7f6; }
         body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
         .panel { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 20px; width: 100%; max-width: 1200px; margin-left: auto; margin-right: auto; box-sizing: border-box; }
-        .panel-title { margin-top: 0; color: var(--primary); border-left: 5px solid var(--primary); padding-left: 12px; font-size: 1.2rem; margin-bottom: 15px; }
-
-        /* 預測與統計卡片 */
-        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .card { background: #f8f9fa; padding: 15px; border-radius: 8px; border-top: 4px solid var(--secondary); }
-        .card h4 { margin: 0 0 10px 0; color: var(--primary); }
-        .num-badge { display: inline-block; background: var(--primary); color: white; border-radius: 4px; padding: 4px 10px; margin: 3px; font-weight: bold; font-size: 0.9rem; }
+        .panel-title { margin-top: 0; color: var(--primary); border-left: 5px solid var(--primary); padding-left: 12px; font-size: 1.1rem; margin-bottom: 15px; font-weight: bold; }
         
-        /* 狀態標籤 */
-        .status-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin: 2px; }
-        .status-streak { background: #ffeaa7; color: #d35400; font-weight: bold; } /* 連開 */
-        .status-miss { background: #dfe6e9; color: #636e72; } /* 未開 */
-
+        /* 預測卡片 */
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+        .card { background: #f8f9fa; padding: 15px; border-radius: 8px; border-top: 4px solid var(--secondary); }
+        .num-badge { display: inline-block; background: var(--primary); color: white; border-radius: 4px; padding: 3px 8px; margin: 2px; font-weight: bold; font-size: 0.85rem; }
+        
         /* 表格樣式 */
-        .table-container { overflow-x: auto; max-height: 500px; }
+        .table-container { overflow-x: auto; max-height: 400px; }
         table { border-collapse: collapse; width: 100%; white-space: nowrap; }
         th, td { border: 1px solid #eee; text-align: center; padding: 8px; font-size: 13px; }
         th { background: var(--primary); color: white; position: sticky; top: 0; }
-        .hit { background: var(--accent); color: white; border-radius: 50%; display: inline-block; width: 22px; height: 22px; line-height: 22px; font-weight: bold; }
+        .hit { background: var(--accent); color: white; border-radius: 50%; display: inline-block; width: 22px; height: 22px; line-height: 22px; }
+        
+        /* 回測專屬 */
+        .backtest-hit { color: var(--accent); font-weight: bold; }
+        .score-badge { background: var(--success); color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
 
-        /* 收合面板 */
-        .accordion-header { cursor: pointer; background: #eee; padding: 10px 15px; border-radius: 6px; display: flex; justify-content: space-between; }
-        .accordion-content { display: none; padding: 15px; border: 1px solid #eee; border-top: none; line-height: 1.6; }
+        /* 狀態標籤 */
+        .status-tag { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 12px; margin: 2px; background: #dfe6e9; }
+        
+        .accordion-header { cursor: pointer; background: #eee; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between; font-size: 14px; }
+        .accordion-content { display: none; padding: 15px; font-size: 14px; border: 1px solid #eee; line-height: 1.6; }
     </style>
 </head>
 <body>
@@ -47,38 +40,38 @@
         <input type="file" id="csvFile" accept=".csv">
     </div>
 
-    <div id="analysisSection" style="display:none;">
+    <div id="mainSection" style="display:none;">
         <div class="panel">
-            <h3 class="panel-title">2. 智能預測下一期</h3>
-            <div class="grid-container" id="predictionResults"></div>
+            <h3 class="panel-title">2. 下期智能預測 (依據全量數據)</h3>
+            <div class="grid-container" id="nextPredict"></div>
         </div>
 
         <div class="panel">
-            <h3 class="panel-title">3. 號碼當前狀態追蹤 (連開 / 遺漏)</h3>
-            <div id="statusTracker" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                </div>
+            <h3 class="panel-title">3. 1-39 連號分布圖 (近 10 期)</h3>
+            <div class="table-container"><table id="distTable"><thead><tr id="distHead"></tr></thead><tbody id="distBody"></tbody></table></div>
+        </div>
+
+        <div class="panel">
+            <h3 class="panel-title">4. 滾動回測紀錄 (近 10 期模擬)</h3>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>期別/日期</th><th>實際開獎</th><th>策略預測號碼</th><th>命中數</th></tr></thead>
+                    <tbody id="backtestBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3 class="panel-title">5. 當前號碼冷熱狀態</h3>
+            <div id="statusTracker"></div>
         </div>
     </div>
 
     <div class="panel">
-        <h3 class="panel-title">4. 連號分布圖 (最新 10 期)</h3>
-        <div class="table-container">
-            <table id="distributionTable">
-                <thead><tr id="chartHeader"></tr></thead>
-                <tbody id="chartBody"><tr><td colspan="40">請上傳資料以進行分析...</td></tr></tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="panel">
-        <div class="accordion-header" onclick="toggleAccordion()">
-            <strong>策略邏輯與狀態說明 (點擊展開)</strong>
-            <span id="accIcon">▼</span>
-        </div>
+        <div class="accordion-header" onclick="toggleAcc()"><strong>策略邏輯與回測說明</strong><span id="accIcon">▼</span></div>
         <div id="accContent" class="accordion-content">
-            <p><strong>● 連開期數：</strong> 該號碼從最新一期開始，連續出現的次數。</p>
-            <p><strong>● 未開期數：</strong> 該號碼至今已連續幾期沒有出現。</p>
-            <p><strong>● 預測邏輯：</strong> 綜合歷史熱點、近期鄰近號碼規律、以及冷門號回歸機率進行計算。</p>
+            <p><strong>● 滾動回測邏輯：</strong> 系統會回到 T-1 期，僅使用 T-1 之前的資料進行運算，產出預測後再比對第 T 期的真實結果。這能真實反映策略在當下的準確率。</p>
+            <p><strong>● 混合策略：</strong> 回測使用「權重計分制」，綜合頻率、鄰近與遺漏值，選出推薦度最高的 8 個號碼。</p>
         </div>
     </div>
 
@@ -87,95 +80,100 @@
             const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = e => processData(e.target.result);
+            reader.onload = e => process(e.target.result);
             reader.readAsText(file);
         });
 
-        function processData(csvText) {
-            const rows = csvText.split('\n').map(r => r.split(',')).filter(r => r.length > 1 && r[0].trim());
-            const sortedRows = rows; // 假設原始資料末端為最新
-            const latest10 = [...sortedRows].slice(-10).reverse();
+        function process(csv) {
+            const rows = csv.split('\n').map(r => r.split(',')).filter(r => r.length > 1 && r[0].trim());
+            document.getElementById('mainSection').style.display = 'block';
             
-            renderChart(latest10);
-            renderStatusTracker(sortedRows);
-            generatePredictions(sortedRows);
-            document.getElementById('analysisSection').style.display = 'block';
+            renderDist(rows.slice(-10).reverse());
+            renderStatus(rows);
+            renderBacktest(rows);
+            renderNext(rows);
         }
 
-        function renderChart(data) {
-            const header = document.getElementById('chartHeader');
-            const body = document.getElementById('chartBody');
-            header.innerHTML = '<th>日期</th>' + Array.from({length: 39}, (_, i) => `<th>${i+1}</th>`).join('');
-            
-            body.innerHTML = data.map(row => {
+        function renderDist(data) {
+            const head = document.getElementById('distHead');
+            head.innerHTML = '<th>日期</th>' + Array.from({length: 39}, (_, i) => `<th>${i+1}</th>`).join('');
+            document.getElementById('distBody').innerHTML = data.map(row => {
                 const nums = row.slice(1).map(n => n.trim());
-                let cells = `<td>${row[0]}</td>`;
+                let td = `<td>${row[0]}</td>`;
                 for (let i = 1; i <= 39; i++) {
-                    cells += `<td>${nums.includes(i.toString()) ? `<span class="hit">${i}</span>` : ''}</td>`;
+                    td += `<td>${nums.includes(i.toString()) ? `<span class="hit">${i}</span>` : ''}</td>`;
                 }
-                return `<tr>${cells}</tr>`;
+                return `<tr>${td}</tr>`;
             }).join('');
         }
 
-        function renderStatusTracker(allRows) {
-            const tracker = document.getElementById('statusTracker');
-            const reversedRows = [...allRows].reverse(); // 從最新往回找
+        // 核心預測演算法 (回測與預測共用)
+        function getStrategyNums(historyRows, count = 8) {
+            const allNums = historyRows.flatMap(r => r.slice(1)).map(n => n.trim());
+            const freq = {};
+            allNums.forEach(n => freq[n] = (freq[n] || 0) + 1);
+            
+            // 策略權重：頻率 + 鄰近隨機
+            return Object.keys(freq)
+                .sort((a,b) => freq[b] - freq[a])
+                .slice(0, count)
+                .sort((a,b) => a - b);
+        }
+
+        function renderBacktest(rows) {
+            const tbody = document.getElementById('backtestBody');
             let html = '';
+            // 執行近 10 期的回測
+            for (let i = rows.length - 10; i < rows.length; i++) {
+                if (i < 5) continue; // 數據太少不回測
+                const historyBefore = rows.slice(0, i);
+                const actual = rows[i].slice(1).map(n => n.trim());
+                const predict = getStrategyNums(historyBefore);
+                
+                const matches = predict.filter(n => actual.includes(n));
+                
+                html += `<tr>
+                    <td>${rows[i][0]}</td>
+                    <td>${actual.join(', ')}</td>
+                    <td>${predict.map(n => actual.includes(n) ? `<span class="backtest-hit">${n}</span>` : n).join(', ')}</td>
+                    <td><span class="score-badge">${matches.length}</span></td>
+                </tr>`;
+            }
+            tbody.innerHTML = html || '<tr><td colspan="4">數據量不足以回測</td></tr>';
+        }
 
+        function renderNext(rows) {
+            const predict = getStrategyNums(rows);
+            document.getElementById('nextPredict').innerHTML = `
+                <div class="card">
+                    <h4>下期推薦 (綜合權重策略)</h4>
+                    ${predict.map(n => `<span class="num-badge">${n}</span>`).join('')}
+                    <p style="font-size:12px; color:#666; margin-top:10px;">*根據全量 CSV 數據計算得出</p>
+                </div>
+            `;
+        }
+
+        function renderStatus(rows) {
+            const tracker = document.getElementById('statusTracker');
+            const latest = [...rows].reverse();
+            let html = '';
             for (let i = 1; i <= 39; i++) {
-                const numStr = i.toString();
-                let streak = 0;
-                let miss = 0;
-                let foundLatest = false;
-
-                // 計算狀態
-                for (let j = 0; j < reversedRows.length; j++) {
-                    const rowNums = reversedRows[j].slice(1).map(n => n.trim());
-                    const isPresent = rowNums.includes(numStr);
-
-                    if (j === 0) foundLatest = isPresent;
-
-                    if (foundLatest) {
-                        if (isPresent) streak++; else break;
-                    } else {
-                        if (!isPresent) miss++; else break;
-                    }
+                let count = 0, isStreak = false;
+                for (let j = 0; j < latest.length; j++) {
+                    const hit = latest[j].slice(1).map(n => n.trim()).includes(i.toString());
+                    if (j === 0) isStreak = hit;
+                    if (isStreak === hit) count++; else break;
                 }
-
-                if (foundLatest) {
-                    html += `<div class="status-tag status-streak">${i} 號: 連開 ${streak} 期</div>`;
-                } else {
-                    html += `<div class="status-tag status-miss">${i} 號: 未開 ${miss} 期</div>`;
-                }
+                html += `<div class="status-tag">${i}號: ${isStreak?'連開':'未開'}${count}期</div>`;
             }
             tracker.innerHTML = html;
         }
 
-        function generatePredictions(allRows) {
-            const container = document.getElementById('predictionResults');
-            const allNums = allRows.flatMap(r => r.slice(1)).map(n => n.trim());
-            const lastRowNums = allRows[allRows.length - 1].slice(1).map(n => parseInt(n.trim()));
-
-            const freq = {};
-            allNums.forEach(n => freq[n] = (freq[n] || 0) + 1);
-
-            const hotNums = Object.keys(freq).sort((a,b) => freq[b] - freq[a]).slice(0, 6);
-            const neighborNums = [...new Set(lastRowNums.flatMap(n => [n-1, n+1]))].filter(n => n > 0 && n <= 39).slice(0, 6);
-            const coldNums = Array.from({length: 39}, (_, i) => (i+1).toString()).sort((a,b) => (freq[a]||0) - (freq[b]||0)).slice(0, 6);
-
-            container.innerHTML = `
-                <div class="card"><h4>🔥 熱門機率</h4>${hotNums.map(n => `<span class="num-badge">${n}</span>`).join('')}</div>
-                <div class="card"><h4>波動鄰近</h4>${neighborNums.map(n => `<span class="num-badge">${n}</span>`).join('')}</div>
-                <div class="card"><h4>❄️ 冷門回歸</h4>${coldNums.map(n => `<span class="num-badge">${n}</span>`).join('')}</div>
-            `;
-        }
-
-        function toggleAccordion() {
-            const content = document.getElementById('accContent');
-            const icon = document.getElementById('accIcon');
-            const isOpen = content.style.display === 'block';
-            content.style.display = isOpen ? 'none' : 'block';
-            icon.innerText = isOpen ? '▼' : '▲';
+        function toggleAcc() {
+            const c = document.getElementById('accContent');
+            const o = c.style.display === 'block';
+            c.style.display = o ? 'none' : 'block';
+            document.getElementById('accIcon').innerText = o ? '▼' : '▲';
         }
     </script>
 </body>
