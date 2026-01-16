@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 三位一體共振系統 - 優化 v35</title>
+    <title>AI 多層次動態系統 - 優化 v36</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e74c3c; --success: #27ae60; --bg: #f4f7f6; }
         body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 20px; }
@@ -24,28 +24,28 @@
 <body>
 
     <div class="panel">
-        <h3 class="panel-title">1. 數據解析 (v35 三位一體版)</h3>
+        <h3 class="panel-title">1. 數據解析 (v36 多層次動態版)</h3>
         <input type="file" id="csvFile" accept=".csv">
     </div>
 
     <div id="analysisSection" style="display:none;">
         <div class="panel">
-            <h3 class="panel-title">2. AI 三位一體預測 (下一期建議)</h3>
+            <h3 class="panel-title">2. AI 多層次預測 (下一期建議)</h3>
             <div id="predictionResults"></div>
         </div>
 
         <div class="panel">
-            <h3 class="panel-title">3. 連號分布圖 (最新 10 期)</h3>
+            <h3 class="panel-title">3. 連號分布圖 (趨勢動態)</h3>
             <div class="table-container">
-                <table id="distTable"><thead><tr id="chartHeader"></tr></thead><tbody id="chartBody"></tbody></table>
+                <table><thead><tr id="chartHeader"></tr></thead><tbody id="chartBody"></tbody></table>
             </div>
         </div>
 
         <div class="panel">
-            <h3 class="panel-title">4. 滾動回測 (集彈爆發目標)</h3>
+            <h3 class="panel-title">4. 滾動回測 (目標：找回命中 3)</h3>
             <div class="table-container">
                 <table>
-                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v35)</th><th>命中</th></tr></thead>
+                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v36)</th><th>命中</th></tr></thead>
                     <tbody id="backtestBody"></tbody>
                 </table>
             </div>
@@ -53,13 +53,12 @@
     </div>
 
     <div class="panel">
-        <h3 class="panel-title" onclick="toggleStrategy()">5. 策略邏輯說明 (點擊展開/收合) <span>▼</span></h3>
+        <h3 class="panel-title" onclick="toggleStrategy()">5. 策略邏輯說明 <span>▼</span></h3>
         <div id="strategyContent" class="collapsible-content">
-            <strong>v35 核心優化：</strong><br>
-            * <strong>三位一體核心 (Trinity)：</strong>強制前 3 顆球具備「核心+同尾+鄰號」的三角關係，這能大幅提升命中 2-3 號的機率。<br>
-            * <strong>斜連動能補償：</strong>針對遺漏 1 期的號碼大幅加權，捕捉 539 最強勁的斜連走勢。<br>
-            * <strong>遺漏黃金反彈：</strong>資源集中於遺漏 5-9 期的區間，放棄無效的中冷號碼。<br>
-            * <strong>動態分布優化：</strong>後 2 顆球作為防禦彈，自動遞補剩餘區域的高分號，確保基本覆蓋率。
+            <strong>v36 核心優化：</strong><br>
+            * <strong>多層次權重：</strong>結合遺漏值（v11）與引力中心（v25）。<br>
+            * <strong>冷熱對沖：</strong>強制組合包含連莊/斜連（熱）與反彈（中冷），增加覆蓋廣度。<br>
+            * <strong>二次聚類：</strong>選出核心號後，自動搜尋其對稱號與同尾號，強化命中 2 號的結構力。
         </div>
     </div>
 
@@ -87,9 +86,10 @@
             if (data.length > 0) processSystem(data);
         }
 
-        function getTrinityPick(history) {
+        function getMultiTierPick(history) {
             let scores = Array(40).fill(0);
             const lastNums = history[history.length - 1].nums;
+            const recentNums = history.slice(-5).flatMap(r => r.nums);
             
             for (let i = 1; i <= 39; i++) {
                 let miss = 0;
@@ -97,36 +97,41 @@
                     if (!history[j].nums.includes(i)) miss++; else break;
                 }
                 
-                // 遺漏加權 (精簡版 v25 邏輯)
-                if (miss >= 5 && miss <= 9) scores[i] += 280;
-                else if (miss === 1) scores[i] += 220; // 斜連核心
-                else if (miss === 0) scores[i] += 160; // 連莊
-                else if (miss >= 12) scores[i] -= 50;  // 剔除雜訊
-                else scores[i] += 60;
+                // 層次 1: 遺漏值加權
+                if (miss === 1) scores[i] += 260;       // 斜連
+                else if (miss === 0) scores[i] += 180;  // 連莊
+                else if (miss >= 5 && miss <= 8) scores[i] += 220; // 核心反彈
+                else if (miss >= 12 && miss <= 15) scores[i] += 120; // 冷號補償
+                else scores[i] += 40;
 
-                // 鄰號加成
+                // 層次 2: 鄰域動能
                 if (lastNums.some(n => Math.abs(n - i) === 1)) scores[i] += 100;
+                
+                // 層次 3: 近期出球頻率
+                let freq = recentNums.filter(n => n === i).length;
+                scores[i] += freq * 30;
             }
 
             let sorted = Array.from({length: 39}, (_, i) => i + 1).sort((a, b) => scores[b] - scores[a]);
             let final = [];
             
-            // 1. 三位一體核心
-            let seed = sorted[0];
-            final.push(seed);
-            
-            // 尋找與 Seed 同尾的最佳號
-            let bestTail = sorted.find(n => n !== seed && n % 10 === seed % 10);
-            if (bestTail) final.push(bestTail);
-            
-            // 尋找與 Seed 或 BestTail 鄰近的最佳號
-            let bestNeighbor = sorted.find(n => !final.includes(n) && final.some(f => Math.abs(f - n) === 1));
-            if (bestNeighbor) final.push(bestNeighbor);
+            // 規則選號：確保冷熱平衡
+            // 1. 先取 2 顆高分熱號 (miss <= 1)
+            let hotOnes = sorted.filter(n => history[history.length-1].nums.includes(n) || history[history.length-2].nums.includes(n)).slice(0, 2);
+            hotOnes.forEach(n => final.push(n));
 
-            // 2. 補齊剩餘名額 (取全域次高，確保覆蓋)
+            // 2. 取 1 顆高分中冷反彈 (miss >= 5)
+            let coolOne = sorted.find(n => !final.includes(n) && !recentNums.includes(n));
+            if (coolOne) final.push(coolOne);
+
+            // 3. 補齊同尾或高分關聯
             for (let n of sorted) {
                 if (final.length >= 5) break;
-                if (!final.includes(n)) final.push(n);
+                if (final.includes(n)) continue;
+                // 優先選擇與已選號碼同尾的
+                if (final.some(f => f % 10 === n % 10) || final.length >= 4) {
+                    final.push(n);
+                }
             }
 
             return final.sort((a, b) => a - b);
@@ -137,7 +142,7 @@
             const tbody = document.getElementById('backtestBody');
             tbody.innerHTML = '';
             for (let i = data.length - 1; i > data.length - 11; i--) {
-                const pred = getTrinityPick(data.slice(0, i));
+                const pred = getMultiTierPick(data.slice(0, i));
                 const hits = pred.filter(n => data[i].nums.includes(n));
                 const tr = document.createElement('tr');
                 if (hits.length >= 3) tr.className = 'best-hit';
@@ -145,7 +150,7 @@
                 tr.innerHTML = `<td>${data[i].date}</td><td>${data[i].nums}</td><td>${pred.map(n=>`<span class="num-badge ${data[i].nums.includes(n)?'hit-badge':''}">${n}</span>`).join('')}</td><td class="hit-count">${hits.length}</td>`;
                 tbody.appendChild(tr);
             }
-            const nextP = getTrinityPick(data);
+            const nextP = getMultiTierPick(data);
             document.getElementById('predictionResults').innerHTML = nextP.map(n=>`<span class="num-badge" style="font-size:1.2rem">${n}</span>`).join('');
             document.getElementById('analysisSection').style.display = 'block';
         }
