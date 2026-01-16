@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 三維熱軌跡系統 - 優化 v47</title>
+    <title>AI 回歸質點系統 - 優化 v48</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e74c3c; --success: #27ae60; --bg: #f4f7f6; }
         body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 20px; }
@@ -22,21 +22,21 @@
 <body>
 
     <div class="panel">
-        <h3 class="panel-title">1. 數據解析 (v47 三維熱軌跡版)</h3>
+        <h3 class="panel-title">1. 數據解析 (v48 質點回歸版)</h3>
         <input type="file" id="csvFile" accept=".csv">
     </div>
 
     <div id="analysisSection" style="display:none;">
         <div class="panel">
-            <h3 class="panel-title">2. AI 熱軌跡預測 (下一期建議)</h3>
+            <h3 class="panel-title">2. AI 質點預測 (下一期建議)</h3>
             <div id="predictionResults"></div>
         </div>
 
         <div class="panel">
-            <h3 class="panel-title">3. 滾動回測 (衝刺命中 3 號)</h3>
+            <h3 class="panel-title">3. 滾動回測 (目標：找回覆蓋率)</h3>
             <div class="table-container">
                 <table>
-                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v47)</th><th>命中</th></tr></thead>
+                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v48)</th><th>命中</th></tr></thead>
                     <tbody id="backtestBody"></tbody>
                 </table>
             </div>
@@ -62,16 +62,11 @@
             if (data.length > 0) processSystem(data);
         }
 
-        function getHeatTrackPick(history) {
+        function getGravityCorePick(history) {
             let scores = Array(40).fill(0);
             let missArr = Array(40).fill(0);
             const lastNums = history[history.length - 1].nums;
-            const recentNums = history.slice(-10).flatMap(r => r.nums);
             
-            // 1. 尾數熱度統計
-            let tailFreq = Array(10).fill(0);
-            recentNums.forEach(n => tailFreq[n % 10]++);
-
             for (let i = 1; i <= 39; i++) {
                 let m = 0;
                 for (let j = history.length - 1; j >= 0; j--) {
@@ -79,48 +74,37 @@
                 }
                 missArr[i] = m;
 
-                // 基礎評分
-                if (m === 1) scores[i] += 450;        // 斜連
-                else if (m === 0) scores[i] += 200;   // 連莊
-                else if (m >= 6 && m <= 9) scores[i] += 380; // 黃金反彈
-                else if (m >= 13) scores[i] = 0;      // 剔除極冷
-                else scores[i] += 80;
+                // 核心加權：集中在斜連 (1) 與反彈 (5-9)
+                if (m === 1) scores[i] += 550;
+                else if (m >= 5 && m <= 9) scores[i] += 420;
+                else if (m === 0) scores[i] += 200;
+                else if (m >= 12) scores[i] = 0;
+                else scores[i] += 50;
 
-                // 尾數加權
-                scores[i] += tailFreq[i % 10] * 15;
+                // 物理鄰號動力
+                if (lastNums.some(n => Math.abs(n - i) === 1)) scores[i] += 120;
             }
 
             let sorted = Array.from({length: 39}, (_, i) => i + 1).sort((a, b) => scores[b] - scores[a]);
             let final = [];
             
-            // 核心 1: 最強動能號
-            let core1 = sorted[0];
-            final.push(core1);
+            // 1. 選取二進制核心
+            let seed1 = sorted.find(n => missArr[n] === 1) || sorted[0];
+            final.push(seed1);
+            
+            let seed2 = sorted.find(n => !final.includes(n) && missArr[n] >= 5 && missArr[n] <= 9) || sorted[1];
+            final.push(seed2);
 
-            // 核心 2: 尋找與 core1 同尾或鄰號中「斜率最優」者
-            let core2 = sorted.slice(1).find(n => {
-                let isRel = (n % 10 === core1 % 10) || Math.abs(n - core1) === 1;
-                return isRel && (missArr[n] === 1 || (missArr[n] >= 6 && missArr[n] <= 9));
-            });
-            if (!core2) core2 = sorted[1];
-            final.push(core2);
-
-            // 核心 3: 強制補入一個不同區間的高分號 (增加覆蓋)
-            let core3 = sorted.find(n => !final.includes(n) && Math.abs(Math.floor(n/10) - Math.floor(core1/10)) >= 1);
-            if (core3) final.push(core3);
-
-            // 4. 共振補齊 (尋找與已選 3 顆號碼關聯度最高的)
+            // 2. 圍繞核心搜尋共振號 (同尾/鄰號)
             for (let n of sorted) {
                 if (final.length >= 5) break;
                 if (final.includes(n)) continue;
 
-                let relScore = final.reduce((acc, f) => {
-                    if (f % 10 === n % 10) return acc + 2;
-                    if (Math.abs(f - n) === 1) return acc + 1;
-                    return acc;
-                }, 0);
-
-                if (relScore >= 1 || final.length >= 4) final.push(n);
+                // 計算與已選號碼的關聯性
+                let hasRelation = final.some(f => (f % 10 === n % 10) || (Math.abs(f - n) === 1));
+                if (hasRelation || final.length >= 4) {
+                    final.push(n);
+                }
             }
 
             return final.sort((a, b) => a - b);
@@ -130,7 +114,7 @@
             const tbody = document.getElementById('backtestBody');
             tbody.innerHTML = '';
             for (let i = data.length - 1; i > data.length - 11; i--) {
-                const pred = getHeatTrackPick(data.slice(0, i));
+                const pred = getGravityCorePick(data.slice(0, i));
                 const hits = pred.filter(n => data[i].nums.includes(n));
                 const tr = document.createElement('tr');
                 if (hits.length >= 3) tr.className = 'best-hit';
@@ -138,7 +122,7 @@
                 tr.innerHTML = `<td>${data[i].date}</td><td>${data[i].nums}</td><td>${pred.map(n=>`<span class="num-badge ${data[i].nums.includes(n)?'hit-badge':''}">${n}</span>`).join('')}</td><td class="hit-count">${hits.length}</td>`;
                 tbody.appendChild(tr);
             }
-            const nextP = getHeatTrackPick(data);
+            const nextP = getGravityCorePick(data);
             document.getElementById('predictionResults').innerHTML = nextP.map(n=>`<span class="num-badge" style="font-size:1.2rem">${n}</span>`).join('');
             document.getElementById('analysisSection').style.display = 'block';
         }
