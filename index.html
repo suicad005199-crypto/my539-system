@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 引力重心共振系統 - 優化 v33</title>
+    <title>AI 雙軌共振系統 - 優化 v34</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e74c3c; --success: #27ae60; --bg: #f4f7f6; }
         body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 20px; }
@@ -24,28 +24,28 @@
 <body>
 
     <div class="panel">
-        <h3 class="panel-title">1. 數據解析 (v33 引力重心版)</h3>
+        <h3 class="panel-title">1. 數據解析 (v34 雙軌共振版)</h3>
         <input type="file" id="csvFile" accept=".csv">
     </div>
 
     <div id="analysisSection" style="display:none;">
         <div class="panel">
-            <h3 class="panel-title">2. AI 引力重心預測 (下一期建議)</h3>
+            <h3 class="panel-title">2. AI 雙軌預測 (下一期建議)</h3>
             <div id="predictionResults"></div>
         </div>
 
         <div class="panel">
             <h3 class="panel-title">3. 連號分布圖 (最新 10 期)</h3>
             <div class="table-container">
-                <table><thead><tr id="chartHeader"></tr></thead><tbody id="chartBody"></tbody></table>
+                <table id="distTable"><thead><tr id="chartHeader"></tr></thead><tbody id="chartBody"></tbody></table>
             </div>
         </div>
 
         <div class="panel">
-            <h3 class="panel-title">4. 滾動回測 (參考 v11/v25 邏輯)</h3>
+            <h3 class="panel-title">4. 滾動回測 (集彈 3 + 防禦 2)</h3>
             <div class="table-container">
                 <table>
-                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v33)</th><th>命中</th></tr></thead>
+                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v34)</th><th>命中</th></tr></thead>
                     <tbody id="backtestBody"></tbody>
                 </table>
             </div>
@@ -55,11 +55,11 @@
     <div class="panel">
         <h3 class="panel-title" onclick="toggleStrategy()">5. 策略邏輯說明 (點擊展開/收合) <span>▼</span></h3>
         <div id="strategyContent" class="collapsible-content">
-            <strong>v33 核心優化：</strong><br>
-            * <strong>重心引力 (Gravity)：</strong>仿效 v25，先選出最高分號碼為重心，對其同尾與鄰號實施「動態加權」，誘導號碼集結而不綁死。<br>
-            * <strong>黃金遺漏區：</strong>優化遺漏 5-10 期的反彈權重，這是 v11 穩定覆蓋率的關鍵。<br>
-            * <strong>跨區平衡：</strong>強制預測組合必須跨越至少 3 個十位數區間，避免過度聚攏導致「全軍覆沒」。<br>
-            * <strong>連莊補償：</strong>對上期獎號（遺漏 0）保留高權重，抓取 539 常見的連莊趨勢。
+            <strong>v34 核心優化：</strong><br>
+            * <strong>雙軌分配 (Dual-Track)：</strong>將 5 顆球拆分為「3 顆進攻彈」與「2 顆防禦彈」。進攻彈負責鎖定熱區群聚，防禦彈負責遠端覆蓋。<br>
+            * <strong>共振強化：</strong>進攻組強制執行「Seed + 鄰號 + 同尾」邏輯，模擬 v25 的局部爆發力。<br>
+            * <strong>防禦擴張：</strong>防禦組優先選取遺漏 6-11 期且與進攻組距離超過 10 號以上的號碼，找回 v11 的覆蓋率。<br>
+            * <strong>斜連加權：</strong>特別對遺漏 1 期的號碼（潛在斜連）增加 20% 權重，捕捉常見的走勢位移。
         </div>
     </div>
 
@@ -87,7 +87,7 @@
             if (data.length > 0) processSystem(data);
         }
 
-        function getGravityPick(history) {
+        function getDualTrackPick(history) {
             let scores = Array(40).fill(0);
             const lastNums = history[history.length - 1].nums;
             
@@ -96,38 +96,43 @@
                 for (let j = history.length - 1; j >= 0; j--) {
                     if (!history[j].nums.includes(i)) miss++; else break;
                 }
+                // 基礎分 (參考 v11)
+                if (miss >= 6 && miss <= 11) scores[i] += 280;
+                else if (miss === 1) scores[i] += 200; // 斜連加強
+                else if (miss === 0) scores[i] += 150; // 連莊
+                else scores[i] += 50;
                 
-                // 1. 遺漏權重 (參考 v11 穩定模型)
-                if (miss >= 5 && miss <= 10) scores[i] += 250;
-                else if (miss === 0) scores[i] += 180; // 連莊
-                else if (miss <= 2) scores[i] += 120;
-                else scores[i] += 40;
-
-                // 2. 鄰號初始分數
                 if (lastNums.some(n => Math.abs(n - i) === 1)) scores[i] += 100;
             }
 
-            // 3. 找出第一重心並施加引力 (參考 v25)
             let sorted = Array.from({length: 39}, (_, i) => i + 1).sort((a, b) => scores[b] - scores[a]);
-            let seed = sorted[0];
+            let final = [];
             
-            for (let i = 1; i <= 39; i++) {
-                if (i % 10 === seed % 10) scores[i] *= 1.4; // 同尾加強
-                if (Math.abs(i - seed) <= 1) scores[i] *= 1.3; // 鄰號加強
+            // Track A: 進攻組 (3顆)
+            let seed = sorted[0];
+            final.push(seed);
+            
+            // 找同尾或連號中分數最高的
+            let resonance = sorted.slice(1).filter(n => (n % 10 === seed % 10) || Math.abs(n - seed) === 1);
+            for (let i = 0; i < 2 && i < resonance.length; i++) {
+                final.push(resonance[i]);
+            }
+            
+            // 如果進攻組不足3顆，用高分補
+            while(final.length < 3) {
+                let next = sorted.find(n => !final.includes(n));
+                final.push(next);
             }
 
-            // 4. 最終選號 (加入區間防禦)
-            sorted = Array.from({length: 39}, (_, i) => i + 1).sort((a, b) => scores[b] - scores[a]);
-            let final = [];
-            let zoneCount = [0, 0, 0, 0]; // 1-10, 11-20, 21-30, 31-39
-
+            // Track B: 防禦組 (2顆) - 尋找與進攻組有距離的高分號
             for (let n of sorted) {
                 if (final.length >= 5) break;
-                let z = Math.floor((n-1)/10);
-                if (zoneCount[z] >= 2) continue; // 單區不超過 2 個，保證廣度
+                if (final.includes(n)) continue;
                 
-                final.push(n);
-                zoneCount[z]++;
+                let dist = Math.min(...final.map(f => Math.abs(f - n)));
+                if (dist > 8 || final.length >= 4) { // 優先選遠的，最後一顆隨意
+                    final.push(n);
+                }
             }
 
             return final.sort((a, b) => a - b);
@@ -138,7 +143,7 @@
             const tbody = document.getElementById('backtestBody');
             tbody.innerHTML = '';
             for (let i = data.length - 1; i > data.length - 11; i--) {
-                const pred = getGravityPick(data.slice(0, i));
+                const pred = getDualTrackPick(data.slice(0, i));
                 const hits = pred.filter(n => data[i].nums.includes(n));
                 const tr = document.createElement('tr');
                 if (hits.length >= 3) tr.className = 'best-hit';
@@ -146,7 +151,7 @@
                 tr.innerHTML = `<td>${data[i].date}</td><td>${data[i].nums}</td><td>${pred.map(n=>`<span class="num-badge ${data[i].nums.includes(n)?'hit-badge':''}">${n}</span>`).join('')}</td><td class="hit-count">${hits.length}</td>`;
                 tbody.appendChild(tr);
             }
-            const nextP = getGravityPick(data);
+            const nextP = getDualTrackPick(data);
             document.getElementById('predictionResults').innerHTML = nextP.map(n=>`<span class="num-badge" style="font-size:1.2rem">${n}</span>`).join('');
             document.getElementById('analysisSection').style.display = 'block';
         }
