@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 雙核共振系統 - 優化 v94</title>
+    <title>AI 全息引力系統 - 優化 v95</title>
     <style>
         :root { --p: #2c3e50; --s: #27ae60; --b: #f4f7f6; }
         body { font-family: sans-serif; background: var(--b); padding: 20px; }
@@ -19,13 +19,13 @@
 <body>
 
     <div class="panel">
-        <h3>1. 數據解析 (v94 雙核共振版)</h3>
+        <h3>1. 數據解析 (v95 全息引力版)</h3>
         <input type="file" id="csvFile" accept=".csv">
     </div>
 
     <div id="resSection" style="display:none;">
         <div class="panel">
-            <h3>2. AI 雙核預測 (衝刺 40% 命中 3)</h3>
+            <h3>2. AI 全息預測 (衝刺 40% 命中 3)</h3>
             <div id="predResult"></div>
         </div>
         <div class="panel">
@@ -51,56 +51,60 @@
             tbody.innerHTML = '';
             
             for (let i = data.length - 1; i > data.length - 11; i--) {
-                const pred = getDualCorePick(data.slice(0, i));
+                const pred = getHolographicPick(data.slice(0, i));
                 const hits = pred.filter(n => data[i].nums.includes(n));
                 const tr = document.createElement('tr');
                 if (hits.length >= 3) tr.className = 'best-hit';
                 tr.innerHTML = `<td>${data[i].date}</td><td>${data[i].nums}</td><td>${pred.map(n=>`<span class="num-badge ${data[i].nums.includes(n)?'hit-badge':''}">${n}</span>`).join('')}</td><td class="hit-count">${hits.length}</td>`;
                 tbody.appendChild(tr);
             }
-            document.getElementById('predResult').innerHTML = getDualCorePick(data).map(n=>`<span class="num-badge" style="font-size:1.4rem">${n}</span>`).join('');
+            document.getElementById('predResult').innerHTML = getHolographicPick(data).map(n=>`<span class="num-badge" style="font-size:1.4rem">${n}</span>`).join('');
             document.getElementById('resSection').style.display = 'block';
         }
 
-        function getDualCorePick(hist) {
+        function getHolographicPick(hist) {
             let sc = Array(40).fill(0), ms = Array(40).fill(0);
-            const last = hist[hist.length-1].nums, recent = hist.slice(-7).flatMap(h=>h.nums);
+            const last = hist[hist.length-1].nums, recent = hist.slice(-8).flatMap(h=>h.nums);
             let tf = Array(10).fill(0); recent.forEach(n=>tf[n%10]++);
 
             for (let i=1; i<=39; i++) {
                 let m = 0; for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) m++; else break; }
                 ms[i] = m;
-                // v94 極化加權
-                if(m===1) sc[i]+=1800; // 斜連核心
-                else if(m>=5 && m<=9) sc[i]+=1750; // 黃金反彈
-                else if(m===0) sc[i]+=500; // 連莊可能
-                else if(m>=2 && m<=4) sc[i]-=500; // 靜默區
+                // v95 平衡引力權重
+                if(m===1) sc[i]+=1750; 
+                else if(m>=5 && m<=9) sc[i]+=1650; 
+                else if(m>=2 && m<=4) sc[i]+=200; // 緩衝期修復
+                else if(m===0) sc[i]+=400; 
                 else if(m>=13) sc[i]=0; 
                 else sc[i]+=100;
 
-                sc[i] += tf[i%10]*300; // 同尾加壓
-                if(last.some(ln=>Math.abs(ln-i)===1)) sc[i]+=500; // 鄰號引力
+                sc[i] += tf[i%10]*280; 
+                if(last.some(ln=>Math.abs(ln-i)===1)) sc[i]+=450;
             }
 
             let sorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>sc[b]-sc[a]);
             let res = [];
 
-            // 1. 主核坍縮組 (3 顆)
-            let coreA = sorted[0]; res.push(coreA);
-            let slantA = sorted.find(n => !res.includes(n) && (Math.abs(n-coreA)===1 || ms[n]===1));
-            if(slantA) res.push(slantA);
+            // 1. 引力鏈 A (斜連+同尾)
+            let coreA = sorted.find(n => ms[n]===1) || sorted[0];
+            res.push(coreA);
             let tailA = sorted.find(n => !res.includes(n) && n%10 === coreA%10);
             if(tailA) res.push(tailA);
 
-            // 2. 副核共振組 (2 顆)
-            let coreB = sorted.find(n => !res.includes(n)); 
+            // 2. 引力鏈 B (反彈+鄰號)
+            let coreB = sorted.find(n => !res.includes(n) && ms[n]>=5 && ms[n]<=9);
             if(coreB) {
                 res.push(coreB);
-                let neighborB = sorted.find(n => !res.includes(n) && (Math.abs(n-coreB)===1 || n%10 === coreB%10));
-                if(neighborB) res.push(neighborB);
+                let mateB = sorted.find(n => !res.includes(n) && (Math.abs(n-coreB)===1 || n%10 === coreB%10));
+                if(mateB) res.push(mateB);
             }
 
-            while (res.length < 5) res.push(sorted.find(n => !res.includes(n)));
+            // 3. 閉環奇點
+            while (res.length < 5) {
+                let bestIdx = sorted.find(n => !res.includes(n));
+                res.push(bestIdx);
+            }
+
             return res.sort((a, b) => a - b);
         }
     </script>
