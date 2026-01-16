@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 核心對子鎖定系統 - 優化 v21</title>
+    <title>AI 期望補償系統 - 優化 v22</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e74c3c; --success: #27ae60; --bg: #f4f7f6; }
         body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 20px; }
@@ -16,35 +16,34 @@
         th { background: var(--primary); color: white; }
         .dot { background: var(--accent); color: white; border-radius: 50%; display: inline-block; width: 20px; height: 20px; line-height: 20px; font-weight: bold; }
         .good-hit { background-color: #e8f5e9 !important; border: 2px solid var(--success) !important; }
-        .best-hit { background-color: #fff3cd !important; border: 2px solid #f1c40f !important; }
         .hit-count { font-weight: bold; color: var(--success); font-size: 1.3rem; }
     </style>
 </head>
 <body>
 
     <div class="panel">
-        <h3 class="panel-title">1. 數據上傳 (v21 核心對子版)</h3>
+        <h3 class="panel-title">1. 數據上傳 (v22 期望補償版)</h3>
         <input type="file" id="csvFile" accept=".csv">
     </div>
 
     <div id="analysisSection" style="display:none;">
         <div class="panel">
-            <h3 class="panel-title">2. AI 核心對子預測 (下一期建議)</h3>
+            <h3 class="panel-title">2. AI 期望補償預測 (下一期建議)</h3>
             <div id="predictionResults"></div>
         </div>
 
         <div class="panel">
             <h3 class="panel-title">3. 連號分布圖 (最新 10 期)</h3>
             <div class="table-container">
-                <table id="distTable"><thead><tr id="chartHeader"></tr></thead><tbody id="chartBody"></tbody></table>
+                <table><thead><tr id="chartHeader"></tr></thead><tbody id="chartBody"></tbody></table>
             </div>
         </div>
 
         <div class="panel">
-            <h3 class="panel-title">4. 滾動回測紀錄 (集彈優化)</h3>
+            <h3 class="panel-title">4. 滾動回測 (目標：恢復穩定度)</h3>
             <div class="table-container">
                 <table>
-                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v21)</th><th>命中</th></tr></thead>
+                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v22)</th><th>命中</th></tr></thead>
                     <tbody id="backtestBody"></tbody>
                 </table>
             </div>
@@ -70,53 +69,54 @@
             if (data.length > 0) processSystem(data);
         }
 
-        function getCorePairPick(history) {
+        function getExpectancyPick(history) {
             const scores = Array(40).fill(0);
             const lastNums = history[history.length - 1].nums;
             
+            // 計算每個號碼的平均遺漏週期 (取近 30 期)
+            const avgOmission = Array(40).fill(0);
             for (let i = 1; i <= 39; i++) {
-                let miss = 0;
+                let gaps = [], lastIdx = -1;
+                history.slice(-30).forEach((h, idx) => {
+                    if (h.nums.includes(i)) {
+                        if (lastIdx !== -1) gaps.push(idx - lastIdx);
+                        lastIdx = idx;
+                    }
+                });
+                avgOmission[i] = gaps.length > 0 ? gaps.reduce((a,b)=>a+b,0)/gaps.length : 8;
+            }
+
+            for (let i = 1; i <= 39; i++) {
+                let currentMiss = 0;
                 for (let j = history.length - 1; j >= 0; j--) {
-                    if (!history[j].nums.includes(i)) miss++; else break;
+                    if (!history[j].nums.includes(i)) currentMiss++; else break;
                 }
 
-                // 遺漏分層權重
-                if (miss >= 5 && miss <= 9) scores[i] += 220; // 核心回補
-                else if (miss === 0 || miss === 1) scores[i] += 130; // 鄰號連動
-                else if (miss >= 12) scores[i] += 80; // 冷門回歸
-                else scores[i] += 10; // 壓低雜訊
-                
-                // 鄰號加成
-                if (lastNums.some(n => Math.abs(n - i) === 1)) scores[i] += 100;
+                // A. 期望補償：當前遺漏接近平均遺漏時大幅加分
+                const ratio = currentMiss / avgOmission[i];
+                if (ratio >= 0.8 && ratio <= 1.2) scores[i] += 200;
+                else if (currentMiss === 0) scores[i] += 100; // 連莊
+                else scores[i] += 40;
+
+                // B. 鄰號動能 (N±1)
+                if (lastNums.some(n => Math.abs(n - i) === 1)) scores[i] += 80;
             }
 
             const sorted = Array.from({length: 39}, (_, i) => i + 1).sort((a, b) => scores[b] - scores[a]);
-            const top10 = sorted.slice(0, 10);
+            
+            // 彈性聚類選號
             let final = [];
-
-            // 鎖定核心對子邏輯
-            for (let n of top10) {
-                if (final.length >= 2) break;
-                // 尋找 Top 10 中是否有鄰號或同尾號
-                let partner = top10.find(p => p !== n && (Math.abs(p - n) === 1 || p % 10 === n % 10));
-                if (partner) {
-                    final.push(n, partner);
-                }
-            }
-
-            // 若沒找到對子，選最高分的兩個
-            if (final.length === 0) final.push(sorted[0], sorted[1]);
-
-            // 補齊至 5 個號碼，確保跨度
             for (let n of sorted) {
                 if (final.length >= 5) break;
                 if (final.includes(n)) continue;
                 
-                // 避免選出的 5 個號碼全部擠在 10 號以內的跨度
-                let currentMin = Math.min(...final), currentMax = Math.max(...final);
-                if (final.length === 4 && (Math.max(n, currentMax) - Math.min(n, currentMin) < 18)) continue;
+                // 檢查是否與已選號碼有關聯 (同尾或鄰號)
+                const hasRelation = final.some(f => (f % 10 === n % 10) || (Math.abs(f - n) <= 1));
                 
-                final.push(n);
+                // 優先填入有關聯的號碼，但保留 2 個名額給全域最高分
+                if (hasRelation || final.length < 2 || final.length >= 4) {
+                    final.push(n);
+                }
             }
 
             return final.sort((a, b) => a - b);
@@ -127,15 +127,14 @@
             const tbody = document.getElementById('backtestBody');
             tbody.innerHTML = '';
             for (let i = data.length - 1; i > data.length - 11; i--) {
-                const pred = getCorePairPick(data.slice(0, i));
+                const pred = getExpectancyPick(data.slice(0, i));
                 const hits = pred.filter(n => data[i].nums.includes(n));
                 const tr = document.createElement('tr');
-                if (hits.length >= 3) tr.className = 'best-hit';
-                else if (hits.length >= 2) tr.className = 'good-hit';
+                if (hits.length >= 2) tr.className = 'good-hit';
                 tr.innerHTML = `<td>${data[i].date}</td><td>${data[i].nums}</td><td>${pred.map(n=>`<span class="num-badge ${data[i].nums.includes(n)?'hit-badge':''}">${n}</span>`).join('')}</td><td class="hit-count">${hits.length}</td>`;
                 tbody.appendChild(tr);
             }
-            const nextP = getCorePairPick(data);
+            const nextP = getExpectancyPick(data);
             document.getElementById('predictionResults').innerHTML = nextP.map(n=>`<span class="num-badge" style="font-size:1.2rem">${n}</span>`).join('');
             document.getElementById('analysisSection').style.display = 'block';
         }
