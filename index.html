@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 雙蜂群集彈系統 - 優化 v68</title>
+    <title>AI 三元交互系統 - 優化 v69</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e74c3c; --success: #27ae60; --bg: #f4f7f6; }
         body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 20px; }
@@ -21,21 +21,21 @@
 <body>
 
     <div class="panel">
-        <h3 class="panel-title">1. 數據解析 (v68 雙蜂群版)</h3>
+        <h3 class="panel-title">1. 數據解析 (v69 三元交互版)</h3>
         <input type="file" id="csvFile" accept=".csv">
     </div>
 
     <div id="analysisSection" style="display:none;">
         <div class="panel">
-            <h3 class="panel-title">2. AI 蜂群預測 (下一期建議)</h3>
+            <h3 class="panel-title">2. AI 網狀預測 (下一期建議)</h3>
             <div id="predictionResults"></div>
         </div>
 
         <div class="panel">
-            <h3 class="panel-title">3. 滾動回測 (目標：80% 覆蓋與穩定命中 2)</h3>
+            <h3 class="panel-title">3. 滾動回測 (目標：80% 覆蓋與擊穿命中 2)</h3>
             <div class="table-container">
                 <table>
-                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v68)</th><th>命中</th></tr></thead>
+                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v69)</th><th>命中</th></tr></thead>
                     <tbody id="backtestBody"></tbody>
                 </table>
             </div>
@@ -61,11 +61,11 @@
             if (data.length > 0) processSystem(data);
         }
 
-        function getSwarmPick(history) {
+        function getTriadicPick(history) {
             let scores = Array(40).fill(0);
             let missArr = Array(40).fill(0);
             const lastNums = history[history.length - 1].nums;
-            const recentNums = history.slice(-8).flatMap(h => h.nums);
+            const recentNums = history.slice(-10).flatMap(h => h.nums);
             let tailFreq = Array(10).fill(0);
             recentNums.forEach(n => tailFreq[n % 10]++);
 
@@ -75,35 +75,39 @@
                     if (!history[j].nums.includes(i)) m++; else break;
                 }
                 missArr[i] = m;
-                // v68 極致加權
-                if (m === 1) scores[i] += 800;       
-                else if (m >= 5 && m <= 9) scores[i] += 600; 
-                else if (m === 0) scores[i] += 300;
-                else if (m >= 2 && m <= 4) scores[i] += 50; // 壓抑溫水區
-                else if (m >= 11) scores[i] = 0;
 
-                scores[i] += tailFreq[i % 10] * 35;
-                if (lastNums.some(ln => Math.abs(ln - i) === 1)) scores[i] += 220;
+                // v69 交互網評分
+                if (m === 1) scores[i] += 850;       // 斜連最優先
+                else if (m >= 5 && m <= 9) scores[i] += 650; // 反彈
+                else if (m === 0) scores[i] += 400;  // 連莊
+                else if (m >= 2 && m <= 4) scores[i] += 50;  // 極低溫水權重
+                else if (m >= 13) scores[i] = 0;
+
+                scores[i] += tailFreq[i % 10] * 45; // 強化尾數連動
+                if (lastNums.some(ln => Math.abs(ln - i) === 1)) scores[i] += 250; // 強化鄰號連動
             }
 
             let sorted = Array.from({length: 39}, (_, i) => i + 1).sort((a, b) => scores[b] - scores[a]);
             let final = [];
 
-            // --- 蜂群一：熱區集彈 (L1 + 同尾) ---
-            let lead1 = sorted.find(n => missArr[n] <= 1);
-            final.push(lead1);
-            let mate1 = sorted.find(n => !final.includes(n) && (n % 10 === lead1 % 10));
-            if (mate1) final.push(mate1);
+            // 1. 鎖定雙核心 (熱區 + 鄰號/同尾最強者)
+            let core1 = sorted[0];
+            final.push(core1);
+            
+            // 2. 交互網 A：尋找與核心 1 具備鄰號或同尾關係的最強號
+            let link1 = sorted.find(n => !final.includes(n) && (n % 10 === core1 % 10 || Math.abs(n - core1) === 1));
+            if (link1) final.push(link1);
 
-            // --- 蜂群二：冷區集彈 (L5-9 + 鄰號) ---
-            let lead2 = sorted.find(n => !final.includes(n) && missArr[n] >= 5 && missArr[n] <= 9);
-            if (lead2) {
-                final.push(lead2);
-                let mate2 = sorted.find(n => !final.includes(n) && Math.abs(n - lead2) === 1);
-                if (mate2) final.push(mate2);
+            // 3. 核心 2：跨區找另一顆高分球
+            let core2 = sorted.find(n => !final.includes(n) && Math.abs(Math.floor(n/10) - Math.floor(core1/10)) >= 1);
+            if (core2) {
+                final.push(core2);
+                // 4. 交互網 B：尋找與核心 2 具備連動關係的號碼
+                let link2 = sorted.find(n => !final.includes(n) && (n % 10 === core2 % 10 || Math.abs(n - core2) === 1));
+                if (link2) final.push(link2);
             }
 
-            // --- 補償位：全域最強剩餘號 ---
+            // 5. 補齊位
             for (let n of sorted) {
                 if (final.length >= 5) break;
                 if (!final.includes(n)) final.push(n);
@@ -116,14 +120,14 @@
             const tbody = document.getElementById('backtestBody');
             tbody.innerHTML = '';
             for (let i = data.length - 1; i > data.length - 11; i--) {
-                const pred = getSwarmPick(data.slice(0, i));
+                const pred = getTriadicPick(data.slice(0, i));
                 const hits = pred.filter(n => data[i].nums.includes(n));
                 const tr = document.createElement('tr');
                 if (hits.length >= 2) tr.className = 'good-hit';
                 tr.innerHTML = `<td>${data[i].date}</td><td>${data[i].nums}</td><td>${pred.map(n=>`<span class="num-badge ${data[i].nums.includes(n)?'hit-badge':''}">${n}</span>`).join('')}</td><td class="hit-count">${hits.length}</td>`;
                 tbody.appendChild(tr);
             }
-            const nextP = getSwarmPick(data);
+            const nextP = getTriadicPick(data);
             document.getElementById('predictionResults').innerHTML = nextP.map(n=>`<span class="num-badge" style="font-size:1.2rem">${n}</span>`).join('');
             document.getElementById('analysisSection').style.display = 'block';
         }
