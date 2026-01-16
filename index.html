@@ -1,145 +1,1051 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CSV 號碼生成器（1-39）</title>
-<style>
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
-    background-color: #f9f9f9;
-    padding: 20px;
-  }
-  h1 {
-    text-align: center;
-    font-size: 24px;
-    margin-bottom: 20px;
-  }
-  input[type="file"] {
-    display: block;
-    margin: 20px auto;
-    font-size: 18px;
-  }
-  button {
-    display: block;
-    margin: 20px auto;
-    padding: 15px 30px;
-    font-size: 18px;
-    border: none;
-    background-color: #007AFF;
-    color: white;
-    border-radius: 12px;
-  }
-  #result {
-    margin-top: 20px;
-    text-align: center;
-    font-size: 18px;
-    word-break: break-word;
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>樂透號碼規則分析工具</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #1a237e 0%, #4a148c 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+            padding-bottom: 100px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-top: 20px;
+        }
+        
+        .header h1 {
+            color: white;
+            font-size: 28px;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            color: #bbdefb;
+            font-size: 16px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:active {
+            transform: scale(0.99);
+        }
+        
+        .card-title {
+            font-size: 20px;
+            color: #311b92;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-title i {
+            color: #6200ea;
+        }
+        
+        .file-upload-area {
+            border: 3px dashed #b39ddb;
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            background-color: #f3e5f5;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+        
+        .file-upload-area.highlight {
+            border-color: #6200ea;
+            background-color: #e8eaf6;
+        }
+        
+        .file-upload-area i {
+            font-size: 48px;
+            color: #7e57c2;
+            margin-bottom: 15px;
+        }
+        
+        .file-upload-text {
+            font-size: 18px;
+            color: #5e35b1;
+            margin-bottom: 10px;
+        }
+        
+        .file-upload-subtext {
+            font-size: 14px;
+            color: #9575cd;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #4527a0;
+        }
+        
+        .numbers-input {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .number-input {
+            width: 60px;
+            height: 60px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            border: 2px solid #d1c4e9;
+            border-radius: 50%;
+            background-color: #f5f5f5;
+            color: #311b92;
+            transition: all 0.2s;
+        }
+        
+        .number-input:focus {
+            outline: none;
+            border-color: #6200ea;
+            box-shadow: 0 0 0 3px rgba(98, 0, 234, 0.2);
+            background-color: white;
+        }
+        
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            padding: 18px;
+            border: none;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(to right, #6200ea, #7c4dff);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(to right, #26c6da, #00e5ff);
+            color: white;
+        }
+        
+        .btn i {
+            font-size: 20px;
+        }
+        
+        .results {
+            display: none;
+            margin-top: 20px;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .result-section {
+            margin-bottom: 25px;
+        }
+        
+        .result-title {
+            font-size: 18px;
+            color: #311b92;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e1bee7;
+        }
+        
+        .result-content {
+            font-size: 16px;
+            line-height: 1.8;
+        }
+        
+        .numbers-display {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 15px 0;
+        }
+        
+        .number-bubble {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .hot {
+            background: linear-gradient(135deg, #ff5252, #ff8a80);
+        }
+        
+        .cold {
+            background: linear-gradient(135deg, #448aff, #82b1ff);
+        }
+        
+        .history-table-container {
+            overflow-x: auto;
+            margin-top: 15px;
+            border-radius: 10px;
+            border: 1px solid #d1c4e9;
+        }
+        
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        .history-table th {
+            background-color: #673ab7;
+            color: white;
+            padding: 12px 8px;
+            text-align: center;
+            position: sticky;
+            left: 0;
+        }
+        
+        .history-table td {
+            padding: 10px 8px;
+            text-align: center;
+            border-bottom: 1px solid #e1bee7;
+        }
+        
+        .history-table tr:nth-child(even) {
+            background-color: #f5f5f5;
+        }
+        
+        .history-table tr:hover {
+            background-color: #ede7f6;
+        }
+        
+        .highlight-number {
+            background-color: #e8eaf6;
+            font-weight: bold;
+            color: #311b92;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .stat-box {
+            background: #f3e5f5;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #6200ea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #5e35b1;
+        }
+        
+        .rule-item {
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #7e57c2;
+        }
+        
+        .footer {
+            text-align: center;
+            color: #bbdefb;
+            margin-top: 40px;
+            font-size: 14px;
+            padding: 20px;
+        }
+        
+        /* iOS 單手操作優化 */
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+                padding-bottom: 80px;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+            
+            .number-input {
+                width: 55px;
+                height: 55px;
+                font-size: 22px;
+            }
+            
+            .btn {
+                padding: 20px;
+                font-size: 19px;
+            }
+            
+            .buttons {
+                gap: 20px;
+            }
+            
+            /* 確保按鈕在底部易於單手操作 */
+            .buttons {
+                position: fixed;
+                bottom: 20px;
+                left: 20px;
+                right: 20px;
+                z-index: 100;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .number-input {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+            
+            .numbers-input {
+                justify-content: center;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-chart-line"></i> 樂透號碼規則分析</h1>
+            <p>上傳歷史CSV檔案，分析號碼組合規則與模式</p>
+        </div>
+        
+        <div class="card">
+            <h2 class="card-title"><i class="fas fa-file-upload"></i> 上傳歷史資料</h2>
+            <div class="file-upload-area" id="dropArea">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <div class="file-upload-text">點擊或拖曳CSV檔案至此</div>
+                <div class="file-upload-subtext">支援格式：開獎日期,獎號1,獎號2,獎號3,獎號4,獎號5</div>
+                <input type="file" id="fileInput" accept=".csv">
+            </div>
+            <div class="input-group">
+                <div class="input-label">或手動輸入要分析的號碼：</div>
+                <div class="numbers-input">
+                    <input type="number" min="1" max="39" class="number-input" id="num1" value="6">
+                    <input type="number" min="1" max="39" class="number-input" id="num2" value="18">
+                    <input type="number" min="1" max="39" class="number-input" id="num3" value="28">
+                    <input type="number" min="1" max="39" class="number-input" id="num4" value="32">
+                    <input type="number" min="1" max="39" class="number-input" id="num5" value="36">
+                </div>
+            </div>
+            
+            <div class="buttons">
+                <button class="btn btn-primary" id="analyzeBtn">
+                    <i class="fas fa-search"></i> 分析號碼規則
+                </button>
+                <button class="btn btn-secondary" id="generateBtn">
+                    <i class="fas fa-magic"></i> 產生建議組合
+                </button>
+            </div>
+        </div>
+        
+        <div class="card" id="resultsCard" style="display: none;">
+            <h2 class="card-title"><i class="fas fa-chart-bar"></i> 分析結果</h2>
+            <div id="results"></div>
+        </div>
+        
+        <div class="footer">
+            <p>樂透號碼規則分析工具 v1.0 | 僅供分析參考使用</p>
+            <p>上傳的CSV資料僅在本機處理，不會上傳到伺服器</p>
+        </div>
+    </div>
 
-<h1>CSV 號碼生成器（1-39）</h1>
-<input type="file" id="csvFile" accept=".csv">
-<button id="generateBtn">生成號碼組合</button>
-<div id="result"></div>
-
-<script>
-const targetNumbers = [6,18,28,32,36]; // 可替換成你想驗證的目標組合
-
-// 解析 CSV
-function parseCSV(text) {
-  const rows = text.trim().split(/\r?\n/);
-  const data = [];
-  rows.slice(1).forEach(row => {
-    const cols = row.split(',');
-    const nums = cols.slice(1).map(n => parseInt(n.trim())).filter(n => !isNaN(n));
-    data.push(nums);
-  });
-  return data;
-}
-
-// 根據區間 + 出現次數生成號碼（1-39）
-function generateNumbers(data) {
-  // 定義四個區間，最後額外區間挑剩餘號碼
-  const ranges = [
-    [1,10],
-    [11,20],
-    [21,30],
-    [31,39]
-  ];
-
-  const freq = {};
-  data.flat().forEach(n => freq[n] = (freq[n] || 0) + 1);
-
-  const nextNumbers = [];
-
-  ranges.forEach(range => {
-    const [min, max] = range;
-    const candidates = [];
-    for (let i=min; i<=max; i++) {
-      candidates.push({num:i, count: freq[i]||0});
-    }
-    // 選出出現次數最少的號碼
-    candidates.sort((a,b) => a.count - b.count);
-    nextNumbers.push(candidates[0].num);
-  });
-
-  // 如果仍不足五個號碼，從剩餘號碼中選出出現次數最少的補足
-  while(nextNumbers.length < 5) {
-    const remaining = [];
-    for (let i=1;i<=39;i++) {
-      if (!nextNumbers.includes(i)) remaining.push({num:i, count: freq[i]||0});
-    }
-    remaining.sort((a,b) => a.count - b.count);
-    nextNumbers.push(remaining[0].num);
-  }
-
-  return nextNumbers;
-}
-
-// 檢驗是否符合目標號碼
-function checkNumbers(generated) {
-  const sortedGen = [...generated].sort((a,b)=>a-b);
-  const sortedTarget = [...targetNumbers].sort((a,b)=>a-b);
-  for (let i=0;i<5;i++) {
-    if (sortedGen[i] !== sortedTarget[i]) return false;
-  }
-  return true;
-}
-
-document.getElementById('generateBtn').addEventListener('click', () => {
-  const fileInput = document.getElementById('csvFile');
-  const file = fileInput.files[0];
-  const resultDiv = document.getElementById('result');
-
-  if (!file) {
-    alert('請先選擇 CSV 檔案');
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const text = e.target.result;
-    const data = parseCSV(text);
-    const generated = generateNumbers(data);
-
-    if (checkNumbers(generated)) {
-      resultDiv.innerHTML = `<strong>生成號碼：${generated.join(', ')} ✅</strong><br>
-      規則：將號碼分為四個區間（1–10、11–20、21–30、31–39），每區挑選近期未出現或出現最少的號碼，並補足成五個號碼。`;
-    } else {
-      resultDiv.innerHTML = `<strong>生成號碼：${generated.join(', ')} ❌</strong><br>
-      不符合目標號碼 [${targetNumbers.join(', ')}]。<br>
-      可能原因：<br>
-      1. 某些區間所有號碼都已出現過，無法生成未出現號碼<br>
-      2. 歷史出現次數平分，導致選出的號碼與目標號碼不同<br>
-      3. 區間挑號規則無法保證固定生成特定組合`;
-    }
-  };
-  reader.readAsText(file);
-});
-</script>
-
+    <script>
+        // 全域變數
+        let historyData = [];
+        let currentNumbers = [6, 18, 28, 32, 36];
+        
+        // DOM 元素
+        const fileInput = document.getElementById('fileInput');
+        const dropArea = document.getElementById('dropArea');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const generateBtn = document.getElementById('generateBtn');
+        const resultsCard = document.getElementById('resultsCard');
+        const resultsDiv = document.getElementById('results');
+        const numberInputs = [
+            document.getElementById('num1'),
+            document.getElementById('num2'),
+            document.getElementById('num3'),
+            document.getElementById('num4'),
+            document.getElementById('num5')
+        ];
+        
+        // 初始化事件監聽
+        function initEventListeners() {
+            // 檔案上傳區域點擊事件
+            dropArea.addEventListener('click', () => {
+                fileInput.click();
+            });
+            
+            // 檔案選擇事件
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // 拖放事件
+            dropArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropArea.classList.add('highlight');
+            });
+            
+            dropArea.addEventListener('dragleave', () => {
+                dropArea.classList.remove('highlight');
+            });
+            
+            dropArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropArea.classList.remove('highlight');
+                
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                    handleFileSelect();
+                }
+            });
+            
+            // 分析按鈕事件
+            analyzeBtn.addEventListener('click', analyzeNumbers);
+            
+            // 產生建議組合按鈕事件
+            generateBtn.addEventListener('click', generateSuggestions);
+            
+            // 號碼輸入事件
+            numberInputs.forEach((input, index) => {
+                input.addEventListener('change', () => {
+                    const value = parseInt(input.value);
+                    if (value < 1) input.value = 1;
+                    if (value > 39) input.value = 39;
+                    currentNumbers[index] = parseInt(input.value) || 0;
+                });
+                
+                input.addEventListener('input', () => {
+                    currentNumbers[index] = parseInt(input.value) || 0;
+                });
+            });
+        }
+        
+        // 處理檔案選擇
+        function handleFileSelect() {
+            if (!fileInput.files.length) return;
+            
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const csvContent = e.target.result;
+                    historyData = parseCSV(csvContent);
+                    
+                    if (historyData.length > 0) {
+                        showMessage(`成功載入 ${historyData.length} 期歷史資料`, 'success');
+                        analyzeNumbers(); // 自動分析
+                    } else {
+                        showMessage('CSV檔案格式不正確或沒有資料', 'error');
+                    }
+                } catch (error) {
+                    showMessage('讀取檔案時發生錯誤: ' + error.message, 'error');
+                }
+            };
+            
+            reader.onerror = function() {
+                showMessage('讀取檔案失敗', 'error');
+            };
+            
+            reader.readAsText(file);
+        }
+        
+        // 解析CSV內容
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            const data = [];
+            
+            for (let i = 1; i < lines.length; i++) { // 跳過標題行
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const parts = line.split(',');
+                if (parts.length < 6) continue;
+                
+                const numbers = [];
+                for (let j = 1; j <= 5; j++) {
+                    const num = parseInt(parts[j]);
+                    if (!isNaN(num)) numbers.push(num);
+                }
+                
+                if (numbers.length === 5) {
+                    data.push({
+                        date: parts[0],
+                        numbers: numbers
+                    });
+                }
+            }
+            
+            return data;
+        }
+        
+        // 分析號碼
+        function analyzeNumbers() {
+            // 更新當前號碼
+            currentNumbers = numberInputs.map(input => parseInt(input.value) || 0);
+            
+            // 檢查號碼有效性
+            if (currentNumbers.some(num => num < 1 || num > 39)) {
+                showMessage('請輸入1-39之間的合法號碼', 'error');
+                return;
+            }
+            
+            // 如果有重複號碼
+            const uniqueNumbers = [...new Set(currentNumbers)];
+            if (uniqueNumbers.length < 5) {
+                showMessage('請輸入5個不同的號碼', 'error');
+                return;
+            }
+            
+            // 顯示結果區域
+            resultsCard.style.display = 'block';
+            
+            // 分析號碼
+            const analysis = analyzeNumberPattern(currentNumbers, historyData);
+            
+            // 顯示結果
+            displayResults(analysis);
+            
+            // 滾動到結果區域
+            resultsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
+        // 分析號碼模式
+        function analyzeNumberPattern(numbers, history) {
+            // 基本統計
+            const sum = numbers.reduce((a, b) => a + b, 0);
+            const avg = sum / 5;
+            const evenCount = numbers.filter(n => n % 2 === 0).length;
+            const oddCount = 5 - evenCount;
+            
+            // 檢查每個號碼的歷史出現次數
+            const numberStats = {};
+            numbers.forEach(num => {
+                let count = 0;
+                let lastAppearance = '從未出現';
+                let isInHistory = false;
+                
+                if (history.length > 0) {
+                    history.forEach((record, index) => {
+                        if (record.numbers.includes(num)) {
+                            count++;
+                            lastAppearance = record.date;
+                            isInHistory = true;
+                        }
+                    });
+                }
+                
+                numberStats[num] = {
+                    count,
+                    lastAppearance,
+                    isInHistory,
+                    isEven: num % 2 === 0,
+                    isHot: count >= 3, // 出現3次以上為熱號
+                    isCold: count === 0 // 從未出現為冷號
+                };
+            });
+            
+            // 檢查是否在歷史中出現過相同組合
+            let isCombinationInHistory = false;
+            let matchDate = '';
+            
+            if (history.length > 0) {
+                for (const record of history) {
+                    const sortedRecord = [...record.numbers].sort((a, b) => a - b);
+                    const sortedCurrent = [...numbers].sort((a, b) => a - b);
+                    
+                    if (JSON.stringify(sortedRecord) === JSON.stringify(sortedCurrent)) {
+                        isCombinationInHistory = true;
+                        matchDate = record.date;
+                        break;
+                    }
+                }
+            }
+            
+            // 分析可能的規則
+            const possibleRules = [];
+            
+            // 規則1: 全偶數
+            if (evenCount === 5) {
+                possibleRules.push({
+                    title: "全偶數組合",
+                    description: "所有號碼均為偶數，這種組合在歷史中較為少見。",
+                    confidence: "高"
+                });
+            }
+            
+            // 規則2: 冷熱混合
+            const coldNumbers = numbers.filter(n => numberStats[n].isCold);
+            const hotNumbers = numbers.filter(n => numberStats[n].isHot);
+            
+            if (coldNumbers.length > 0 && hotNumbers.length > 0) {
+                possibleRules.push({
+                    title: "冷熱混合策略",
+                    description: `包含 ${coldNumbers.length} 個冷號和 ${hotNumbers.length} 個熱號，是常見的選號策略。`,
+                    confidence: "中"
+                });
+            }
+            
+            // 規則3: 和值範圍
+            if (sum >= 110 && sum <= 130) {
+                possibleRules.push({
+                    title: "和值範圍策略",
+                    description: `和值 ${sum} 落在常見範圍(110-130)內。`,
+                    confidence: "中"
+                });
+            }
+            
+            // 規則4: 號碼分佈
+            const ranges = {
+                small: numbers.filter(n => n <= 13).length,
+                medium: numbers.filter(n => n > 13 && n <= 26).length,
+                large: numbers.filter(n => n > 26).length
+            };
+            
+            if (ranges.small > 0 && ranges.medium > 0 && ranges.large > 0) {
+                possibleRules.push({
+                    title: "均衡分佈策略",
+                    description: `號碼均勻分佈在小(${ranges.small})、中(${ranges.medium})、大(${ranges.large})三個區間。`,
+                    confidence: "高"
+                });
+            }
+            
+            // 規則5: 尾數分析
+            const lastDigits = numbers.map(n => n % 10);
+            const uniqueLastDigits = [...new Set(lastDigits)];
+            
+            if (uniqueLastDigits.length < 5) {
+                const duplicateDigits = lastDigits.filter((digit, index) => lastDigits.indexOf(digit) !== index);
+                const duplicateSet = [...new Set(duplicateDigits)];
+                
+                possibleRules.push({
+                    title: "尾數重複策略",
+                    description: `尾數 ${duplicateSet.join(', ')} 重複出現，這是常見的選號模式。`,
+                    confidence: "中"
+                });
+            }
+            
+            // 返回分析結果
+            return {
+                numbers,
+                sum,
+                avg,
+                evenCount,
+                oddCount,
+                numberStats,
+                isCombinationInHistory,
+                matchDate,
+                possibleRules,
+                ranges
+            };
+        }
+        
+        // 顯示結果
+        function displayResults(analysis) {
+            let html = '';
+            
+            // 顯示分析號碼
+            html += `<div class="result-section">
+                <h3 class="result-title">分析號碼</h3>
+                <div class="numbers-display">`;
+            
+            analysis.numbers.forEach(num => {
+                const stat = analysis.numberStats[num];
+                const bubbleClass = stat.isHot ? 'hot' : (stat.isCold ? 'cold' : '');
+                html += `<div class="number-bubble ${bubbleClass}">${num}</div>`;
+            });
+            
+            html += `</div></div>`;
+            
+            // 基本統計
+            html += `<div class="result-section">
+                <h3 class="result-title">基本統計</h3>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-value">${analysis.sum}</div>
+                        <div class="stat-label">和值</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">${analysis.avg.toFixed(1)}</div>
+                        <div class="stat-label">平均</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">${analysis.evenCount}</div>
+                        <div class="stat-label">偶數</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">${analysis.oddCount}</div>
+                        <div class="stat-label">奇數</div>
+                    </div>
+                </div>
+            </div>`;
+            
+            // 號碼歷史分析
+            html += `<div class="result-section">
+                <h3 class="result-title">號碼歷史分析</h3>`;
+            
+            if (analysis.isCombinationInHistory) {
+                html += `<div class="result-content" style="color: #d32f2f; margin-bottom: 15px;">
+                    <i class="fas fa-exclamation-triangle"></i> 此組合曾在 ${analysis.matchDate} 開出過！
+                </div>`;
+            } else {
+                html += `<div class="result-content" style="color: #388e3c; margin-bottom: 15px;">
+                    <i class="fas fa-check-circle"></i> 此組合在歷史中尚未出現過
+                </div>`;
+            }
+            
+            html += `<div class="result-content"><table style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="background-color:#f3e5f5;">
+                        <th style="padding:10px; text-align:left;">號碼</th>
+                        <th style="padding:10px; text-align:center;">出現次數</th>
+                        <th style="padding:10px; text-align:center;">最後出現</th>
+                        <th style="padding:10px; text-align:center;">狀態</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+            
+            Object.entries(analysis.numberStats).forEach(([num, stat]) => {
+                const status = stat.isHot ? '熱號' : (stat.isCold ? '冷號' : '溫號');
+                const statusColor = stat.isHot ? '#d32f2f' : (stat.isCold ? '#1976d2' : '#388e3c');
+                
+                html += `<tr>
+                    <td style="padding:10px; text-align:center;"><span class="highlight-number">${num}</span></td>
+                    <td style="padding:10px; text-align:center;">${stat.count}</td>
+                    <td style="padding:10px; text-align:center;">${stat.lastAppearance}</td>
+                    <td style="padding:10px; text-align:center; color:${statusColor}; font-weight:bold;">${status}</td>
+                </tr>`;
+            });
+            
+            html += `</tbody></table></div></div>`;
+            
+            // 推測規則
+            html += `<div class="result-section">
+                <h3 class="result-title">推測的選號規則</h3>`;
+            
+            if (analysis.possibleRules.length > 0) {
+                analysis.possibleRules.forEach(rule => {
+                    const confidenceColor = rule.confidence === '高' ? '#388e3c' : (rule.confidence === '中' ? '#f57c00' : '#d32f2f');
+                    
+                    html += `<div class="rule-item">
+                        <div style="font-weight:bold; margin-bottom:5px;">${rule.title}</div>
+                        <div style="margin-bottom:5px;">${rule.description}</div>
+                        <div style="color:${confidenceColor}; font-weight:bold;">置信度: ${rule.confidence}</div>
+                    </div>`;
+                });
+            } else {
+                html += `<div class="result-content">無法從歷史數據中推測出明顯的選號規則。</div>`;
+            }
+            
+            html += `</div>`;
+            
+            // 歷史數據預覽
+            if (historyData.length > 0) {
+                html += `<div class="result-section">
+                    <h3 class="result-title">歷史數據 (最近10期)</h3>
+                    <div class="history-table-container">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>日期</th>
+                                    <th>獎號1</th>
+                                    <th>獎號2</th>
+                                    <th>獎號3</th>
+                                    <th>獎號4</th>
+                                    <th>獎號5</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                
+                const previewCount = Math.min(10, historyData.length);
+                for (let i = 0; i < previewCount; i++) {
+                    const record = historyData[i];
+                    html += `<tr>
+                        <td>${record.date}</td>`;
+                    
+                    record.numbers.forEach(num => {
+                        const isInCurrent = analysis.numbers.includes(num);
+                        html += `<td>${isInCurrent ? `<span class="highlight-number">${num}</span>` : num}</td>`;
+                    });
+                    
+                    html += `</tr>`;
+                }
+                
+                html += `</tbody></table></div></div>`;
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        // 產生建議組合
+        function generateSuggestions() {
+            if (historyData.length === 0) {
+                showMessage('請先上傳歷史CSV資料', 'error');
+                return;
+            }
+            
+            // 產生5個建議組合
+            const suggestions = [];
+            for (let i = 0; i < 5; i++) {
+                suggestions.push(generateCombination(historyData));
+            }
+            
+            // 顯示結果區域
+            resultsCard.style.display = 'block';
+            
+            // 顯示建議組合
+            let html = `<div class="result-section">
+                <h3 class="result-title">建議號碼組合 (基於歷史資料)</h3>
+                <div class="result-content">
+                    <p>以下組合基於歷史數據的統計分析產生，採用冷熱號混合策略：</p>`;
+            
+            suggestions.forEach((comb, index) => {
+                html += `<div class="rule-item" style="margin-top:15px;">
+                    <div style="font-weight:bold; margin-bottom:10px;">組合 ${index + 1}</div>
+                    <div class="numbers-display">`;
+                
+                comb.numbers.forEach(num => {
+                    html += `<div class="number-bubble ${comb.stats[num].isHot ? 'hot' : (comb.stats[num].isCold ? 'cold' : '')}">${num}</div>`;
+                });
+                
+                html += `</div>
+                    <div style="margin-top:10px;">
+                        <strong>和值:</strong> ${comb.sum} | 
+                        <strong>偶數:</strong> ${comb.evenCount} | 
+                        <strong>奇數:</strong> ${comb.oddCount}
+                    </div>
+                </div>`;
+            });
+            
+            html += `<div style="margin-top:20px; padding:15px; background:#e8f5e8; border-radius:10px;">
+                <strong><i class="fas fa-lightbulb"></i> 選號策略建議：</strong>
+                <ul style="margin-top:10px; padding-left:20px;">
+                    <li>混合熱號(出現3次以上)與冷號(從未出現)</li>
+                    <li>保持奇偶數比例均衡(3:2或2:3)</li>
+                    <li>選擇和值在100-130之間的組合</li>
+                    <li>確保號碼均勻分佈在不同區間</li>
+                </ul>
+            </div>`;
+            
+            html += `</div></div>`;
+            
+            resultsDiv.innerHTML = html;
+            
+            // 滾動到結果區域
+            resultsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
+        // 產生一個組合
+        function generateCombination(history) {
+            // 計算每個號碼出現次數
+            const frequency = {};
+            for (let i = 1; i <= 39; i++) {
+                frequency[i] = 0;
+            }
+            
+            history.forEach(record => {
+                record.numbers.forEach(num => {
+                    frequency[num]++;
+                });
+            });
+            
+            // 分類號碼
+            const hotNumbers = Object.keys(frequency).filter(num => frequency[num] >= 3).map(Number);
+            const coldNumbers = Object.keys(frequency).filter(num => frequency[num] === 0).map(Number);
+            const warmNumbers = Object.keys(frequency).filter(num => frequency[num] > 0 && frequency[num] < 3).map(Number);
+            
+            // 隨機選擇策略：2熱號 + 1冷號 + 2溫號
+            const selected = new Set();
+            
+            // 添加熱號
+            if (hotNumbers.length > 0) {
+                const hot1 = hotNumbers[Math.floor(Math.random() * hotNumbers.length)];
+                selected.add(hot1);
+                
+                if (hotNumbers.length > 1) {
+                    let hot2;
+                    do {
+                        hot2 = hotNumbers[Math.floor(Math.random() * hotNumbers.length)];
+                    } while (selected.has(hot2));
+                    selected.add(hot2);
+                }
+            }
+            
+            // 添加冷號
+            if (coldNumbers.length > 0) {
+                const cold = coldNumbers[Math.floor(Math.random() * coldNumbers.length)];
+                selected.add(cold);
+            }
+            
+            // 添加溫號直到滿5個
+            while (selected.size < 5 && warmNumbers.length > 0) {
+                const warm = warmNumbers[Math.floor(Math.random() * warmNumbers.length)];
+                selected.add(warm);
+            }
+            
+            // 如果還不夠，從所有號碼中隨機選擇
+            while (selected.size < 5) {
+                const randomNum = Math.floor(Math.random() * 39) + 1;
+                selected.add(randomNum);
+            }
+            
+            // 轉換為陣列並排序
+            const numbers = Array.from(selected).sort((a, b) => a - b);
+            
+            // 分析這個組合
+            return analyzeNumberPattern(numbers, history);
+        }
+        
+        // 顯示訊息
+        function showMessage(message, type) {
+            // 移除現有訊息
+            const existingMsg = document.querySelector('.message');
+            if (existingMsg) existingMsg.remove();
+            
+            // 建立新訊息
+            const msg = document.createElement('div');
+            msg.className = `message`;
+            msg.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 15px 25px;
+                border-radius: 10px;
+                color: white;
+                font-weight: bold;
+                z-index: 1000;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+                animation: slideIn 0.3s ease;
+            `;
+            
+            if (type === 'success') {
+                msg.style.backgroundColor = '#388e3c';
+            } else if (type === 'error') {
+                msg.style.backgroundColor = '#d32f2f';
+            } else {
+                msg.style.backgroundColor = '#1976d2';
+            }
+            
+            msg.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
+            
+            document.body.appendChild(msg);
+            
+            // 3秒後移除
+            setTimeout(() => {
+                msg.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => msg.remove(), 300);
+            }, 3000);
+            
+            // 添加動畫
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { top: -100px; opacity: 0; }
+                    to { top: 20px; opacity: 1; }
+                }
+                @keyframes slideOut {
+                    from { top: 20px; opacity: 1; }
+                    to { top: -100px; opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initEventListeners();
+            showMessage('歡迎使用樂透號碼規則分析工具！', 'success');
+        });
+    </script>
 </body>
 </html>
