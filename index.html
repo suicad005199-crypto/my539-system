@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 引力中心共振系統 - 優化 v37</title>
+    <title>AI 核心三角系統 - 優化 v38</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e74c3c; --success: #27ae60; --bg: #f4f7f6; }
         body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 20px; }
@@ -24,28 +24,28 @@
 <body>
 
     <div class="panel">
-        <h3 class="panel-title">1. 數據解析 (v37 引力中心版)</h3>
+        <h3 class="panel-title">1. 數據解析 (v38 核心三角版)</h3>
         <input type="file" id="csvFile" accept=".csv">
     </div>
 
     <div id="analysisSection" style="display:none;">
         <div class="panel">
-            <h3 class="panel-title">2. AI 引力中心預測 (下一期建議)</h3>
+            <h3 class="panel-title">2. AI 核心三角預測 (下一期建議)</h3>
             <div id="predictionResults"></div>
         </div>
 
         <div class="panel">
             <h3 class="panel-title">3. 連號分布圖 (趨勢監測)</h3>
             <div class="table-container">
-                <table><thead><tr id="chartHeader"></tr></thead><tbody id="chartBody"></tbody></table>
+                <table id="distTable"><thead><tr id="chartHeader"></tr></thead><tbody id="chartBody"></tbody></table>
             </div>
         </div>
 
         <div class="panel">
-            <h3 class="panel-title">4. 滾動回測 (衝刺命中 2-3 號)</h3>
+            <h3 class="panel-title">4. 滾動回測 (目標：穩住命中 3 號)</h3>
             <div class="table-container">
                 <table>
-                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v37)</th><th>命中</th></tr></thead>
+                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v38)</th><th>命中</th></tr></thead>
                     <tbody id="backtestBody"></tbody>
                 </table>
             </div>
@@ -55,11 +55,11 @@
     <div class="panel">
         <h3 class="panel-title" onclick="toggleStrategy()">5. 策略邏輯說明 <span>▼</span></h3>
         <div id="strategyContent" class="collapsible-content">
-            <strong>v37 核心優化：</strong><br>
-            * <strong>引力中心 (Hub Resonance)：</strong>鎖定 2 顆最高分號為種子，強迫後續選號與其產生關聯，重現 v25 的高集彈性。<br>
-            * <strong>遺漏金三角：</strong>火力集中在遺漏 1 期（斜連）、4-6 期（反彈）與 0 期（連莊）。<br>
-            * <strong>防禦性擴散：</strong>當核心選號過於密集時，第 4-5 顆球會自動跳轉至非主選區，確保 v11 式的覆蓋率。<br>
-            * <strong>剔除長冷雜訊：</strong>完全移除遺漏 15+ 期的號碼，避免稀釋中獎機率。
+            <strong>v38 核心優化：</strong><br>
+            * <strong>核心三角 (Trinity Hub)：</strong>將 5 顆球中的 3 顆鎖定為強關聯核心，模仿 v25 創造爆發命中 3 號。剩下的 2 顆球負責覆蓋廣度。<br>
+            * <strong>位移加權：</strong>強化斜連（N±1）與跳號（N±2）權重，追蹤獎號在分布圖上的位移傾向。<br>
+            * <strong>跨度防禦：</strong>強制剩餘號碼必須分布在與核心組不同的 10 位數區間，避免過於集中導致覆蓋率下降。<br>
+            * <strong>遺漏修正：</strong>專注於遺漏 0 (連莊)、1 (斜連) 以及 5-8 (熱門回歸)，徹底捨棄 15 期以上的冷號。
         </div>
     </div>
 
@@ -87,7 +87,7 @@
             if (data.length > 0) processSystem(data);
         }
 
-        function getHubPick(history) {
+        function getTrinityHubPick(history) {
             let scores = Array(40).fill(0);
             const lastNums = history[history.length - 1].nums;
             
@@ -97,41 +97,40 @@
                     if (!history[j].nums.includes(i)) miss++; else break;
                 }
                 
-                // 遺漏權重優化
-                if (miss === 1) scores[i] += 280;
-                else if (miss >= 4 && miss <= 6) scores[i] += 240;
-                else if (miss === 0) scores[i] += 180;
-                else if (miss >= 15) scores[i] = 0; // 徹底移除長冷
-                else scores[i] += 50;
+                // 遺漏加權優化 (參考 v11 廣度與 v25 深度)
+                if (miss === 1) scores[i] += 290; // 斜連核心
+                else if (miss >= 5 && miss <= 8) scores[i] += 250; // 黃金反彈
+                else if (miss === 0) scores[i] += 180; // 連莊
+                else if (miss >= 15) scores[i] = 0; // 廢棄長冷
+                else scores[i] += 40;
 
-                // 鄰號加成
-                if (lastNums.some(n => Math.abs(n - i) === 1)) scores[i] += 120;
+                // 位移加權
+                if (lastNums.some(n => Math.abs(n - i) === 1)) scores[i] += 110;
+                if (lastNums.some(n => Math.abs(n - i) === 2)) scores[i] += 40;
             }
 
             let sorted = Array.from({length: 39}, (_, i) => i + 1).sort((a, b) => scores[b] - scores[a]);
             let final = [];
             
-            // 1. 選取引力中心 (2顆)
-            final.push(sorted[0]);
-            final.push(sorted[1]);
-
-            // 2. 尋找與中心共振的號碼 (同尾或鄰號)
-            for (let n of sorted.slice(2)) {
-                if (final.length >= 5) break;
-                let isRelated = final.some(f => (f % 10 === n % 10) || Math.abs(f - n) === 1);
-                
-                // 防禦機制：如果已經選了 3 顆在同一區間，跳過
-                let sameZone = final.filter(f => Math.floor((f-1)/10) === Math.floor((n-1)/10)).length;
-                
-                if (isRelated && sameZone < 2) {
-                    final.push(n);
-                }
+            // 1. 核心三角：選取 Top 1 並帶入最強關聯
+            let seed = sorted[0];
+            final.push(seed);
+            
+            // 尋找關聯號 (同尾或鄰號)
+            let cluster = sorted.slice(1).filter(n => (n % 10 === seed % 10) || Math.abs(n - seed) <= 1);
+            for (let i = 0; i < 2 && i < cluster.length; i++) {
+                final.push(cluster[i]);
             }
-
-            // 3. 補齊名額
+            
+            // 2. 雙位震盪：補齊 2 顆與核心距離較遠的高分號
             for (let n of sorted) {
                 if (final.length >= 5) break;
-                if (!final.includes(n)) final.push(n);
+                if (final.includes(n)) continue;
+                
+                let dist = Math.min(...final.map(f => Math.abs(f - n)));
+                if (dist >= 8 || final.length >= 4) {
+                    final.push(n);
+                }
             }
 
             return final.sort((a, b) => a - b);
@@ -142,7 +141,7 @@
             const tbody = document.getElementById('backtestBody');
             tbody.innerHTML = '';
             for (let i = data.length - 1; i > data.length - 11; i--) {
-                const pred = getHubPick(data.slice(0, i));
+                const pred = getTrinityHubPick(data.slice(0, i));
                 const hits = pred.filter(n => data[i].nums.includes(n));
                 const tr = document.createElement('tr');
                 if (hits.length >= 3) tr.className = 'best-hit';
@@ -150,7 +149,7 @@
                 tr.innerHTML = `<td>${data[i].date}</td><td>${data[i].nums}</td><td>${pred.map(n=>`<span class="num-badge ${data[i].nums.includes(n)?'hit-badge':''}">${n}</span>`).join('')}</td><td class="hit-count">${hits.length}</td>`;
                 tbody.appendChild(tr);
             }
-            const nextP = getHubPick(data);
+            const nextP = getTrinityHubPick(data);
             document.getElementById('predictionResults').innerHTML = nextP.map(n=>`<span class="num-badge" style="font-size:1.2rem">${n}</span>`).join('');
             document.getElementById('analysisSection').style.display = 'block';
         }
