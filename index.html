@@ -3,91 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>539 數據產生器 (近10期)</title>
+    <title>539 專業分析產生器</title>
     <style>
-        :root { --primary: #d32f2f; --bg: #f4f4f9; --table-border: #ddd; }
-        body { font-family: sans-serif; margin: 0; background: var(--bg); }
-        
-        /* 頂部面板 */
-        .top-panel { background: #333; color: white; padding: 15px; display: flex; justify-content: center; align-items: center; gap: 15px; position: sticky; top: 0; z-index: 100; }
-        
-        /* 分布圖面板 */
-        .distribution-panel { background: white; border-bottom: 2px solid #ccc; padding: 10px; overflow-x: auto; }
-        table { border-collapse: collapse; width: 100%; font-size: 12px; text-align: center; table-layout: fixed; }
-        th, td { border: 1px solid var(--table-border); padding: 6px 2px; }
-        th { background: #eee; font-weight: bold; }
-        .date-col { width: 90px; background: #f9f9f9; }
-        .hit { background: var(--primary); color: white; border-radius: 50%; display: inline-block; width: 22px; height: 22px; line-height: 22px; font-weight: bold; }
+        :root {
+            --primary-color: #e63946;
+            --secondary-color: #457b9d;
+            --bg-color: #f8f9fa;
+            --text-dark: #1d3557;
+        }
 
-        /* 主產生器區 */
-        .main { padding: 30px 20px; text-align: center; }
-        button { padding: 12px 30px; font-size: 1rem; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 5px; font-weight: bold; transition: 0.2s; }
-        button:hover { background: #b71c1c; transform: scale(1.05); }
-        .result { margin-top: 25px; display: flex; gap: 10px; justify-content: center; }
-        .ball { width: 45px; height: 45px; line-height: 45px; background: #ffc107; border-radius: 50%; font-weight: bold; border: 2px solid #ffa000; font-size: 1.2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; background: var(--bg-color); color: var(--text-dark); }
+
+        /* 置頂面板優化 */
+        .header-panel {
+            background: #ffffff;
+            padding: 15px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .upload-btn-wrapper { position: relative; overflow: hidden; display: inline-block; }
+        .btn-upload { border: 2px solid var(--secondary-color); color: var(--secondary-color); background-color: white; padding: 8px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        input[type=file] { position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; }
+
+        /* 分布圖面板優化 */
+        .chart-section { padding: 20px; max-width: 1200px; margin: auto; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; margin-bottom: 20px; }
+        .card-header { background: var(--text-dark); color: white; padding: 12px 20px; font-size: 0.9rem; font-weight: bold; }
+
+        .table-container { overflow-x: auto; }
+        table { border-collapse: collapse; width: 100%; font-size: 13px; }
+        th, td { border: 1px solid #edf2f7; padding: 8px 4px; text-align: center; }
+        th { background: #f1f5f9; color: #64748b; font-weight: 600; }
+        .date-cell { font-weight: bold; color: var(--secondary-color); background: #f8fafc; min-width: 90px; }
+
+        /* 中獎圓點樣式 */
+        .hit-dot {
+            background: var(--primary-color);
+            color: white;
+            width: 24px;
+            height: 24px;
+            line-height: 24px;
+            display: inline-block;
+            border-radius: 50%;
+            font-size: 11px;
+            box-shadow: 0 2px 4px rgba(230, 57, 70, 0.3);
+        }
+
+        /* 產生器按鈕區 */
+        .generator-box { text-align: center; padding: 30px; }
+        .gen-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 40px;
+            font-size: 1.1rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+            box-shadow: 0 4px 15px rgba(230, 57, 70, 0.4);
+        }
+        .gen-btn:hover { background: #c1121f; transform: translateY(-2px); }
+        .gen-btn:active { transform: translateY(0); }
+
+        .balls-display { margin-top: 25px; display: flex; gap: 12px; justify-content: center; }
+        .ball {
+            width: 50px; height: 50px; line-height: 50px; background: #ffca3a; 
+            border-radius: 50%; font-weight: bold; font-size: 1.3rem;
+            border: 3px solid #f9a620; text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
+        }
     </style>
 </head>
 <body>
 
-<div class="top-panel">
-    <span>歷史數據 (CSV):</span>
-    <input type="file" id="csvFile" accept=".csv" onchange="handleFile()">
-    <span id="file-info" style="font-size: 0.8rem; color: #ccc;">讀取近 10 期資料</span>
+<div class="header-panel">
+    <div style="font-weight: bold; color: var(--primary-color); font-size: 1.2rem;">539 數據大師</div>
+    <div class="upload-btn-wrapper">
+        <button class="btn-upload">上傳 CSV 歷史資料</button>
+        <input type="file" id="csvFile" accept=".csv" onchange="handleFile()">
+    </div>
 </div>
 
-<div class="distribution-panel" id="distPanel">
-    <p style="text-align: center; color: #888; padding: 20px;">請上傳 CSV 檔案以查看近 10 期分布圖</p>
-</div>
+<div class="chart-section">
+    <div class="card">
+        <div class="card-header">📊 近 10 期連號分布趨勢 (最新日期在上)</div>
+        <div class="table-container" id="chartOutput">
+            <p style="padding: 40px; text-align: center; color: #94a3b8;">請上傳 CSV 檔案以分析數據</p>
+        </div>
+    </div>
 
-<div class="main">
-    <button onclick="generateNumbers()">隨機產生 539 號碼</button>
-    <div class="result" id="result"></div>
+    <div class="generator-box">
+        <button class="gen-btn" onclick="generateNumbers()">隨機產生一組</button>
+        <div class="balls-display" id="result"></div>
+    </div>
 </div>
 
 <script>
     function handleFile() {
         const fileInput = document.getElementById('csvFile');
         const file = fileInput.files[0];
+        if (!file) return;
 
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                // 過濾空行
-                let rows = e.target.result.split('\n').filter(row => row.trim() !== '');
-                
-                // 1. 取得最後 10 筆 (最末端為最新)
-                // 2. 反轉陣列使最新日期在最上方
-                const latestTen = rows.slice(-10).reverse();
-                
-                renderTable(latestTen);
-            };
-            reader.readAsText(file);
-        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            // 解析 CSV 並移除空白列
+            let rows = e.target.result.split('\n')
+                .map(row => row.trim())
+                .filter(row => row !== '');
+
+            // 取得最後 10 筆並翻轉順序（讓最新的在上面）
+            const last10 = rows.slice(-10).reverse();
+            renderTable(last10);
+        };
+        reader.readAsText(file);
     }
 
     function renderTable(dataRows) {
-        let html = `<table><thead><tr><th class="date-col">日期</th>`;
-        for (let i = 1; i <= 39; i++) html += `<th>${i}</th>`;
-        html += `</tr></thead><tbody>`;
+        let tableHtml = `<table><thead><tr><th class="date-cell">日期</th>`;
+        for (let i = 1; i <= 39; i++) tableHtml += `<th>${i}</th>`;
+        tableHtml += `</tr></thead><tbody>`;
 
         dataRows.forEach(row => {
             const cols = row.split(',');
             const date = cols[0];
-            const numbers = cols.slice(1).map(n => parseInt(n.trim()));
+            const luckyNums = cols.slice(1).map(n => parseInt(n));
 
-            html += `<tr><td class="date-col"><b>${date}</b></td>`;
+            tableHtml += `<tr><td class="date-cell">${date}</td>`;
             for (let i = 1; i <= 39; i++) {
-                if (numbers.includes(i)) {
-                    html += `<td><span class="hit">${i}</span></td>`;
+                if (luckyNums.includes(i)) {
+                    tableHtml += `<td><span class="hit-dot">${i}</span></td>`;
                 } else {
-                    html += `<td></td>`;
+                    tableHtml += `<td></td>`;
                 }
             }
-            html += `</tr>`;
+            tableHtml += `</tr>`;
         });
 
-        html += `</tbody></table>`;
-        document.getElementById('distPanel').innerHTML = html;
+        tableHtml += `</tbody></table>`;
+        document.getElementById('chartOutput').innerHTML = tableHtml;
     }
 
     function generateNumbers() {
@@ -99,13 +157,9 @@
         nums.sort((a, b) => a - b);
         
         const resultDiv = document.getElementById('result');
-        resultDiv.innerHTML = '';
-        nums.forEach(n => {
-            const b = document.createElement('div');
-            b.className = 'ball';
-            b.innerText = n < 10 ? '0' + n : n;
-            resultDiv.appendChild(b);
-        });
+        resultDiv.innerHTML = nums.map(n => `
+            <div class="ball">${n < 10 ? '0'+n : n}</div>
+        `).join('');
     }
 </script>
 
