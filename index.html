@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 三元重疊爆發系統 - 優化 v78</title>
+    <title>AI 動態捕獲系統 - 優化 v79</title>
     <style>
         :root { --p: #2c3e50; --a: #e74c3c; --s: #27ae60; --b: #f4f7f6; }
         body { font-family: "Microsoft JhengHei", sans-serif; background: var(--b); padding: 20px; }
@@ -19,17 +19,17 @@
 <body>
 
     <div class="panel">
-        <h3>1. 數據解析 (v78 三元重疊版)</h3>
+        <h3>1. 數據解析 (v79 動態捕獲版)</h3>
         <input type="file" id="csvFile" accept=".csv">
     </div>
 
     <div id="resSection" style="display:none;">
         <div class="panel">
-            <h3>2. AI 重疊預測 (衝刺 40% 命中 3)</h3>
+            <h3>2. AI 預測組合 (目標：找回覆蓋並衝刺命中 3)</h3>
             <div id="predResult"></div>
         </div>
         <div class="panel">
-            <h3>3. 滾動回測 (高壓集彈檢驗)</h3>
+            <h3>3. 滾動回測 (動態集彈檢驗)</h3>
             <table>
                 <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合</th><th>命中</th></tr></thead>
                 <tbody id="btBody"></tbody>
@@ -51,53 +51,55 @@
             tbody.innerHTML = '';
             
             for (let i = data.length - 1; i > data.length - 11; i--) {
-                const pred = getBurstPick(data.slice(0, i));
+                const pred = getCapturePick(data.slice(0, i));
                 const hits = pred.filter(n => data[i].nums.includes(n));
                 const tr = document.createElement('tr');
                 if (hits.length >= 3) tr.className = 'best-hit';
                 tr.innerHTML = `<td>${data[i].date}</td><td>${data[i].nums}</td><td>${pred.map(n=>`<span class="num-badge ${data[i].nums.includes(n)?'hit-badge':''}">${n}</span>`).join('')}</td><td class="hit-count">${hits.length}</td>`;
                 tbody.appendChild(tr);
             }
-            document.getElementById('predResult').innerHTML = getBurstPick(data).map(n=>`<span class="num-badge" style="font-size:1.3rem">${n}</span>`).join('');
+            document.getElementById('predResult').innerHTML = getCapturePick(data).map(n=>`<span class="num-badge" style="font-size:1.3rem">${n}</span>`).join('');
             document.getElementById('resSection').style.display = 'block';
         }
 
-        function getBurstPick(hist) {
+        function getCapturePick(hist) {
             let sc = Array(40).fill(0), ms = Array(40).fill(0);
-            const last = hist[hist.length-1].nums, recent = hist.slice(-5).flatMap(h=>h.nums);
+            const last = hist[hist.length-1].nums, recent = hist.slice(-6).flatMap(h=>h.nums);
             let tf = Array(10).fill(0); recent.forEach(n=>tf[n%10]++);
 
             for (let i=1; i<=39; i++) {
                 let m = 0; for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) m++; else break; }
                 ms[i] = m;
-                // v78 爆發加權：極端偏好斜連與熱尾
-                if(m===1) sc[i]+=1600; 
-                else if(m>=5 && m<=9) sc[i]+=1200; 
-                else if(m===0) sc[i]+=700; 
-                else if(m>=11) sc[i]=0; 
-                else sc[i]+=50;
+                // v79 修正權重：平衡熱號與反彈號
+                if(m===1) sc[i]+=1500; 
+                else if(m>=5 && m<=9) sc[i]+=1300; 
+                else if(m===0) sc[i]+=600; 
+                else if(m>=12) sc[i]=0; 
+                else sc[i]+=150;
 
-                sc[i] += tf[i%10]*200; // 尾數權重翻倍
-                if(last.some(ln=>Math.abs(ln-i)===1)) sc[i]+=450;
+                sc[i] += tf[i%10]*150; 
+                if(last.some(ln=>Math.abs(ln-i)===1)) sc[i]+=400;
             }
 
             let sorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>sc[b]-sc[a]);
             let res = [];
 
-            // 核心三角組 (3 顆)
-            let core = sorted[0]; res.push(core);
-            let neighbor = sorted.find(n => !res.includes(n) && Math.abs(n-core)===1);
-            if(neighbor) res.push(neighbor);
-            let tail = sorted.find(n => !res.includes(n) && n%10===core%10);
-            if(tail) res.push(tail);
+            // 核心 A：熱連爆發對 (2 顆)
+            let coreA = sorted.find(n => ms[n] <= 1); 
+            res.push(coreA);
+            let neighborA = sorted.find(n => !res.includes(n) && Math.abs(n-coreA)===1);
+            if(neighborA) res.push(neighborA);
 
-            // 爆發配對組 (2 顆)
-            let burst = sorted.find(n => !res.includes(n) && Math.abs(Math.floor(n/10) - Math.floor(core/10)) >= 1);
-            if(burst) {
-                res.push(burst);
-                // 優先找爆發組的同尾或連號，直接賭區域開出兩顆
-                let burstLink = sorted.find(n => !res.includes(n) && (n%10===burst%10 || Math.abs(n-burst)===1));
-                if(burstLink) res.push(burstLink);
+            // 核心 B：反彈同尾三角 (3 顆)
+            let coreB = sorted.find(n => !res.includes(n) && ms[n]>=5 && ms[n]<=9);
+            if(coreB) {
+                res.push(coreB);
+                // 尋找 coreB 的同尾號
+                let tailB = sorted.find(n => !res.includes(n) && n%10===coreB%10);
+                if(tailB) res.push(tailB);
+                // 尋找 coreB 的鄰號或該尾數的第三顆
+                let linkB = sorted.find(n => !res.includes(n) && (Math.abs(n-coreB)===1 || n%10===coreB%10));
+                if(linkB) res.push(linkB);
             }
 
             while (res.length < 5) res.push(sorted.find(n => !res.includes(n)));
