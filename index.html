@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CSV 號碼檢驗器</title>
+<title>CSV 號碼生成器（1-39）</title>
 <style>
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -40,13 +40,13 @@
 </head>
 <body>
 
-<h1>CSV 號碼檢驗器</h1>
+<h1>CSV 號碼生成器（1-39）</h1>
 <input type="file" id="csvFile" accept=".csv">
-<button id="checkBtn">檢驗號碼</button>
+<button id="generateBtn">生成號碼組合</button>
 <div id="result"></div>
 
 <script>
-const targetNumbers = [6,18,28,32,36];
+const targetNumbers = [6,18,28,32,36]; // 可替換成你想驗證的目標組合
 
 // 解析 CSV
 function parseCSV(text) {
@@ -60,14 +60,14 @@ function parseCSV(text) {
   return data;
 }
 
-// 根據區間 + 出現次數生成號碼
+// 根據區間 + 出現次數生成號碼（1-39）
 function generateNumbers(data) {
+  // 定義四個區間，最後額外區間挑剩餘號碼
   const ranges = [
     [1,10],
     [11,20],
     [21,30],
-    [31,40],
-    [41,50]
+    [31,39]
   ];
 
   const freq = {};
@@ -86,6 +86,16 @@ function generateNumbers(data) {
     nextNumbers.push(candidates[0].num);
   });
 
+  // 如果仍不足五個號碼，從剩餘號碼中選出出現次數最少的補足
+  while(nextNumbers.length < 5) {
+    const remaining = [];
+    for (let i=1;i<=39;i++) {
+      if (!nextNumbers.includes(i)) remaining.push({num:i, count: freq[i]||0});
+    }
+    remaining.sort((a,b) => a.count - b.count);
+    nextNumbers.push(remaining[0].num);
+  }
+
   return nextNumbers;
 }
 
@@ -99,7 +109,7 @@ function checkNumbers(generated) {
   return true;
 }
 
-document.getElementById('checkBtn').addEventListener('click', () => {
+document.getElementById('generateBtn').addEventListener('click', () => {
   const fileInput = document.getElementById('csvFile');
   const file = fileInput.files[0];
   const resultDiv = document.getElementById('result');
@@ -117,7 +127,7 @@ document.getElementById('checkBtn').addEventListener('click', () => {
 
     if (checkNumbers(generated)) {
       resultDiv.innerHTML = `<strong>生成號碼：${generated.join(', ')} ✅</strong><br>
-      規則：將號碼分為 5 個區間（1–10、11–20、21–30、31–40、41–50），每區挑選近期未出現或出現最少的號碼。`;
+      規則：將號碼分為四個區間（1–10、11–20、21–30、31–39），每區挑選近期未出現或出現最少的號碼，並補足成五個號碼。`;
     } else {
       resultDiv.innerHTML = `<strong>生成號碼：${generated.join(', ')} ❌</strong><br>
       不符合目標號碼 [${targetNumbers.join(', ')}]。<br>
