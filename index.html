@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 共振引力系統 - 優化 v98</title>
+    <title>AI 三元坍縮系統 - 優化 v99</title>
     <style>
         :root { --p: #2c3e50; --s: #27ae60; --b: #f4f7f6; }
         body { font-family: sans-serif; background: var(--b); padding: 20px; }
@@ -19,17 +19,17 @@
 <body>
 
     <div class="panel">
-        <h3>1. 數據解析 (v98 共振引力版)</h3>
+        <h3>1. 數據解析 (v99 三元坍縮版)</h3>
         <input type="file" id="csvFile" accept=".csv">
     </div>
 
     <div id="resSection" style="display:none;">
         <div class="panel">
-            <h3>2. AI 共振預測 (目標：40% 命中 3)</h3>
+            <h3>2. AI 預測組合 (衝刺 40% 命中 3)</h3>
             <div id="predResult"></div>
         </div>
         <div class="panel">
-            <h3>3. 滾動回測 (動能引力檢驗)</h3>
+            <h3>3. 滾動回測 (極限集彈檢驗)</h3>
             <table>
                 <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合</th><th>命中</th></tr></thead>
                 <tbody id="btBody"></tbody>
@@ -51,18 +51,18 @@
             tbody.innerHTML = '';
             
             for (let i = data.length - 1; i > data.length - 11; i--) {
-                const pred = getResonanceGravityPick(data.slice(0, i));
+                const pred = getTriCollapsePick(data.slice(0, i));
                 const hits = pred.filter(n => data[i].nums.includes(n));
                 const tr = document.createElement('tr');
                 if (hits.length >= 3) tr.className = 'best-hit';
                 tr.innerHTML = `<td>${data[i].date}</td><td>${data[i].nums}</td><td>${pred.map(n=>`<span class="num-badge ${data[i].nums.includes(n)?'hit-badge':''}">${n}</span>`).join('')}</td><td class="hit-count">${hits.length}</td>`;
                 tbody.appendChild(tr);
             }
-            document.getElementById('predResult').innerHTML = getResonanceGravityPick(data).map(n=>`<span class="num-badge" style="font-size:1.4rem">${n}</span>`).join('');
+            document.getElementById('predResult').innerHTML = getTriCollapsePick(data).map(n=>`<span class="num-badge" style="font-size:1.4rem">${n}</span>`).join('');
             document.getElementById('resSection').style.display = 'block';
         }
 
-        function getResonanceGravityPick(hist) {
+        function getTriCollapsePick(hist) {
             let sc = Array(40).fill(0), ms = Array(40).fill(0);
             const last = hist[hist.length-1].nums, recent = hist.slice(-8).flatMap(h=>h.nums);
             let tf = Array(10).fill(0); recent.forEach(n=>tf[n%10]++);
@@ -70,35 +70,35 @@
             for (let i=1; i<=39; i++) {
                 let m = 0; for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) m++; else break; }
                 ms[i] = m;
-                // v98 平衡共振權重
-                if(m===1) sc[i]+=1800; 
-                else if(m>=5 && m<=9) sc[i]+=1800; 
-                else if(m>=2 && m<=4) sc[i]+=300; // 緩衝修復
-                else if(m===0) sc[i]+=500; 
-                else if(m>=11) sc[i]=0; 
+                // v99 暴力集彈加權
+                if(m===1) sc[i]+=1950; 
+                else if(m>=5 && m<=9) sc[i]+=1850; 
+                else if(m>=2 && m<=4) sc[i]+=400; 
+                else if(m===0) sc[i]+=600; 
+                else if(m>=10) sc[i]=0; // 完全排除長冷與疲軟號
                 else sc[i]+=100;
 
-                sc[i] += tf[i%10]*280; 
-                if(last.some(ln=>Math.abs(ln-i)===1)) sc[i]+=450;
+                sc[i] += tf[i%10]*350; 
+                if(last.some(ln=>Math.abs(ln-i)===1)) sc[i]+=550;
             }
 
             let sorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>sc[b]-sc[a]);
             let res = [];
 
-            // 1. 核心奇點
-            let core = sorted[0];
-            res.push(core);
+            // 1. 三元連鎖核心 (3 顆)
+            let core = sorted[0]; res.push(core);
+            let neighbor = sorted.find(n => !res.includes(n) && Math.abs(n-core)===1);
+            if(neighbor) res.push(neighbor);
+            let slant = sorted.find(n => !res.includes(n) && ms[n]===1 && Math.abs(Math.floor(n/10)-Math.floor(core/10))===0);
+            if(!slant) slant = sorted.find(n => !res.includes(n) && n%10 === core%10);
+            if(slant) res.push(slant);
 
-            // 2. 同尾共振鏈 (2 顆)
-            let tailMates = sorted.filter(n => !res.includes(n) && n % 10 === core % 10).slice(0, 2);
-            tailMates.forEach(n => res.push(n));
-
-            // 3. 物理物理鄰接鏈 (2 顆)
-            let secondCore = sorted.find(n => !res.includes(n) && Math.abs(Math.floor(n/10) - Math.floor(core/10)) >= 1);
-            if (secondCore) {
-                res.push(secondCore);
-                let neighbor = sorted.find(n => !res.includes(n) && Math.abs(n - secondCore) === 1);
-                if (neighbor) res.push(neighbor);
+            // 2. 共振側翼 (2 顆)
+            let topTail = sorted.find(n => !res.includes(n) && tf[n%10] >= 2);
+            if(topTail) {
+                res.push(topTail);
+                let tailMate = sorted.find(n => !res.includes(n) && n%10 === topTail%10);
+                if(tailMate) res.push(tailMate);
             }
 
             while (res.length < 5) res.push(sorted.find(n => !res.includes(n)));
