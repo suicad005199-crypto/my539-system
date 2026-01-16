@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>539 數據與分布圖</title>
+    <title>539 數據產生器 (近10期)</title>
     <style>
         :root { --primary: #d32f2f; --bg: #f4f4f9; --table-border: #ddd; }
         body { font-family: sans-serif; margin: 0; background: var(--bg); }
@@ -12,68 +12,70 @@
         .top-panel { background: #333; color: white; padding: 15px; display: flex; justify-content: center; align-items: center; gap: 15px; position: sticky; top: 0; z-index: 100; }
         
         /* 分布圖面板 */
-        .distribution-panel { background: white; border-bottom: 2px solid #ccc; max-height: 400px; overflow: auto; padding: 10px; }
-        table { border-collapse: collapse; width: 100%; font-size: 12px; text-align: center; }
-        th, td { border: 1px solid var(--table-border); padding: 4px; min-width: 25px; }
-        th { background: #eee; position: sticky; top: 0; z-index: 10; }
-        .date-col { min-width: 80px; background: #f9f9f9; }
-        .hit { background: var(--primary); color: white; border-radius: 50%; display: inline-block; width: 20px; height: 20px; line-height: 20px; }
+        .distribution-panel { background: white; border-bottom: 2px solid #ccc; padding: 10px; overflow-x: auto; }
+        table { border-collapse: collapse; width: 100%; font-size: 12px; text-align: center; table-layout: fixed; }
+        th, td { border: 1px solid var(--table-border); padding: 6px 2px; }
+        th { background: #eee; font-weight: bold; }
+        .date-col { width: 90px; background: #f9f9f9; }
+        .hit { background: var(--primary); color: white; border-radius: 50%; display: inline-block; width: 22px; height: 22px; line-height: 22px; font-weight: bold; }
 
         /* 主產生器區 */
-        .main { padding: 40px 20px; text-align: center; }
-        button { padding: 10px 25px; font-size: 1rem; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 5px; font-weight: bold; }
+        .main { padding: 30px 20px; text-align: center; }
+        button { padding: 12px 30px; font-size: 1rem; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 5px; font-weight: bold; transition: 0.2s; }
+        button:hover { background: #b71c1c; transform: scale(1.05); }
         .result { margin-top: 25px; display: flex; gap: 10px; justify-content: center; }
-        .ball { width: 45px; height: 45px; line-height: 45px; background: #ffc107; border-radius: 50%; font-weight: bold; border: 2px solid #ffa000; font-size: 1.2rem; }
+        .ball { width: 45px; height: 45px; line-height: 45px; background: #ffc107; border-radius: 50%; font-weight: bold; border: 2px solid #ffa000; font-size: 1.2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
 
 <div class="top-panel">
-    <span>數據上傳 (CSV):</span>
+    <span>歷史數據 (CSV):</span>
     <input type="file" id="csvFile" accept=".csv" onchange="handleFile()">
-    <span id="file-info" style="font-size: 0.8rem; color: #ccc;">未選取檔案</span>
+    <span id="file-info" style="font-size: 0.8rem; color: #ccc;">讀取近 10 期資料</span>
 </div>
 
 <div class="distribution-panel" id="distPanel">
-    <p style="text-align: center; color: #888;">請先上傳 CSV 資料以顯示分布圖</p>
+    <p style="text-align: center; color: #888; padding: 20px;">請上傳 CSV 檔案以查看近 10 期分布圖</p>
 </div>
 
 <div class="main">
-    <button onclick="generateNumbers()">隨機產生號碼</button>
+    <button onclick="generateNumbers()">隨機產生 539 號碼</button>
     <div class="result" id="result"></div>
 </div>
 
 <script>
-    // 處理檔案並產出分布圖
     function handleFile() {
         const fileInput = document.getElementById('csvFile');
-        const info = document.getElementById('file-info');
-        const distPanel = document.getElementById('distPanel');
         const file = fileInput.files[0];
 
         if (file) {
             const reader = new FileReader();
             reader.onload = function(e) {
-                const rows = e.target.result.split('\n').filter(row => row.trim() !== '');
-                info.innerText = `已讀取: ${file.name} (${rows.length} 筆)`;
-                renderTable(rows);
+                // 過濾空行
+                let rows = e.target.result.split('\n').filter(row => row.trim() !== '');
+                
+                // 1. 取得最後 10 筆 (最末端為最新)
+                // 2. 反轉陣列使最新日期在最上方
+                const latestTen = rows.slice(-10).reverse();
+                
+                renderTable(latestTen);
             };
             reader.readAsText(file);
         }
     }
 
-    function renderTable(rows) {
+    function renderTable(dataRows) {
         let html = `<table><thead><tr><th class="date-col">日期</th>`;
-        // 產生 1-39 標頭
         for (let i = 1; i <= 39; i++) html += `<th>${i}</th>`;
         html += `</tr></thead><tbody>`;
 
-        rows.forEach(row => {
+        dataRows.forEach(row => {
             const cols = row.split(',');
-            const date = cols[0]; // 假設第一欄是日期
-            const numbers = cols.slice(1).map(n => parseInt(n.trim())); // 假設後續是號碼
+            const date = cols[0];
+            const numbers = cols.slice(1).map(n => parseInt(n.trim()));
 
-            html += `<tr><td class="date-col">${date}</td>`;
+            html += `<tr><td class="date-col"><b>${date}</b></td>`;
             for (let i = 1; i <= 39; i++) {
                 if (numbers.includes(i)) {
                     html += `<td><span class="hit">${i}</span></td>`;
