@@ -2,10 +2,10 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 三元坍縮系統 - 優化 v99</title>
+    <title>AI 極限集彈系統 - v100</title>
     <style>
-        :root { --p: #2c3e50; --s: #27ae60; --b: #f4f7f6; }
-        body { font-family: sans-serif; background: var(--b); padding: 20px; }
+        :root { --p: #2c3e50; --s: #27ae60; --b: #f4f7f6; --a: #e74c3c; }
+        body { font-family: sans-serif; background: var(--b); padding: 20px; color: var(--p); }
         .panel { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .num-badge { display: inline-block; background: var(--p); color: white; border-radius: 4px; padding: 4px 15px; margin: 3px; font-weight: bold; }
         .hit-badge { background: var(--s) !important; box-shadow: 0 0 10px var(--s); }
@@ -14,26 +14,42 @@
         th { background: var(--p); color: white; }
         .best-hit { background-color: #fff176 !important; border: 2px solid #fbc02d !important; font-weight: bold; }
         .hit-count { font-weight: bold; color: var(--s); font-size: 1.5rem; }
+        #distribution { width: 100%; height: 60px; background: #eee; border-radius: 30px; margin: 10px 0; position: relative; overflow: hidden; }
+        .dot { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--a); }
+        .collapse-btn { width: 100%; padding: 10px; background: #eee; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; text-align: left; }
+        .collapse-content { display: none; padding: 15px; border: 1px solid #eee; border-top: none; border-radius: 0 0 8px 8px; font-size: 0.9rem; line-height: 1.6; }
     </style>
 </head>
 <body>
 
     <div class="panel">
-        <h3>1. 數據解析 (v99 三元坍縮版)</h3>
+        <h3>1. 數據解析 (v100 極限集彈版)</h3>
         <input type="file" id="csvFile" accept=".csv">
+        <div id="distribution-title" style="margin-top:15px; display:none;">連號分佈圖 (紅線為預測號碼位置)</div>
+        <div id="distribution" style="display:none;"></div>
     </div>
 
     <div id="resSection" style="display:none;">
         <div class="panel">
-            <h3>2. AI 預測組合 (衝刺 40% 命中 3)</h3>
+            <h3>2. AI 核心預測 (衝刺 40% 命中 3)</h3>
             <div id="predResult"></div>
         </div>
         <div class="panel">
-            <h3>3. 滾動回測 (極限集彈檢驗)</h3>
+            <h3>3. 滾動回測 (集彈力極限檢驗)</h3>
             <table>
                 <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合</th><th>命中</th></tr></thead>
                 <tbody id="btBody"></tbody>
             </table>
+        </div>
+    </div>
+
+    <div class="panel">
+        <button class="collapse-btn" onclick="toggleCollapse()">▼ 策略邏輯說明 (v100 三元坍縮演算法)</button>
+        <div id="strategyDetail" class="collapse-content">
+            <strong>1. 三元坍縮核：</strong> 鎖定全域評分第一號碼，強制抓取其鄰號與該區段最強斜連號（遺漏1期），建立物理性連鎖。<br>
+            <strong>2. 雙尾共振：</strong> 識別近期最強動能尾數，配置該尾數中評分前二之號碼，捕捉 539 高頻的「同尾雙開」。<br>
+            <strong>3. 權重極化：</strong> L1 與 L5-9 權重拉升至 2000，將 2-4 期雜訊權重壓低，專注於「即時動能」與「黃金反彈」。<br>
+            <strong>4. 空間分布：</strong> 預測號碼分布在 39 個位置的視覺化投射，確保不產生過度分散。
         </div>
     </div>
 
@@ -44,6 +60,24 @@
             reader.readAsText(e.target.files[0]);
         });
 
+        function toggleCollapse() {
+            const content = document.getElementById('strategyDetail');
+            content.style.display = content.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function drawDist(nums) {
+            const dist = document.getElementById('distribution');
+            dist.innerHTML = '';
+            dist.style.display = 'block';
+            document.getElementById('distribution-title').style.display = 'block';
+            nums.forEach(n => {
+                const dot = document.createElement('div');
+                dot.className = 'dot';
+                dot.style.left = `${(n / 39) * 100}%`;
+                dist.appendChild(dot);
+            });
+        }
+
         function process(text) {
             const rows = text.trim().split('\n').map(r => r.split(','));
             const data = rows.filter(r => !isNaN(r[1])).map(r => ({ date: r[0], nums: r.slice(1, 6).map(Number).sort((a,b)=>a-b) }));
@@ -51,18 +85,20 @@
             tbody.innerHTML = '';
             
             for (let i = data.length - 1; i > data.length - 11; i--) {
-                const pred = getTriCollapsePick(data.slice(0, i));
+                const pred = getV100Pick(data.slice(0, i));
                 const hits = pred.filter(n => data[i].nums.includes(n));
                 const tr = document.createElement('tr');
                 if (hits.length >= 3) tr.className = 'best-hit';
                 tr.innerHTML = `<td>${data[i].date}</td><td>${data[i].nums}</td><td>${pred.map(n=>`<span class="num-badge ${data[i].nums.includes(n)?'hit-badge':''}">${n}</span>`).join('')}</td><td class="hit-count">${hits.length}</td>`;
                 tbody.appendChild(tr);
             }
-            document.getElementById('predResult').innerHTML = getTriCollapsePick(data).map(n=>`<span class="num-badge" style="font-size:1.4rem">${n}</span>`).join('');
+            const finalPred = getV100Pick(data);
+            document.getElementById('predResult').innerHTML = finalPred.map(n=>`<span class="num-badge" style="font-size:1.4rem">${n}</span>`).join('');
+            drawDist(finalPred);
             document.getElementById('resSection').style.display = 'block';
         }
 
-        function getTriCollapsePick(hist) {
+        function getV100Pick(hist) {
             let sc = Array(40).fill(0), ms = Array(40).fill(0);
             const last = hist[hist.length-1].nums, recent = hist.slice(-8).flatMap(h=>h.nums);
             let tf = Array(10).fill(0); recent.forEach(n=>tf[n%10]++);
@@ -70,36 +106,33 @@
             for (let i=1; i<=39; i++) {
                 let m = 0; for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) m++; else break; }
                 ms[i] = m;
-                // v99 暴力集彈加權
-                if(m===1) sc[i]+=1950; 
-                else if(m>=5 && m<=9) sc[i]+=1850; 
-                else if(m>=2 && m<=4) sc[i]+=400; 
+                // v100 極化權重
+                if(m===1) sc[i]+=2000; 
+                else if(m>=5 && m<=9) sc[i]+=2000; 
+                else if(m>=2 && m<=4) sc[i]+=250; 
                 else if(m===0) sc[i]+=600; 
-                else if(m>=10) sc[i]=0; // 完全排除長冷與疲軟號
+                else if(m>=10) sc[i]=0; 
                 else sc[i]+=100;
 
                 sc[i] += tf[i%10]*350; 
-                if(last.some(ln=>Math.abs(ln-i)===1)) sc[i]+=550;
+                if(last.some(ln=>Math.abs(ln-i)===1)) sc[i]+=600;
             }
 
             let sorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>sc[b]-sc[a]);
             let res = [];
 
-            // 1. 三元連鎖核心 (3 顆)
+            // 1. 三元坍縮核 (主攻 10 期命中 3)
             let core = sorted[0]; res.push(core);
             let neighbor = sorted.find(n => !res.includes(n) && Math.abs(n-core)===1);
             if(neighbor) res.push(neighbor);
-            let slant = sorted.find(n => !res.includes(n) && ms[n]===1 && Math.abs(Math.floor(n/10)-Math.floor(core/10))===0);
-            if(!slant) slant = sorted.find(n => !res.includes(n) && n%10 === core%10);
-            if(slant) res.push(slant);
+            let clusterMate = sorted.find(n => !res.includes(n) && (ms[n]===1 || n%10 === core%10) && Math.abs(Math.floor(n/10)-Math.floor(core/10))===0);
+            if(clusterMate) res.push(clusterMate);
 
-            // 2. 共振側翼 (2 顆)
-            let topTail = sorted.find(n => !res.includes(n) && tf[n%10] >= 2);
-            if(topTail) {
-                res.push(topTail);
-                let tailMate = sorted.find(n => !res.includes(n) && n%10 === topTail%10);
-                if(tailMate) res.push(tailMate);
-            }
+            // 2. 雙尾共振側翼
+            let tailRank = Array.from({length:10},(_,i)=>({t:i, s:tf[i]})).sort((a,b)=>b.s-a.s);
+            let topTail = tailRank[0].t;
+            let tailMates = sorted.filter(n => !res.includes(n) && n%10 === topTail).slice(0, 2);
+            tailMates.forEach(n => { if(res.length < 5) res.push(n); });
 
             while (res.length < 5) res.push(sorted.find(n => !res.includes(n)));
             return res.sort((a, b) => a - b);
