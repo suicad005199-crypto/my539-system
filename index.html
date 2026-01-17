@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v117</title>
+    <title>AI 539 數據中心 v118</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; }
@@ -36,10 +36,10 @@
     <div id="mainDisplay" style="display:none;">
         <div class="grid-split">
             <div class="panel">
-                <div class="panel-header">下期預測組合 (v117 三元集彈)</div>
+                <div class="panel-header">下期預測組合 (v118 雙軌平衡型)</div>
                 <p style="font-size:0.7rem; color:var(--sub);">最強引力中心：</p>
                 <div id="anchorBall" class="ball-row"></div>
-                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">三元連結組合：</p>
+                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">雙軌配置組合：</p>
                 <div id="finalCombo" class="ball-row"></div>
             </div>
 
@@ -86,7 +86,7 @@
         mBody.innerHTML = ''; btContainer.innerHTML = '';
 
         for (let i = state.data.length - 1; i >= Math.max(0, state.data.length - 10); i--) {
-            const pred = getV117Pick(state.data.slice(0, i));
+            const pred = getV118Pick(state.data.slice(0, i));
             const real = state.data[i].nums;
             const hits = pred.res.filter(n => real.includes(n));
             const item = document.createElement('div');
@@ -104,60 +104,54 @@
             tr.innerHTML = trHtml;
             mBody.appendChild(tr);
         }
-        const final = getV117Pick(state.data);
+        const final = getV118Pick(state.data);
         document.getElementById('anchorBall').innerHTML = `<div class="ball anchor">${final.one}</div>`;
         document.getElementById('finalCombo').innerHTML = final.res.map(n => `<div class="ball ${n===final.one?'anchor':''}">${n}</div>`).join('');
         document.getElementById('mainDisplay').style.display = 'block';
     }
 
-    function getV117Pick(hist) {
+    function getV118Pick(hist) {
         if(hist.length === 0) return {res:[], one:0};
         let sc = Array(40).fill(0);
         const last = hist[hist.length-1].nums;
         const recent = hist.slice(-15).flatMap(h => h.nums);
         let tailF = Array(10).fill(0);
         recent.forEach(n => tailF[n%10]++);
+        const maxTail = tailF.indexOf(Math.max(...tailF));
 
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
             
-            // v117 核心策略：細化黃金反彈與鄰域
-            if(gap === 1) sc[i] += 2700; 
-            else if(gap >= 5 && gap <= 9) {
-                sc[i] += 3200; // 提高 L5-9 基礎權重
-                if(gap === 6 || gap === 7) sc[i] += 200; // 針對 6, 7 期加成
-            }
-            else if(gap === 0) sc[i] += 700; 
+            if(gap === 1) sc[i] += 2600; 
+            else if(gap >= 5 && gap <= 9) sc[i] += 3000;
+            else if(gap === 0) sc[i] += 800;
+            else if(gap >= 12) sc[i] += 500; // 冷號回補
             
-            sc[i] += tailF[i%10] * 500; 
-            if(last.some(ln => Math.abs(ln-i) === 1)) sc[i] += 1050; // 斜連加強
+            sc[i] += tailF[i%10] * 450; 
+            if(last.some(ln => Math.abs(ln-i) === 1)) sc[i] += 950;
         }
 
         let sorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>sc[b]-sc[a]);
         let res = [], one = sorted[0];
         res.push(one);
         
-        // v117 三元集彈：對核心執行「連號+間隔+同尾」三維加權
-        let triSc = [...sc];
+        // 軌道 A: 集彈配對 (核心 + 1)
+        let subSc = [...sc];
         for(let i=1; i<=39; i++) {
-            if(Math.abs(i - one) === 1) triSc[i] += 1200; // 連號
-            if(Math.abs(i - one) === 2) triSc[i] += 600;  // 間隔
-            if(i % 10 === one % 10) triSc[i] += 1200;    // 同尾
+            if(Math.abs(i - one) === 1) subSc[i] += 1200; // 強連號
+            if(i % 10 === one % 10 && one % 10 === maxTail) subSc[i] += 1200; // 僅針對最熱尾加成
         }
-        
-        let triSorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>triSc[b]-triSc[a]);
-        
-        // 選號：確保三元加權號碼入選
-        for(let n of triSorted) {
-            if(res.length >= 4) break; // 先留1個位置給全域最高分
+        let subSorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>subSc[b]-subSc[a]);
+        let mate = subSorted.find(n => !res.includes(n));
+        res.push(mate);
+
+        // 軌道 B: 覆蓋配置 (剩餘 3 顆)
+        for(let n of sorted) {
+            if(res.length >= 5) break;
             if(!res.includes(n)) res.push(n);
         }
 
-        while(res.length < 5) {
-            let next = sorted.find(n => !res.includes(n));
-            res.push(next);
-        }
         return { res: res.sort((a,b)=>a-b), one: one };
     }
 </script>
