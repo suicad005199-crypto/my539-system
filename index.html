@@ -3,31 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v114</title>
+    <title>AI 539 數據中心 v115</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; }
         .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
         
-        /* 獨立面板樣式 */
         .panel { background: var(--panel); border-radius: 16px; padding: 18px; border: 1px solid var(--border); }
         .panel-header { color: var(--primary); font-size: 0.9rem; font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
         .panel-header::after { content: ''; flex: 1; height: 1px; background: var(--border); }
         
-        /* 號碼球樣式 */
         .ball-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
         .ball { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 12px; font-weight: bold; font-size: 1.1rem; border: 1px solid var(--border); }
         .ball.anchor { background: var(--primary); color: #000; border: none; }
         
-        /* 表格與矩陣 */
+        /* 歷史分布圖優化：等寬表格 */
         .scroll-box { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; background: #000; }
-        table { width: 100%; border-collapse: collapse; min-width: 850px; }
-        th, td { border: 1px solid #2c2c2e; padding: 6px 0; text-align: center; font-size: 0.75rem; }
-        th { background: #1c1c1e; color: var(--sub); }
-        .date-col { width: 80px; color: var(--sub); font-size: 0.7rem; background: #1c1c1e; position: sticky; left: 0; }
-        .hit-dot { background: var(--primary); color: #000; font-weight: 800; border-radius: 4px; }
+        .matrix-table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 900px; }
+        .matrix-table th, .matrix-table td { 
+            border: 1px solid #2c2c2e; 
+            padding: 8px 0; 
+            text-align: center; 
+            font-size: 0.75rem; 
+            width: 24px; /* 固定寬度防止變形 */
+        }
+        .matrix-table th { background: #1c1c1e; color: var(--sub); font-weight: normal; }
+        .date-col { width: 80px !important; color: var(--sub); font-size: 0.7rem; background: #1c1c1e; position: sticky; left: 0; z-index: 2; }
+        .hit-dot { background: var(--primary); color: #000; font-weight: bold; border-radius: 4px; }
 
-        /* 回測列表 */
         .bt-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #2c2c2e; }
         .hit-count { color: var(--success); font-weight: bold; font-size: 1.2rem; width: 30px; text-align: right; }
 
@@ -38,30 +41,30 @@
 
 <div class="container">
     <div class="panel">
-        <div class="panel-header">數據上傳中心</div>
+        <div class="panel-header">數據注入</div>
         <input type="file" id="csvFile" style="width:100%; color:var(--sub);" accept=".csv">
     </div>
 
     <div id="mainDisplay" style="display:none;">
         <div class="grid-split">
             <div class="panel">
-                <div class="panel-header">下期預測組合 (v114 區間坍縮)</div>
-                <p style="font-size:0.7rem; color:var(--sub);">核心引力錨點：</p>
+                <div class="panel-header">下期預測組合 (v115 雙星共振)</div>
+                <p style="font-size:0.7rem; color:var(--sub);">重點引力號：</p>
                 <div id="anchorBall" class="ball-row"></div>
-                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">預計集彈組合：</p>
+                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">預計命中 2 以上組合：</p>
                 <div id="finalCombo" class="ball-row"></div>
             </div>
 
             <div class="panel">
-                <div class="panel-header">滾動回測效能 (前 10 期)</div>
+                <div class="panel-header">滾動回測 (前 10 期趨勢)</div>
                 <div id="btContainer"></div>
             </div>
         </div>
 
         <div class="panel">
-            <div class="panel-header">歷史獎號分布矩陣 (CSV 真實數據)</div>
+            <div class="panel-header">歷史獎號分布矩陣 (等寬優化版)</div>
             <div class="scroll-box">
-                <table>
+                <table class="matrix-table">
                     <thead><tr id="mHead"></tr></thead>
                     <tbody id="mBody"></tbody>
                 </table>
@@ -97,19 +100,17 @@
         mBody.innerHTML = ''; btContainer.innerHTML = '';
 
         for (let i = state.data.length - 1; i >= Math.max(0, state.data.length - 10); i--) {
-            const pred = getV114Pick(state.data.slice(0, i));
+            const pred = getV115Pick(state.data.slice(0, i));
             const real = state.data[i].nums;
             const hits = pred.res.filter(n => real.includes(n));
 
-            // 回測 Panel
             const item = document.createElement('div');
             item.className = 'bt-item';
             item.innerHTML = `<div><span style="color:var(--sub)">${state.data[i].date.slice(5)}</span><br><span style="font-size:0.8rem">${real.join(' ')}</span></div>
-                              <div style="font-size:0.7rem; color:#555">預測: ${pred.res.join(',')}</div>
+                              <div style="font-size:0.7rem; color:#555">${pred.res.join(' ')}</div>
                               <div class="hit-count">${hits.length}</div>`;
             btContainer.appendChild(item);
 
-            // 矩陣 Panel
             const tr = document.createElement('tr');
             let trHtml = `<td class="date-col">${state.data[i].date.slice(5)}</td>`;
             for(let n=1; n<=39; n++) {
@@ -120,13 +121,13 @@
             mBody.appendChild(tr);
         }
 
-        const final = getV114Pick(state.data);
+        const final = getV115Pick(state.data);
         document.getElementById('anchorBall').innerHTML = `<div class="ball anchor">${final.one}</div>`;
         document.getElementById('finalCombo').innerHTML = final.res.map(n => `<div class="ball ${n===final.one?'anchor':''}">${n}</div>`).join('');
         document.getElementById('mainDisplay').style.display = 'block';
     }
 
-    function getV114Pick(hist) {
+    function getV115Pick(hist) {
         if(hist.length === 0) return {res:[], one:0};
         let sc = Array(40).fill(0);
         const last = hist[hist.length-1].nums;
@@ -137,28 +138,29 @@
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
-            
             if(gap === 1) sc[i] += 2600; 
-            else if(gap >= 5 && gap <= 9) sc[i] += 3000; // v114 強化反彈
+            else if(gap >= 5 && gap <= 9) sc[i] += 3000; 
             else if(gap === 0) sc[i] += 800; 
-            
             sc[i] += tailF[i%10] * 550; 
-            if(last.some(ln => Math.abs(ln-i) === 1)) sc[i] += 1000; // 強化鄰號引力
+            if(last.some(ln => Math.abs(ln-i) === 1)) sc[i] += 1000;
         }
 
         let sorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>sc[b]-sc[a]);
         let res = [], one = sorted[0];
         res.push(one);
         
-        // v114 命中 2 攻堅核心：強制執行「鄰域坍縮」
-        // 在最優號碼附近的 4 個號碼內尋找評分最高者
-        let clusters = sorted.filter(n => n !== one && Math.abs(n-one) <= 4);
-        if(clusters.length > 0) res.push(clusters[0]); 
+        // v115 雙星共振：對核心周邊與同尾進行二次加權
+        let subSc = [...sc];
+        for(let i=1; i<=39; i++) {
+            if(Math.abs(i - one) === 1) subSc[i] += 1500; // 連號引力
+            if(i % 10 === one % 10) subSc[i] += 1500;    // 同尾共振
+        }
+        
+        let subSorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>subSc[b]-subSc[a]);
+        let mate = subSorted.find(n => !res.includes(n));
+        res.push(mate);
 
-        // 輔助：同尾號碼鎖定
-        let tailMate = sorted.find(n => !res.includes(n) && n%10 === one%10);
-        if(tailMate) res.push(tailMate);
-
+        // 繼續填充剩餘號碼
         while(res.length < 5) {
             let next = sorted.find(n => !res.includes(n));
             res.push(next);
