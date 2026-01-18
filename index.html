@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v122</title>
+    <title>AI 539 數據中心 v120</title>
     <style>
-        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; }
+        :root { --bg: #00; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; }
         .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
         .panel { background: var(--panel); border-radius: 16px; padding: 18px; border: 1px solid var(--border); }
@@ -36,15 +36,15 @@
     <div id="mainDisplay" style="display:none;">
         <div class="grid-split">
             <div class="panel">
-                <div class="panel-header">下期預測 (v122 引力坍縮8碼)</div>
-                <p style="font-size:0.7rem; color:var(--sub);">坍縮雙核心：</p>
+                <div class="panel-header">下期預測 (v120 擴張8碼版)</div>
+                <p style="font-size:0.7rem; color:var(--sub);">引力核心：</p>
                 <div id="anchorBall" class="ball-row"></div>
-                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">8碼高密度組合：</p>
+                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">8碼爆破組合：</p>
                 <div id="finalCombo" class="ball-row"></div>
             </div>
 
             <div class="panel">
-                <div class="panel-header">滾動回測 (前10期效能)</div>
+                <div class="panel-header">滾動回測 (8碼比對)</div>
                 <div id="btContainer"></div>
             </div>
         </div>
@@ -84,7 +84,7 @@
         mBody.innerHTML = ''; btContainer.innerHTML = '';
 
         for (let i = state.data.length - 1; i >= Math.max(0, state.data.length - 10); i--) {
-            const pred = getV122Pick(state.data.slice(0, i));
+            const pred = getV120Pick(state.data.slice(0, i));
             const real = state.data[i].nums;
             const hits = pred.res.filter(n => real.includes(n));
             const item = document.createElement('div');
@@ -101,13 +101,13 @@
             }
             tr.innerHTML = trHtml; mBody.appendChild(tr);
         }
-        const final = getV122Pick(state.data);
+        const final = getV120Pick(state.data);
         document.getElementById('anchorBall').innerHTML = `<div class="ball anchor">${final.one}</div><div class="ball anchor">${final.two}</div>`;
         document.getElementById('finalCombo').innerHTML = final.res.map(n => `<div class="ball ${[final.one, final.two].includes(n)?'anchor':''}">${n}</div>`).join('');
         document.getElementById('mainDisplay').style.display = 'block';
     }
 
-    function getV122Pick(hist) {
+    function getV120Pick(hist) {
         if(hist.length === 0) return {res:[], one:0, two:0};
         let sc = Array(40).fill(0);
         const last = hist[hist.length-1].nums, recent = hist.slice(-15).flatMap(h => h.nums);
@@ -116,33 +116,25 @@
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
-            
-            // v122: 階梯式反彈加權
-            if(gap === 1) sc[i] += 2700; 
-            else if(gap >= 5 && gap <= 9) sc[i] += 3800; // 強化黃金反彈
-            else if(gap === 10) sc[i] += 4000;           // L10 狙擊點
-            else if(gap === 0) sc[i] += 950;
-            
-            sc[i] += tailF[i%10] * 700; 
-            if(last.some(ln => Math.abs(ln-i) === 1)) sc[i] += 1500;
+            if(gap === 1) sc[i] += 2800; 
+            else if(gap >= 5 && gap <= 9) sc[i] += 3500;
+            else if(gap === 0) sc[i] += 850;
+            sc[i] += tailF[i%10] * 600; 
+            if(last.some(ln => Math.abs(ln-i) === 1)) sc[i] += 1100;
         }
 
         let sorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>sc[b]-sc[a]);
-        let one = sorted[0], two = sorted[1];
-        let res = [one, two];
-        
-        // v122: 區間坍縮 - 對核心周邊進行極端加權
+        let one = sorted[0], two = sorted[1], res = [one, two];
         let subSc = [...sc];
-        [one, two].forEach(a => {
+        [one, two].forEach(anchor => {
             for(let i=1; i<=39; i++) {
-                if(Math.abs(i - a) <= 2) subSc[i] += 3000; // 強制區間簇
-                if(i % 10 === a % 10) subSc[i] += 2500;    // 強制同尾簇
+                if(Math.abs(i - anchor) <= 3) subSc[i] += 2200; // 擴大集彈半徑
+                if(i % 10 === anchor % 10) subSc[i] += 1800; 
             }
         });
-
         let subSorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>subSc[b]-sc[a]);
         for(let n of subSorted) {
-            if(res.length >= 8) break;
+            if(res.length >= 8) break; // 擴張至8碼
             if(!res.includes(n)) res.push(n);
         }
         return { res: res.sort((a,b)=>a-b), one: one, two: two };
