@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v167</title>
+    <title>AI 539 數據中心 v168</title>
     <style>
-        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --fold: #bf5af2; }
+        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --fuse: #ff9f0a; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 14px; }
         .container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
         .panel { background: var(--panel); border-radius: 12px; padding: 15px; border: 1px solid var(--border); overflow-x: auto; }
@@ -13,7 +13,7 @@
         .ball-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
         .ball { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 6px; font-weight: bold; font-size: 12px; border: 1px solid var(--border); }
         .ball.active { background: var(--primary); color: #000; border: none; }
-        .ball.fold-node { border: 2px solid var(--fold); color: var(--fold); }
+        .ball.fuse-node { border: 2px solid var(--fuse); color: var(--fuse); }
         .pred-mark { background: rgba(255, 214, 10, 0.15); border: 1px inset var(--primary) !important; }
         table { width: 100%; border-collapse: collapse; font-size: 10px; text-align: center; }
         th, td { border: 1px solid #38383a; padding: 6px 2px; }
@@ -27,16 +27,16 @@
 
 <div class="container">
     <div class="panel">
-        <div class="panel-header">數據注入 (v167)</div>
+        <div class="panel-header">數據注入 (v168)</div>
         <input type="file" id="csvFile" accept=".csv" style="color:var(--sub);">
     </div>
 
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px;">
             <div class="panel" id="panel2">
-                <div class="panel-header">Panel 2: 下期精準 8 碼 (時空摺疊)</div>
+                <div class="panel-header">Panel 2: 下期精準 8 碼 (連鎖引信)</div>
                 <div id="finalCombo" class="ball-row"></div>
-                <p style="font-size:0.7rem; color:var(--sub);">紫框: 摺疊冷碼補償 | 策略: 熱核拖帶，鎖定 4 星共振</p>
+                <p style="font-size:0.7rem; color:var(--sub);">橘框: 耦合引信碼 | 策略: 熱碼拖帶同尾冷碼，衝擊 4 星</p>
             </div>
             <div class="panel" id="panel3">
                 <div class="panel-header">Panel 3: 滾動回測紀錄</div>
@@ -67,8 +67,8 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV167Pick(hist) {
-        if(hist.length < 5) return {res:[], foldNodes:[]};
+    function getV168Pick(hist) {
+        if(hist.length < 5) return {res:[], fuseNodes:[]};
         const last = hist[hist.length-1].nums;
         
         let pool = [];
@@ -76,44 +76,47 @@
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
             let score = 0;
-            if(gap <= 2) score += 7000; // 熱核權重
-            if(last.some(ln => Math.abs(ln-i) === 1)) score += 10000; // 斜連加權
-            if(gap >= 15) score += 3000; // 摺疊空間
+            if(gap <= 2) score += 8000;
+            if(last.some(ln => Math.abs(ln-i) === 1)) score += 11000;
             pool.push({n: i, gap: gap, sc: score, t: i%10});
         }
 
         let sorted = pool.sort((a,b) => b.sc - a.sc);
         let res = [];
-        let foldNodes = [];
+        let fuseNodes = [];
 
-        // 1. 優先選取時空延續熱碼 (4 碼)
+        // 1. 選取 3 顆最強熱核
+        let core = [];
         for(let p of sorted) {
-            if(res.length < 4 && p.gap <= 3) {
+            if(core.length < 3) {
                 res.push(p.n);
+                core.push(p);
             }
         }
 
-        // 2. 選取空間摺疊冷碼 (2 碼)
-        let coldPicks = pool.filter(p => p.gap >= 12).sort((a,b) => b.sc - a.sc);
-        for(let p of coldPicks) {
-            if(res.length < 6) {
-                res.push(p.n);
-                foldNodes.push(p.n);
+        // 2. 連鎖引信：為熱核尋找同尾冷碼
+        core.forEach(c => {
+            let tailCold = pool.find(p => p.t === c.t && p.n !== c.n && p.gap >= 10 && !res.includes(p.n));
+            if(tailCold && res.length < 8) {
+                res.push(tailCold.n);
+                fuseNodes.push(tailCold.n);
             }
-        }
+        });
 
-        // 3. 補齊 (根據權重)
+        // 3. 補齊 (斜連優先)
         for(let p of sorted) {
             if(res.length < 8 && !res.includes(p.n)) {
                 res.push(p.n);
             }
         }
 
-        return { res: res.sort((a,b)=>a-b), foldNodes };
+        return { res: res.sort((a,b)=>a-b), fuseNodes };
     }
 
     function render() {
-        const finalPred = getV167Pick(state.data);
+        const finalPred = getV168Pick(state.data);
+        
+        // Panel 4 Table
         let tableHtml = `<table><thead><tr><th>日期</th>`;
         for(let i=1; i<=39; i++) tableHtml += `<th>${i}</th>`;
         tableHtml += `</tr></thead><tbody><tr style="background:#2c2c2e"><td>下期預測</td>`;
@@ -133,11 +136,12 @@
         tableHtml += `</tbody></table>`;
         document.getElementById('matrixContainer').innerHTML = tableHtml;
 
+        // Panel 3 BT
         const bt = document.getElementById('btContainer');
         bt.innerHTML = `<div class="bt-row" style="color:var(--sub); border:none"><span>日期</span><span>開獎號碼</span><span>AI 預測號碼</span><span>命中</span></div>`;
         state.data.slice(-10).reverse().forEach((row) => {
             const currentIdx = state.data.findIndex(d => d.date === row.date);
-            const pred = getV167Pick(state.data.slice(0, currentIdx));
+            const pred = getV168Pick(state.data.slice(0, currentIdx));
             const hits = pred.res.filter(n => row.nums.includes(n));
             bt.innerHTML += `
                 <div class="bt-row">
@@ -148,8 +152,9 @@
                 </div>`;
         });
 
+        // Panel 2
         document.getElementById('finalCombo').innerHTML = finalPred.res.map(n => {
-            let cls = finalPred.foldNodes.includes(n) ? 'fold-node' : 'active';
+            let cls = finalPred.fuseNodes.includes(n) ? 'fuse-node' : 'active';
             return `<div class="ball ${cls}">${n}</div>`;
         }).join('');
         document.getElementById('mainDisplay').style.display = 'block';
