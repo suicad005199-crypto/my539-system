@@ -3,22 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v148</title>
+    <title>AI 539 數據中心 v149</title>
     <style>
-        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; }
+        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --danger: #ff453a; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; }
         .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
         .panel { background: var(--panel); border-radius: 16px; padding: 18px; border: 1px solid var(--border); }
         .panel-header { color: var(--primary); font-size: 0.9rem; font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
         .panel-header::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-        .ball-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-        .ball { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 8px; font-weight: bold; font-size: 0.85rem; border: 1px solid var(--border); }
-        .ball.hot { background: var(--primary); color: #000; border: none; }
+        .ball-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+        .ball { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 8px; font-weight: bold; font-size: 0.9rem; border: 1px solid var(--border); }
+        .ball.core { background: var(--primary); color: #000; border: none; }
         .ball.serial { border: 2px solid var(--success); color: var(--success); }
+        .ball.resonance { border: 2px solid var(--danger); color: var(--danger); }
         .bt-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #2c2c2e; }
-        .hit-count { color: var(--success); font-weight: bold; font-size: 1.1rem; }
-        .chart-bar { height: 12px; background: var(--border); border-radius: 6px; overflow: hidden; margin: 4px 0; position: relative; }
-        .chart-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.5s; }
+        .hit-count { color: var(--success); font-weight: bold; font-size: 1.2rem; }
+        .dist-item { margin-bottom: 10px; }
+        .bar-bg { height: 8px; background: #2c2c2e; border-radius: 4px; overflow: hidden; margin-top: 4px; }
+        .bar-fill { height: 100%; background: var(--primary); transition: width 0.6s ease; }
     </style>
 </head>
 <body>
@@ -32,18 +34,16 @@
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:15px;">
             <div class="panel">
-                <div class="panel-header">下期預測 (v148 強化版)</div>
+                <div class="panel-header">下期預測 (v149 三點定位)</div>
                 <div id="finalCombo" class="ball-row"></div>
-                <p style="font-size:0.7rem; color:var(--sub);">黃色:熱核 | 綠框:連號陷阱</p>
+                <p style="font-size:0.7rem; color:var(--sub);">黃:核心 | 綠:連號陷阱 | 紅:同尾共振</p>
             </div>
-            
             <div class="panel">
-                <div class="panel-header">Panel 4: 連號分布圖表</div>
+                <div class="panel-header">Panel 4: 連號與區間分布趨勢</div>
                 <div id="distChart"></div>
             </div>
-
             <div class="panel">
-                <div class="panel-header">滾動回測 (前10期)</div>
+                <div class="panel-header">滾動回測</div>
                 <div id="btContainer"></div>
             </div>
         </div>
@@ -66,8 +66,8 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV148Pick(hist) {
-        if(hist.length < 5) return {res:[], hot:[], serials:[]};
+    function getV149Pick(hist) {
+        if(hist.length < 5) return {res:[], core:[], serial:[], resonance:[]};
         const last = hist[hist.length-1].nums;
         let pool = [];
         for (let i=1; i<=39; i++) {
@@ -76,56 +76,56 @@
             let score = 0;
             if(gap <= 2) score += 5000;
             if(last.some(ln => Math.abs(ln-i) === 1)) score += 6000;
-            pool.push({n: i, gap: gap, sc: score});
+            pool.push({n: i, gap: gap, sc: score, tail: i%10});
         }
 
-        // 1. 選核心
-        let hot = pool.sort((a,b) => b.sc - a.sc).slice(0, 3).map(p => p.n);
+        // 1. 核心點 (Core)
+        let core = pool.sort((a,b) => b.sc - a.sc).slice(0, 2).map(p => p.n);
         
-        // 2. 建立連號陷阱 (強迫核心鄰號入選)
-        let serials = [];
-        let base = hot[0];
-        let n1 = base + 1 > 39 ? base - 1 : base + 1;
-        serials.push(n1);
+        // 2. 連動點 (Serial Trap)
+        let serial = [];
+        core.forEach(n => {
+            let target = n + 1 > 39 ? n - 1 : n + 1;
+            if(!core.includes(target)) serial.push(target);
+        });
+        serial = serial.slice(0, 2);
 
-        // 3. 同尾磁吸
-        let tails = hot.map(n => n % 10);
-        let matched = pool.filter(p => !hot.includes(p.n) && !serials.includes(p.n) && tails.includes(p.n % 10) && p.gap <= 10)
-                          .sort((a,b) => b.sc - a.sc).slice(0, 2).map(p => p.n);
+        // 3. 共振點 (Resonance: 同尾中位)
+        let cTails = core.map(n => n%10);
+        let resonance = pool.filter(p => !core.includes(p.n) && !serial.includes(p.n) && cTails.includes(p.tail) && p.gap >= 3 && p.gap <= 9)
+                            .sort((a,b) => b.sc - a.sc).slice(0, 2).map(p => p.n);
 
-        let res = [...new Set([...hot, ...serials, ...matched])];
-        let remaining = pool.filter(p => !res.includes(p.n)).sort((a,b) => b.sc - a.sc);
-        while(res.length < 8) res.push(remaining.shift().n);
+        let res = [...new Set([...core, ...serial, ...resonance])];
+        let fillers = pool.filter(p => !res.includes(p.n)).sort((a,b) => b.sc - a.sc);
+        while(res.length < 8) res.push(fillers.shift().n);
 
-        return { res: res.sort((a,b)=>a-b), hot, serials };
+        return { res: res.sort((a,b)=>a-b), core, serial, resonance };
     }
 
     function render() {
-        // 更新圖表
+        // 更新 Panel 4
         const distChart = document.getElementById('distChart');
         distChart.innerHTML = '';
-        const counts = new Array(4).fill(0); // 01-10, 11-20, 21-30, 31-39
-        state.data.slice(-10).forEach(d => {
-            d.nums.forEach(n => counts[Math.min(3, Math.floor((n-1)/10))]++);
-        });
-        counts.forEach((c, i) => {
-            const labels = ["01-10", "11-20", "21-30", "31-39"];
-            distChart.innerHTML += `<div style="font-size:0.7rem; color:var(--sub)">${labels[i]} (${c})</div><div class="chart-bar"><div class="chart-fill" style="width:${c*2}%"></div></div>`;
+        const zones = [0,0,0,0]; // 01-10, 11-20, 21-30, 31-39
+        state.data.slice(-15).forEach(d => d.nums.forEach(n => zones[Math.min(3, Math.floor((n-1)/10))]++));
+        const labels = ["01-10", "11-20", "21-30", "31-39"];
+        zones.forEach((v, i) => {
+            distChart.innerHTML += `<div class="dist-item"><div style="display:flex;justify-content:space-between;font-size:0.75rem"><span>${labels[i]}</span><span>${v}次</span></div><div class="bar-bg"><div class="bar-fill" style="width:${(v/75)*100}%"></div></div></div>`;
         });
 
-        // 更新回測
+        // 回測與預測
         const btContainer = document.getElementById('btContainer');
         btContainer.innerHTML = '';
         for (let i = state.data.length - 1; i >= Math.max(0, state.data.length - 10); i--) {
-            const pred = getV148Pick(state.data.slice(0, i));
+            const pred = getV149Pick(state.data.slice(0, i));
             const real = state.data[i].nums;
             const hits = pred.res.filter(n => real.includes(n));
             btContainer.innerHTML += `<div class="bt-item"><div><span style="color:var(--sub)">${state.data[i].date.slice(5)}</span><br><span style="font-size:0.8rem">${real.join(' ')}</span></div><div class="hit-count">${hits.length}</div></div>`;
         }
 
-        const final = getV148Pick(state.data);
+        const final = getV149Pick(state.data);
         document.getElementById('finalCombo').innerHTML = final.res.map(n => {
-            let cls = final.hot.includes(n) ? 'hot' : (final.serials.includes(n) ? 'serial' : '');
+            let cls = final.core.includes(n) ? 'core' : (final.serial.includes(n) ? 'serial' : (final.resonance.includes(n) ? 'resonance' : ''));
             return `<div class="ball ${cls}">${n}</div>`;
         }).join('');
         document.getElementById('mainDisplay').style.display = 'block';
