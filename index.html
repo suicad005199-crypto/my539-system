@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v198</title>
+    <title>AI 539 數據中心 v199</title>
     <style>
-        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --expect: #ff2d55; --thermal: #32d74b; --gravity: #ff9500; }
+        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --expect: #ff2d55; --thermal: #32d74b; --fission: #ff375f; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 14px; }
         .container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
         .panel { background: var(--panel); border-radius: 12px; padding: 15px; border: 1px solid var(--border); }
@@ -15,7 +15,8 @@
         .ball.active { background: var(--primary); color: #000; border: none; }
         .ball.expect-node { border: 2px solid var(--expect); color: var(--expect); }
         .ball.thermal-node { border: 2px solid var(--thermal); color: var(--thermal); }
-        .ball.gravity-node { border: 2px solid var(--gravity); color: var(--gravity); box-shadow: 0 0 8px rgba(255,149,0,0.4); }
+        .ball.fission-node { border: 2px solid var(--fission); color: var(--fission); box-shadow: 0 0 10px rgba(255,55,95,0.6); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
         .matrix-table { width: 100%; border-collapse: collapse; text-align: center; table-layout: fixed; min-width: 850px; font-size: 11px; }
         .matrix-table th, .matrix-table td { border: 1px solid var(--border); padding: 8px 0; }
         .is-hit { background: var(--hit); color: #fff; font-weight: bold; }
@@ -27,23 +28,23 @@
 
 <div class="container">
     <div class="panel">
-        <div class="panel-header">數據注入 (v198 - 動態重心補償)</div>
+        <div class="panel-header">數據注入 (v199 - 雙核裂變爆發)</div>
         <input type="file" id="csvFile" accept=".csv" style="color:var(--sub);">
     </div>
 
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px;">
             <div class="panel">
-                <div class="panel-header">Panel 2: 核心 8 碼 (重心偏移優化)</div>
+                <div class="panel-header">Panel 2: 核心 8 碼 (裂變爆發版)</div>
                 <div id="finalCombo" class="ball-row"></div>
                 <p style="font-size:0.7rem; color:var(--sub);">
                     <span style="color:var(--thermal)">綠: 熱核</span> | 
-                    <span style="color:var(--gravity)">橘: 重心偏向</span> | 
+                    <span style="color:var(--fission)">紅圈: 裂變引信</span> | 
                     <span style="color:var(--expect)">紅: 期望冷碼</span>
                 </p>
             </div>
             <div class="panel">
-                <div class="panel-header">Panel 3: 滾動回測 (追蹤覆蓋修復)</div>
+                <div class="panel-header">Panel 3: 滾動回測 (衝刺 4 星)</div>
                 <div id="btContainer"></div>
             </div>
         </div>
@@ -69,63 +70,58 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV198Pick(hist) {
-        if(hist.length < 5) return {res:[], expectNodes:[], thermalNodes:[], gravityNodes:[]};
+    function getV199Pick(hist) {
+        if(hist.length < 5) return {res:[], expectNodes:[], thermalNodes:[], fissionNodes:[]};
         const last = hist[hist.length-1].nums;
+        const secondLast = hist[hist.length-2] ? hist[hist.length-2].nums : [];
         
-        // 1. 計算重心偏移 (近 3 期)
-        let frontCount = 0, backCount = 0;
-        hist.slice(-3).forEach(day => {
-            day.nums.forEach(n => { if(n <= 19) frontCount++; else backCount++; });
-        });
-        const total = frontCount + backCount;
-        const frontRatio = frontCount / total; // 前區配比參考值
-
         let pool = [];
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
             let score = 0;
+            let isSlant = last.some(ln => Math.abs(ln-i) === 1);
+            let isJump = secondLast.includes(i);
+            
             if(gap <= 3) score += 30000; 
-            if(last.some(ln => Math.abs(ln-i) === 1)) score += 25000; 
-            if(gap >= 12) score += 15000;
-            pool.push({n: i, gap: gap, sc: score, zone: i <= 19 ? 'front' : 'back'});
+            if(isSlant) score += 25000;
+            if(isJump) score += 15000;
+            if(gap >= 12) score += 10000;
+            
+            pool.push({n: i, gap: gap, sc: score, isSlant, isJump});
         }
         
         let sorted = pool.sort((a,b) => b.sc - a.sc);
-        let res = [], thermalNodes = [], expectNodes = [], gravityNodes = [];
+        let res = [], thermalNodes = [], expectNodes = [], fissionNodes = [];
 
-        // 核心配額分配 (動態重心)
-        let frontTarget = Math.round(6 * frontRatio);
-        frontTarget = Math.max(2, Math.min(4, frontTarget)); // 限制在 2~4 碼之間做對沖
-
-        // 2. 依重心選取熱碼
-        sorted.filter(p => p.zone === 'front').slice(0, frontTarget).forEach(p => { res.push(p.n); thermalNodes.push(p.n); });
-        sorted.filter(p => p.zone === 'back').slice(0, 6 - frontTarget).forEach(p => { res.push(p.n); thermalNodes.push(p.n); });
-
-        // 3. 重心偏移補償 (橘)
-        sorted.filter(p => !res.includes(p.n)).slice(0, 2).forEach(p => {
+        // 1. 裂變引信 (強制鎖定 3 碼：滿足多重條件者)
+        sorted.filter(p => p.isSlant && p.gap <= 4).slice(0, 3).forEach(p => {
             res.push(p.n);
-            gravityNodes.push(p.n);
+            fissionNodes.push(p.n);
         });
 
-        // 4. 期望冷碼檢查
-        const finalPool = sorted.filter(p => !res.includes(p.n) && p.gap >= 10).slice(0, 1);
-        if(finalPool.length > 0) { res.push(finalPool[0].n); expectNodes.push(finalPool[0].n); }
+        // 2. 熱核補位 (3 碼)
+        sorted.filter(p => !res.includes(p.n) && p.gap <= 2).slice(0, 3).forEach(p => {
+            res.push(p.n);
+            thermalNodes.push(p.n);
+        });
 
-        // 補齊
-        for(let p of sorted) { if(res.length < 8 && !res.includes(p.n)) res.push(p.n); }
+        // 3. 期望冷碼與跳碼 (2 碼)
+        sorted.filter(p => !res.includes(p.n)).slice(0, 2).forEach(p => {
+            res.push(p.n);
+            if(p.gap >= 10) expectNodes.push(p.n);
+        });
 
-        return { res: res.slice(0, 8).sort((a,b)=>a-b), expectNodes, thermalNodes, gravityNodes };
+        return { res: res.slice(0, 8).sort((a,b)=>a-b), expectNodes, thermalNodes, fissionNodes };
     }
 
     function render() {
-        const fullData = [...state.data], finalPred = getV198Pick(fullData), recentForBT = fullData.slice(-10).reverse();
+        const fullData = [...state.data], finalPred = getV199Pick(fullData), recentForBT = fullData.slice(-10).reverse();
         document.getElementById('finalCombo').innerHTML = finalPred.res.map(n => {
             let cls = 'active';
-            if(finalPred.thermalNodes.includes(n)) cls = 'thermal-node';
-            if(finalPred.gravityNodes.includes(n)) cls = 'gravity-node';
-            if(finalPred.expectNodes.includes(n)) cls = 'expect-node';
+            if(finalPred.fissionNodes.includes(n)) cls = 'fission-node';
+            else if(finalPred.thermalNodes.includes(n)) cls = 'thermal-node';
+            else if(finalPred.expectNodes.includes(n)) cls = 'expect-node';
             return `<div class="ball ${cls}">${n}</div>`;
         }).join('');
 
@@ -133,7 +129,7 @@
         bt.innerHTML = `<div class="bt-row" style="color:var(--sub); border:none"><span>日期</span><span>開獎</span><span>AI 預測</span><span>命中</span></div>`;
         recentForBT.forEach((row) => {
             const histUntil = fullData.slice(0, fullData.findIndex(d => d.date === row.date));
-            const pred = getV198Pick(histUntil);
+            const pred = getV199Pick(histUntil);
             const hits = pred.res.filter(n => row.nums.includes(n));
             bt.innerHTML += `<div class="bt-row"><span>${row.date}</span><span>${row.nums.join(' ')}</span><div style="display:flex; gap:3px;">${pred.res.map(n => row.nums.includes(n)?`<b style="color:var(--hit)">${n}</b>`:n).join(' ')}</div><span class="hit-count">${hits.length}</span></div>`;
         });
