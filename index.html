@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v146</title>
+    <title>AI 539 數據中心 v147</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; }
@@ -13,8 +13,8 @@
         .panel-header::after { content: ''; flex: 1; height: 1px; background: var(--border); }
         .ball-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
         .ball { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 8px; font-weight: bold; font-size: 0.9rem; border: 1px solid var(--border); }
-        .ball.track-a { border-color: var(--primary); color: var(--primary); }
-        .ball.track-b { border-color: var(--success); color: var(--success); }
+        .ball.hot-core { background: var(--primary); color: #000; border: none; }
+        .ball.tail-match { border-color: var(--success); color: var(--success); }
         .bt-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #2c2c2e; }
         .hit-count { color: var(--success); font-weight: bold; font-size: 1.2rem; }
     </style>
@@ -23,19 +23,19 @@
 
 <div class="container">
     <div class="panel">
-        <div class="panel-header">數據注入 (v146)</div>
+        <div class="panel-header">數據注入 (v147)</div>
         <input type="file" id="csvFile" style="width:100%; color:var(--sub);" accept=".csv">
     </div>
 
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:15px;">
             <div class="panel">
-                <div class="panel-header">下期預測 (雙軌 8 碼)</div>
-                <p style="font-size:0.7rem; color:var(--sub);">黃框:熱軌 | 綠框:冷軌 (空間平衡機制開啟)</p>
+                <div class="panel-header">下期預測 (集結 8 碼)</div>
+                <p style="font-size:0.7rem; color:var(--sub);">黃色:熱核 | 綠色:同尾磁吸補位</p>
                 <div id="finalCombo" class="ball-row"></div>
             </div>
             <div class="panel">
-                <div class="panel-header">滾動回測 (修復基本盤)</div>
+                <div class="panel-header">回測紀錄 (強化集彈性)</div>
                 <div id="btContainer"></div>
             </div>
         </div>
@@ -58,8 +58,8 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV146Pick(hist) {
-        if(hist.length < 5) return {res:[], ta:[], tb:[]};
+    function getV147Pick(hist) {
+        if(hist.length < 5) return {res:[], core:[], tails:[]};
         const last = hist[hist.length-1].nums;
         let pool = [];
         for (let i=1; i<=39; i++) {
@@ -67,55 +67,40 @@
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
             let score = 0;
             if(gap <= 2) score += 5000;
-            if(last.some(ln => Math.abs(ln-i) === 1)) score += 4000;
-            pool.push({n: i, gap: gap, sc: score, zone: Math.floor(i/10)});
+            if(last.some(ln => Math.abs(ln-i) === 1)) score += 6000; // 強化斜連
+            pool.push({n: i, gap: gap, sc: score});
         }
 
-        let res = [];
-        let zoneCount = {0:0, 1:0, 2:0, 3:0};
+        // 1. 選出 2 顆最強熱核 (Core)
+        let core = pool.sort((a,b) => b.sc - a.sc).slice(0, 2).map(p => p.n);
+        let coreTails = core.map(n => n % 10);
+
+        // 2. 磁吸同尾 (Tail Match)
+        let matched = pool.filter(p => !core.includes(p.n) && coreTails.includes(p.n % 10) && p.gap <= 12)
+                          .sort((a,b) => b.sc - a.sc).slice(0, 2).map(p => p.n);
+
+        // 3. 軌道平衡補位 (Balance)
+        let res = [...core, ...matched];
+        let remaining = pool.filter(p => !res.includes(p.n))
+                            .sort((a,b) => b.sc - a.sc);
         
-        // Track A: 熱軌 4碼
-        let ta = [];
-        let taPool = pool.filter(p => p.gap <= 3).sort((a,b)=>b.sc - a.sc);
-        for(let p of taPool) {
-            if(ta.length < 4 && zoneCount[p.zone] < 2) {
-                ta.push(p.n);
-                zoneCount[p.zone]++;
-            }
-        }
+        for(let p of remaining) { if(res.length < 8) res.push(p.n); }
 
-        // Track B: 冷軌 4碼
-        let tb = [];
-        let tbPool = pool.filter(p => !ta.includes(p.n) && p.gap >= 4 && p.gap <= 12).sort((a,b)=>b.sc - a.sc);
-        for(let p of tbPool) {
-            if(tb.length < 4 && zoneCount[p.zone] < 3) {
-                tb.push(p.n);
-                zoneCount[p.zone]++;
-            }
-        }
-        
-        res = [...ta, ...tb].sort((a,b)=>a-b);
-        // 補位至 8 碼
-        if(res.length < 8) {
-            let fillers = pool.filter(p => !res.includes(p.n)).sort((a,b)=>b.sc - a.sc);
-            for(let f of fillers) { if(res.length < 8) res.push(f.n); }
-        }
-
-        return { res: res.slice(0, 8).sort((a,b)=>a-b), ta, tb };
+        return { res: res.sort((a,b)=>a-b), core, tails: matched };
     }
 
     function render() {
         const btContainer = document.getElementById('btContainer');
         btContainer.innerHTML = '';
         for (let i = state.data.length - 1; i >= Math.max(0, state.data.length - 10); i--) {
-            const pred = getV146Pick(state.data.slice(0, i));
+            const pred = getV147Pick(state.data.slice(0, i));
             const real = state.data[i].nums;
             const hits = pred.res.filter(n => real.includes(n));
             btContainer.innerHTML += `<div class="bt-item"><div><span style="color:var(--sub)">${state.data[i].date.slice(5)}</span><br><span style="font-size:0.8rem">${real.join(' ')}</span></div><div class="hit-count">${hits.length}</div></div>`;
         }
-        const final = getV146Pick(state.data);
+        const final = getV147Pick(state.data);
         document.getElementById('finalCombo').innerHTML = final.res.map(n => {
-            let cls = final.ta.includes(n) ? 'track-a' : 'track-b';
+            let cls = final.core.includes(n) ? 'hot-core' : (final.tails.includes(n) ? 'tail-match' : '');
             return `<div class="ball ${cls}">${n}</div>`;
         }).join('');
         document.getElementById('mainDisplay').style.display = 'block';
