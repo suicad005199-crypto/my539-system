@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v152</title>
+    <title>AI 539 數據中心 v153</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 14px; }
@@ -26,7 +26,7 @@
 
 <div class="container">
     <div class="panel">
-        <div class="panel-header">數據注入 (v152)</div>
+        <div class="panel-header">數據注入 (v153)</div>
         <input type="file" id="csvFile" accept=".csv" style="color:var(--sub);">
     </div>
 
@@ -35,7 +35,7 @@
             <div class="panel">
                 <div class="panel-header">下期精準 8 碼 (Panel 2)</div>
                 <div id="finalCombo" class="ball-row"></div>
-                <p style="font-size:0.7rem; color:var(--sub);">策略：連號錨點加固 + 斜連共振修正</p>
+                <p style="font-size:0.7rem; color:var(--sub);">策略：3-3-2 遺漏階層 + 跳島區域防線</p>
             </div>
             <div class="panel">
                 <div class="panel-header">滾動回測 (前 10 期)</div>
@@ -66,51 +66,49 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV152Pick(hist) {
+    function getV153Pick(hist) {
         if(hist.length < 5) return {res:[]};
         const last = hist[hist.length-1].nums;
-        const prev = hist[hist.length-2].nums;
         let pool = [];
-        
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
             let score = 0;
             if(gap <= 2) score += 5000;
-            if(last.some(ln => Math.abs(ln-i) === 1)) score += 6500; // 提升斜連權重
-            pool.push({n: i, gap: gap, sc: score});
+            if(last.some(ln => Math.abs(ln-i) === 1)) score += 6000;
+            pool.push({n: i, gap: gap, sc: score, z: Math.floor((i-1)/10)});
         }
 
-        let sorted = pool.sort((a,b) => b.sc - a.sc);
         let res = [];
-        
-        // 1. 核心核心 (Core)
-        let core = sorted.slice(0, 3).map(p => p.n);
-        res.push(...core);
+        let zLimit = [0,0,0,0];
 
-        // 2. 加固連號 (優先選取熱度連號)
-        let c1 = core[0];
-        let targets = [c1-1, c1+1].filter(n => n >= 1 && n <= 39);
-        // 優先選擇出現在 last 或 prev 中的鄰號（熱連號）
-        let bestSerial = targets.sort((a,b) => (last.includes(a)||prev.includes(a) ? -1 : 1))[0];
-        res.push(bestSerial);
-
-        // 3. 同尾磁吸 (限制 L1-L8)
-        let tailTarget = core[1] % 10;
-        let tailMatch = pool.find(p => !res.includes(p.n) && p.n % 10 === tailTarget && p.gap <= 8);
-        if(tailMatch) res.push(tailMatch.n);
-
-        // 4. 填充
-        for(let p of sorted) {
-            if(res.length >= 8) break;
-            if(!res.includes(p.n)) res.push(p.n);
+        // 1. 熱區 (L0-L2) - 取 3 碼
+        let l_hot = pool.filter(p => p.gap <= 2).sort((a,b)=>b.sc - a.sc);
+        for(let p of l_hot) {
+            if(res.length < 3 && zLimit[p.z] < 2) { res.push(p.n); zLimit[p.z]++; }
         }
 
-        return { res: [...new Set(res)].sort((a,b)=>a-b) };
+        // 2. 溫區 (L3-L9) - 取 3 碼
+        let l_warm = pool.filter(p => p.gap >= 3 && p.gap <= 9).sort((a,b)=>b.sc - a.sc);
+        for(let p of l_warm) {
+            if(res.length < 6 && zLimit[p.z] < 2) { res.push(p.n); zLimit[p.z]++; }
+        }
+
+        // 3. 冷區 (L10+) - 取 2 碼
+        let l_cold = pool.filter(p => p.gap >= 10).sort((a,b)=>b.sc - a.sc);
+        for(let p of l_cold) {
+            if(res.length < 8 && zLimit[p.z] < 3) { res.push(p.n); zLimit[p.z]++; }
+        }
+
+        // 補位
+        let allSorted = pool.sort((a,b)=>b.sc - a.sc);
+        for(let p of allSorted) { if(res.length < 8 && !res.includes(p.n)) res.push(p.n); }
+
+        return { res: res.sort((a,b)=>a-b) };
     }
 
     function render() {
-        // Panel 4 保持原結構
+        // Panel 4 Table
         let tableHtml = `<table><thead><tr><th>日期</th>`;
         for(let i=1; i<=39; i++) tableHtml += `<th>${i < 10 ? '0'+i : i}</th>`;
         tableHtml += `</tr></thead><tbody>`;
@@ -126,16 +124,16 @@
         tableHtml += `</tbody></table>`;
         document.getElementById('matrixContainer').innerHTML = tableHtml;
 
-        // 回測與預測
+        // Results
         const bt = document.getElementById('btContainer');
         bt.innerHTML = '';
         state.data.slice(-10).forEach((row, idx) => {
-            const pred = getV152Pick(state.data.slice(0, state.data.length - 10 + idx));
+            const pred = getV153Pick(state.data.slice(0, state.data.length - 10 + idx));
             const hits = pred.res.filter(n => row.nums.includes(n));
             bt.innerHTML += `<div class="bt-item"><span>${row.date.slice(5)}</span><span class="hit-count">中 ${hits.length}</span></div>`;
         });
 
-        const final = getV152Pick(state.data);
+        const final = getV153Pick(state.data);
         document.getElementById('finalCombo').innerHTML = final.res.map(n => `<div class="ball active">${n}</div>`).join('');
         document.getElementById('mainDisplay').style.display = 'block';
     }
