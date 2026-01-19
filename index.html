@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v220</title>
+    <title>AI 539 數據中心 v221</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --core: #ffd60a; --expand: #af52de; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 14px; }
@@ -31,16 +31,16 @@
 
 <div class="container">
     <div class="panel">
-        <div class="panel-header">數據注入 (v220 - 動態奇偶優化)</div>
+        <div class="panel-header">數據注入 (v221 - 區域坍縮優化)</div>
         <input type="file" id="csvFile" accept=".csv" style="color:var(--sub);">
     </div>
 
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px;">
             <div class="panel">
-                <div class="panel-header">Panel 2: 結構預測 (奇偶平衡 + 間距聚變)</div>
+                <div class="panel-header">Panel 2: 結構預測 (坍縮爆發模式)</div>
                 <div id="finalCombo" class="ball-row"></div>
-                <p style="font-size:0.75rem; color:var(--sub); margin-top:5px;">策略：強制 3:2/2:3 奇偶分布，並優化特定物理間距加權。</p>
+                <p style="font-size:0.75rem; color:var(--sub); margin-top:5px;">策略：打破均衡，鎖定大/小號區塊群聚爆發，衝擊 3-4 星。</p>
             </div>
             <div class="panel">
                 <div class="panel-header">Panel 3: 10 期滾動回測</div>
@@ -48,7 +48,7 @@
             </div>
         </div>
         <div class="panel">
-            <div class="panel-header">Panel 4: 分區走勢矩陣 (奇偶分布分析)</div>
+            <div class="panel-header">Panel 4: 分區走勢矩陣 (坍縮趨勢分析)</div>
             <div class="matrix-wrapper" id="matrixContainer"></div>
         </div>
     </div>
@@ -69,53 +69,57 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV220Pick(hist) {
+    function getV221Pick(hist) {
         if(hist.length < 5) return {res:[], coreNodes:[], expandNodes:[]};
         const last = hist[hist.length-1].nums;
-        let pool = [];
+        const last3All = hist.slice(-3).flatMap(h => h.nums);
+        
+        // 判斷大小趨勢 (1-19 vs 20-39)
+        const bigCount = last3All.filter(n => n >= 20).length;
+        const trendIsBig = bigCount >= 8; // 趨勢坍縮方向
 
+        let pool = [];
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
             
-            // v220 評分：斜連(30) + 間距聚變(35) + 拖碼相關(25)
-            let isFusion = last.some(ln => [4, 6].includes(Math.abs(ln-i))); 
-            let score = (last.some(ln => Math.abs(ln-i) === 1) ? 30 : 0) +
-                        (isFusion ? 35 : 0) +
+            // v221 評分：坍縮補強(40) + 斜連(30) + 同尾(20)
+            let isTrendMatched = trendIsBig ? (i >= 20) : (i < 20);
+            let score = (isTrendMatched ? 40 : 0) +
+                        (last.some(ln => Math.abs(ln-i) === 1) ? 30 : 0) +
                         (last.some(ln => ln % 10 === i % 10) ? 20 : 0);
             
-            pool.push({n: i, gap, score, isOdd: i % 2 !== 0});
+            pool.push({n: i, gap, score, isBig: i >= 20});
         }
 
         let sortedPool = [...pool].sort((a,b) => b.score - a.score);
         let coreNodes = [];
-        let oddCount = 0;
-
+        
+        // 強制 4:1 或 3:2 的失衡分布
+        let mainCount = 0;
         for (let p of sortedPool) {
             if (coreNodes.length >= 5) break;
-            // 奇偶過濾：防止極端全奇或全偶
-            if (coreNodes.length === 4) {
-                const currentOdd = oddCount;
-                const currentEven = 4 - oddCount;
-                if (currentOdd === 4 && p.isOdd) continue;
-                if (currentEven === 4 && !p.isOdd) continue;
+            let isMain = trendIsBig ? p.isBig : !p.isBig;
+            if (isMain && mainCount < 4) {
+                coreNodes.push(p.n);
+                mainCount++;
+            } else if (!isMain && (coreNodes.length - mainCount) < 2) {
+                coreNodes.push(p.n);
             }
-            coreNodes.push(p.n);
-            if (p.isOdd) oddCount++;
         }
 
         let rest = pool.filter(p => !coreNodes.includes(p.n));
         let expandNodes = [
             rest.sort((a,b) => b.gap - a.gap)[0].n, // 極冷
-            rest.filter(p => p.gap === 2 || p.gap === 3).sort((a,b) => b.score - a.score)[0]?.n || rest[0].n, // 跳碼
-            rest.filter(p => last.includes(p.n)).sort((a,b) => b.score - a.score)[0]?.n || rest[1].n // 連莊
+            rest.filter(p => last.includes(p.n)).sort((a,b) => b.score - a.score)[0]?.n || rest[0].n, // 連莊
+            rest.sort((a,b) => b.score - a.score)[0].n // 高分補位
         ];
 
         return { res: [...coreNodes, ...expandNodes].sort((a,b)=>a-b), coreNodes, expandNodes };
     }
 
     function render() {
-        const fullData = [...state.data], finalPred = getV220Pick(fullData), recentForBT = fullData.slice(-12).reverse();
+        const fullData = [...state.data], finalPred = getV221Pick(fullData), recentForBT = fullData.slice(-12).reverse();
         document.getElementById('finalCombo').innerHTML = finalPred.res.map(n => 
             `<div class="ball ${finalPred.coreNodes.includes(n)?'core-node':'expand-node'}">${n}</div>`).join('');
 
@@ -123,7 +127,7 @@
         bt.innerHTML = `<div class="bt-row" style="color:var(--sub); border:none"><span>日期</span><span>開獎</span><span>預測</span><span>星</span></div>`;
         recentForBT.slice(0, 10).forEach(row => {
             const histUntil = fullData.slice(0, fullData.findIndex(d => d.date === row.date));
-            const pred = getV220Pick(histUntil);
+            const pred = getV221Pick(histUntil);
             const hits = pred.res.filter(n => row.nums.includes(n));
             bt.innerHTML += `<div class="bt-row"><span>${row.date.slice(5)}</span><span>${row.nums.join(' ')}</span><div style="font-size:11px;">${pred.res.map(n => row.nums.includes(n)?`<b style="color:var(--hit)">${n}</b>`:n).join(' ')}</div><span class="hit-count">${hits.length}</span></div>`;
         });
