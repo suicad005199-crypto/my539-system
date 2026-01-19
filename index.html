@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v124</title>
+    <title>AI 539 數據中心 v125</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; }
@@ -36,10 +36,10 @@
     <div id="mainDisplay" style="display:none;">
         <div class="grid-split">
             <div class="panel">
-                <div class="panel-header">下期預測 (v124 尾數矩陣8碼)</div>
-                <p style="font-size:0.7rem; color:var(--sub);">矩陣重心核心：</p>
+                <div class="panel-header">下期預測 (v125 時空摺疊8碼)</div>
+                <p style="font-size:0.7rem; color:var(--sub);">三元摺疊核心：</p>
                 <div id="anchorBall" class="ball-row"></div>
-                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">8碼尾數對齊組合：</p>
+                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">8碼區間三連彈組合：</p>
                 <div id="finalCombo" class="ball-row"></div>
             </div>
 
@@ -84,7 +84,7 @@
         mBody.innerHTML = ''; btContainer.innerHTML = '';
 
         for (let i = state.data.length - 1; i >= Math.max(0, state.data.length - 10); i--) {
-            const pred = getV124Pick(state.data.slice(0, i));
+            const pred = getV125Pick(state.data.slice(0, i));
             const real = state.data[i].nums;
             const hits = pred.res.filter(n => real.includes(n));
             const item = document.createElement('div');
@@ -101,13 +101,13 @@
             }
             tr.innerHTML = trHtml; mBody.appendChild(tr);
         }
-        const final = getV124Pick(state.data);
+        const final = getV125Pick(state.data);
         document.getElementById('anchorBall').innerHTML = final.anchors.map(n => `<div class="ball anchor">${n}</div>`).join('');
         document.getElementById('finalCombo').innerHTML = final.res.map(n => `<div class="ball ${final.anchors.includes(n)?'anchor':''}">${n}</div>`).join('');
         document.getElementById('mainDisplay').style.display = 'block';
     }
 
-    function getV124Pick(hist) {
+    function getV125Pick(hist) {
         if(hist.length === 0) return {res:[], anchors:[]};
         let sc = Array(40).fill(0);
         const last = hist[hist.length-1].nums, recent = hist.slice(-15).flatMap(h => h.nums);
@@ -116,44 +116,40 @@
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
-            if(gap === 1) sc[i] += 2800; 
-            else if(gap >= 5 && gap <= 9) sc[i] += 4000;
-            else if(gap === 0) sc[i] += 1500; // v124: 提升連莊號權重
+            
+            // v125: 交匯點加權
+            if(gap >= 5 && gap <= 9) {
+                sc[i] += 4500; // 黃金反彈
+                if(recent.filter(rn => rn === i).length > 0) sc[i] += 1000; // 近期熱度補償
+            }
+            else if(gap === 1) sc[i] += 3000;
+            else if(gap === 0) sc[i] += 1800; // 連莊誘引
+
             sc[i] += tailF[i%10] * 800; 
             if(last.some(ln => Math.abs(ln-i) === 1)) sc[i] += 1600;
-            if(last.some(ln => Math.abs(ln-i) === 10)) sc[i] += 400; // 垂直位移補償
         }
 
         let sorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>sc[b]-sc[a]);
-        let anchors = [sorted[0], sorted[1], sorted[2]];
-        let res = [...anchors];
+        // 選取三個不同區間的摺疊核心
+        let anchors = [sorted[0]];
+        anchors.push(sorted.find(n => Math.abs(n-anchors[0]) > 8) || sorted[1]);
+        anchors.push(sorted.find(n => !anchors.includes(n) && Math.abs(n-anchors[0]) > 5 && Math.abs(n-anchors[1]) > 5) || sorted[2]);
         
-        let subSc = [...sc];
+        let res = [...anchors];
+        let foldSc = [...sc];
+        
+        // 實施區間三連彈摺疊
         anchors.forEach(a => {
             for(let i=1; i<=39; i++) {
-                if(Math.abs(i - a) <= 2) subSc[i] += 3000;
-                if(i % 10 === a % 10) subSc[i] += 3500; // v124: 極大化同尾爆發力
+                if(Math.abs(i - a) <= 2) foldSc[i] += 4000; // 極限擠壓鄰號
+                if(i % 10 === a % 10) foldSc[i] += 2000;
             }
         });
 
-        let subSorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>subSc[b]-sc[a]);
-        
-        // v124: 尾數矩陣鎖定邏輯
-        for(let n of subSorted) {
+        let foldSorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>foldSc[b]-sc[a]);
+        for(let n of foldSorted) {
             if(res.length >= 8) break;
-            if(res.includes(n)) continue;
-            
-            // 檢查是否能湊成同尾簇 (若已有兩顆同尾，優先選入第三顆)
-            let tail = n % 10;
-            let tailCount = res.filter(r => r % 10 === tail).length;
-            if(tailCount >= 2 || subSc[n] > 6000) {
-                res.push(n);
-            }
-        }
-
-        while(res.length < 8) {
-            let next = subSorted.find(n => !res.includes(n));
-            res.push(next);
+            if(!res.includes(n)) res.push(n);
         }
 
         return { res: res.sort((a,b)=>a-b), anchors: anchors };
