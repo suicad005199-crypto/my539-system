@@ -31,16 +31,16 @@
 
 <div class="container">
     <div class="panel">
-        <div class="panel-header">數據注入 (v220 - 動態引力優化)</div>
+        <div class="panel-header">數據注入 (v220 - 動態奇偶優化)</div>
         <input type="file" id="csvFile" accept=".csv" style="color:var(--sub);">
     </div>
 
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px;">
             <div class="panel">
-                <div class="panel-header">Panel 2: 結構預測 (連莊觸發 + 引力收縮)</div>
+                <div class="panel-header">Panel 2: 結構預測 (奇偶平衡 + 間距聚變)</div>
                 <div id="finalCombo" class="ball-row"></div>
-                <p style="font-size:0.75rem; color:var(--sub); margin-top:5px;">策略：強化連莊碼捕捉，並在熱門餘數組進行「引力收縮」集火。</p>
+                <p style="font-size:0.75rem; color:var(--sub); margin-top:5px;">策略：強制 3:2/2:3 奇偶分布，並優化特定物理間距加權。</p>
             </div>
             <div class="panel">
                 <div class="panel-header">Panel 3: 10 期滾動回測</div>
@@ -48,7 +48,7 @@
             </div>
         </div>
         <div class="panel">
-            <div class="panel-header">Panel 4: 分區走勢矩陣 (引力場分析)</div>
+            <div class="panel-header">Panel 4: 分區走勢矩陣 (奇偶分布分析)</div>
             <div class="matrix-wrapper" id="matrixContainer"></div>
         </div>
     </div>
@@ -73,44 +73,43 @@
         if(hist.length < 5) return {res:[], coreNodes:[], expandNodes:[]};
         const last = hist[hist.length-1].nums;
         let pool = [];
-        let mod5CountHist = [0,0,0,0,0];
-        
-        // 統計近 3 期餘數趨勢
-        hist.slice(-3).forEach(h => h.nums.forEach(n => mod5CountHist[n%5]++));
 
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
             
-            // v220 評分：連莊補償(20) + 斜連(40) + 引力拖碼(30)
-            let isRepeat = last.includes(i);
-            let score = (isRepeat ? 20 : 0) +
-                        (last.some(ln => Math.abs(ln-i) === 1) ? 40 : 0) +
-                        (last.some(ln => [5, 10, 12].includes(Math.abs(ln-i))) ? 30 : 0);
+            // v220 評分：斜連(30) + 間距聚變(35) + 拖碼相關(25)
+            let isFusion = last.some(ln => [4, 6].includes(Math.abs(ln-i))); 
+            let score = (last.some(ln => Math.abs(ln-i) === 1) ? 30 : 0) +
+                        (isFusion ? 35 : 0) +
+                        (last.some(ln => ln % 10 === i % 10) ? 20 : 0);
             
-            pool.push({n: i, gap, score, mod5: i % 5});
+            pool.push({n: i, gap, score, isOdd: i % 2 !== 0});
         }
 
-        // 核心 5 碼：引力收縮 (向熱門餘數組傾斜)
         let sortedPool = [...pool].sort((a,b) => b.score - a.score);
         let coreNodes = [];
-        let topMod5 = mod5CountHist.map((v, i) => ({i, v})).sort((a,b) => b.v - a.v).slice(0, 2).map(x => x.i);
+        let oddCount = 0;
 
         for (let p of sortedPool) {
             if (coreNodes.length >= 5) break;
-            // 優先填滿熱門引力組
-            if (topMod5.includes(p.mod5) || coreNodes.length >= 3) {
-                coreNodes.push(p.n);
+            // 奇偶過濾：防止極端全奇或全偶
+            if (coreNodes.length === 4) {
+                const currentOdd = oddCount;
+                const currentEven = 4 - oddCount;
+                if (currentOdd === 4 && p.isOdd) continue;
+                if (currentEven === 4 && !p.isOdd) continue;
             }
+            coreNodes.push(p.n);
+            if (p.isOdd) oddCount++;
         }
 
-        // 擴展 3 碼：連莊 + 冷熱極端
         let rest = pool.filter(p => !coreNodes.includes(p.n));
-        let repeatNode = pool.filter(p => last.includes(p.n)).sort((a,b) => b.score - a.score)[0]?.n;
-        let coldNode = rest.sort((a,b) => b.gap - a.gap)[0]?.n;
-        let hotNode = rest.filter(p => p.gap === 0 && p.n !== repeatNode).sort((a,b) => b.score - a.score)[0]?.n || rest[0].n;
-        
-        let expandNodes = [repeatNode, coldNode, hotNode].filter((v, i, a) => v && a.indexOf(v) === i).slice(0, 3);
+        let expandNodes = [
+            rest.sort((a,b) => b.gap - a.gap)[0].n, // 極冷
+            rest.filter(p => p.gap === 2 || p.gap === 3).sort((a,b) => b.score - a.score)[0]?.n || rest[0].n, // 跳碼
+            rest.filter(p => last.includes(p.n)).sort((a,b) => b.score - a.score)[0]?.n || rest[1].n // 連莊
+        ];
 
         return { res: [...coreNodes, ...expandNodes].sort((a,b)=>a-b), coreNodes, expandNodes };
     }
@@ -124,7 +123,7 @@
         bt.innerHTML = `<div class="bt-row" style="color:var(--sub); border:none"><span>日期</span><span>開獎</span><span>預測</span><span>星</span></div>`;
         recentForBT.slice(0, 10).forEach(row => {
             const histUntil = fullData.slice(0, fullData.findIndex(d => d.date === row.date));
-            const pred = getV219Pick ? getV220Pick(histUntil) : getV220Pick(histUntil); // 確保呼叫正確
+            const pred = getV220Pick(histUntil);
             const hits = pred.res.filter(n => row.nums.includes(n));
             bt.innerHTML += `<div class="bt-row"><span>${row.date.slice(5)}</span><span>${row.nums.join(' ')}</span><div style="font-size:11px;">${pred.res.map(n => row.nums.includes(n)?`<b style="color:var(--hit)">${n}</b>`:n).join(' ')}</div><span class="hit-count">${hits.length}</span></div>`;
         });
