@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v135</title>
+    <title>AI 539 數據中心 v136</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; }
@@ -29,14 +29,14 @@
     <div id="mainDisplay" style="display:none;">
         <div class="grid-split" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:15px;">
             <div class="panel">
-                <div class="panel-header">下期預測 (v135 區域鎖定 8碼)</div>
-                <p style="font-size:0.7rem; color:var(--sub);">三位一體核心：</p>
+                <div class="panel-header">下期預測 (v136 尾數共振 8碼)</div>
+                <p style="font-size:0.7rem; color:var(--sub);">共振核心：</p>
                 <div id="anchorBall" class="ball-row"></div>
                 <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">8碼最終組合：</p>
                 <div id="finalCombo" class="ball-row"></div>
             </div>
             <div class="panel">
-                <div class="panel-header">滾動回測 (恢復覆蓋率)</div>
+                <div class="panel-header">滾動回測 (攻堅命中4)</div>
                 <div id="btContainer"></div>
             </div>
         </div>
@@ -59,7 +59,7 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV135Pick(hist) {
+    function getV136Pick(hist) {
         if(hist.length === 0) return {res:[], anchors:[]};
         const last = hist[hist.length-1].nums;
         let pool = [];
@@ -67,29 +67,35 @@
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
             let score = 0;
-            // v135: 核心權重重組
-            if(gap >= 4 && gap <= 7) score += 6000; // 爆發區
-            else if(gap <= 2) score += 4500;        // 熱區
+            if(gap >= 3 && gap <= 6) score += 6500; // v136: 爆發區微調
+            else if(gap <= 2) score += 4000;
             
-            if(last.some(ln => Math.abs(ln-i) === 1)) score += 5000; // 斜連最強
-            if(last.some(ln => Math.abs(ln-i) === 2)) score += 2500;
+            if(last.some(ln => Math.abs(ln-i) === 1)) score += 5500; // 斜連強化
+            if(last.includes(i)) score += 3000; // 連莊權重
             pool.push({n: i, gap: gap, sc: score});
         }
 
         let res = [];
-        // 區間鎖定: 1-13, 14-26, 27-39
         const zones = [[1,13], [14,26], [27,39]];
+        
+        // 第一階段：選取三區最強核心
         zones.forEach(z => {
-            let zoneNums = pool.filter(p => p.n >= z[0] && p.n <= z[1])
-                               .sort((a,b) => b.sc - a.sc);
-            res.push(zoneNums[0].n, zoneNums[1].n); // 每個區間保底 2 顆
+            let top = pool.filter(p => p.n >= z[0] && p.n <= z[1]).sort((a,b) => b.sc - a.sc)[0];
+            res.push(top.n);
         });
 
-        // 剩餘 2 名額補齊總分最高者
-        let sorted = pool.sort((a,b) => b.sc - a.sc);
-        for(let p of sorted) {
+        // 第二階段：尾數共振填充
+        let coreTails = res.map(n => n % 10);
+        let candidates = pool.filter(p => !res.includes(p.n))
+            .sort((a, b) => {
+                let bonusA = coreTails.includes(a.n % 10) ? 5000 : 0;
+                let bonusB = coreTails.includes(b.n % 10) ? 5000 : 0;
+                return (b.sc + bonusB) - (a.sc + bonusA);
+            });
+
+        for(let p of candidates) {
             if(res.length >= 8) break;
-            if(!res.includes(p.n)) res.push(p.n);
+            res.push(p.n);
         }
 
         return { res: res.sort((a,b)=>a-b), anchors: res.slice(0, 3) };
@@ -99,12 +105,12 @@
         const btContainer = document.getElementById('btContainer');
         btContainer.innerHTML = '';
         for (let i = state.data.length - 1; i >= Math.max(0, state.data.length - 10); i--) {
-            const pred = getV135Pick(state.data.slice(0, i));
+            const pred = getV136Pick(state.data.slice(0, i));
             const real = state.data[i].nums;
             const hits = pred.res.filter(n => real.includes(n));
             btContainer.innerHTML += `<div class="bt-item"><div><span style="color:var(--sub)">${state.data[i].date.slice(5)}</span><br><span style="font-size:0.8rem">${real.join(' ')}</span></div><div class="hit-count">${hits.length}</div></div>`;
         }
-        const final = getV135Pick(state.data);
+        const final = getV136Pick(state.data);
         document.getElementById('anchorBall').innerHTML = final.anchors.map(n => `<div class="ball anchor">${n}</div>`).join('');
         document.getElementById('finalCombo').innerHTML = final.res.map(n => `<div class="ball ${final.anchors.includes(n)?'anchor':''}">${n}</div>`).join('');
         document.getElementById('mainDisplay').style.display = 'block';
