@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v225</title>
+    <title>AI 539 數據中心 v226</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --core: #ffd60a; --expand: #af52de; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 14px; }
@@ -28,16 +28,16 @@
 
 <div class="container">
     <div class="panel">
-        <div class="panel-header">數據注入 (v225 - 波段導航優化)</div>
+        <div class="panel-header">數據注入 (v226 - 非線性共振優化)</div>
         <input type="file" id="csvFile" accept=".csv" style="color:var(--sub);">
     </div>
 
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px;">
             <div class="panel">
-                <div class="panel-header">Panel 2: 結構預測 (波段過濾 + 餘數矩陣)</div>
+                <div class="panel-header">Panel 2: 結構預測 (跨度收斂 + 回補加權)</div>
                 <div id="finalCombo" class="ball-row"></div>
-                <p style="font-size:0.75rem; color:var(--sub); margin-top:5px;">策略：依據震盪規律調整位移權重，並使用餘數分佈防止過度群聚。</p>
+                <p style="font-size:0.75rem; color:var(--sub); margin-top:5px;">策略：優化號碼回補慣性，並強制整體跨度回歸 24-34 的高勝率區間。</p>
             </div>
             <div class="panel">
                 <div class="panel-header">Panel 3: 10 期滾動回測</div>
@@ -45,7 +45,7 @@
             </div>
         </div>
         <div class="panel">
-            <div class="panel-header">Panel 4: 分區走勢矩陣 (震盪波段分析)</div>
+            <div class="panel-header">Panel 4: 分區走勢矩陣 (跨度與回補分析)</div>
             <div class="matrix-wrapper" id="matrixContainer"></div>
         </div>
     </div>
@@ -66,54 +66,50 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV225Pick(hist) {
-        if(hist.length < 5) return {res:[], coreNodes:[], expandNodes:[]};
+    function getV226Pick(hist) {
+        if(hist.length < 10) return {res:[], coreNodes:[], expandNodes:[]};
         const last = hist[hist.length-1].nums;
-        const last2 = hist[hist.length-2].nums;
+        const last3 = hist.slice(-3).flatMap(h => h.nums);
         
-        // 計算震盪強度 (上兩期號碼位移距離平均)
-        let totalShift = 0;
-        for(let i=0; i<5; i++) totalShift += Math.abs(last[i] - last2[i]);
-        const isLongWave = (totalShift / 5) > 8;
-
         let pool = [];
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
             
-            // v225 評分：震盪位移(40) + 同尾連動(30) + 遺漏補償(30)
-            let shiftBonus = isLongWave ? (last.some(ln => Math.abs(ln-i) > 10) ? 40 : 0) 
-                                       : (last.some(ln => Math.abs(ln-i) <= 2) ? 40 : 0);
-            
-            let score = shiftBonus + (last.some(ln => ln % 10 === i % 10) ? 30 : 0) + (gap <= 5 ? 30 : 0);
-            pool.push({n: i, gap, score, mod5: i % 5});
+            // v226 評分：回補力(40) + 同尾(30) + 斜連(30)
+            let isBackfill = last3.includes(i) && gap <= 2; // 近期頻出的號碼具備回補慣性
+            let score = (isBackfill ? 40 : 0) + 
+                        (last.some(ln => ln % 10 === i % 10) ? 30 : 0) +
+                        (last.some(ln => Math.abs(ln-i) === 1) ? 30 : 0);
+            pool.push({n: i, gap, score});
         }
 
-        // 核心選碼：餘數矩陣篩選
         let sorted = pool.sort((a,b) => b.score - a.score);
         let coreNodes = [];
-        let modCount = [0,0,0,0,0];
-        for(let p of sorted) {
-            if(coreNodes.length >= 5) break;
-            if(modCount[p.mod5] < 2) {
-                coreNodes.push(p.n);
-                modCount[p.mod5]++;
+        
+        // 選取核心：確保跨度收斂
+        for (let p of sorted) {
+            if (coreNodes.length >= 5) break;
+            if (coreNodes.length > 0) {
+                let tempNodes = [...coreNodes, p.n].sort((a,b)=>a-b);
+                let span = tempNodes[tempNodes.length-1] - tempNodes[0];
+                if (coreNodes.length === 4 && (span < 20 || span > 36)) continue; // 強制過濾極端跨度
             }
+            coreNodes.push(p.n);
         }
 
-        // 擴展碼：修補防線
         let rest = pool.filter(p => !coreNodes.includes(p.n)).sort((a,b) => b.score - a.score);
         let expandNodes = [
-            rest.sort((a,b) => b.gap - a.gap)[0].n, // 最大遺漏
-            rest.find(p => last.includes(p.n))?.n || rest[0].n, // 連莊補位
-            rest[1].n
+            rest.filter(p => last.some(ln => ln % 10 === p.n % 10)).sort((a,b) => b.score - a.score)[0]?.n || rest[0].n, // 最強同尾對接
+            rest.find(p => Math.abs(p.n - coreNodes[0]) <= 2)?.n || rest[1].n, // 鄰域強化
+            rest.sort((a,b) => b.gap - a.gap)[0].n // 極冷保留
         ];
 
         return { res: [...coreNodes, ...expandNodes].sort((a,b)=>a-b), coreNodes, expandNodes };
     }
 
     function render() {
-        const fullData = [...state.data], finalPred = getV225Pick(fullData), recentForBT = fullData.slice(-12).reverse();
+        const fullData = [...state.data], finalPred = getV226Pick(fullData), recentForBT = fullData.slice(-12).reverse();
         document.getElementById('finalCombo').innerHTML = finalPred.res.map(n => 
             `<div class="ball ${finalPred.coreNodes.includes(n)?'core-node':'expand-node'}">${n}</div>`).join('');
 
@@ -121,7 +117,7 @@
         bt.innerHTML = `<div class="bt-row" style="color:var(--sub); border:none"><span>日期</span><span>開獎</span><span>預測</span><span>星</span></div>`;
         recentForBT.slice(0, 10).forEach(row => {
             const histUntil = fullData.slice(0, fullData.findIndex(d => d.date === row.date));
-            const pred = getV225Pick(histUntil);
+            const pred = getV226Pick(histUntil);
             const hits = pred.res.filter(n => row.nums.includes(n));
             bt.innerHTML += `<div class="bt-row"><span>${row.date.slice(5)}</span><span>${row.nums.join(' ')}</span><div style="font-size:11px;">${pred.res.map(n => row.nums.includes(n)?`<b style="color:var(--hit)">${n}</b>`:n).join(' ')}</div><span class="hit-count">${hits.length}</span></div>`;
         });
