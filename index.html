@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v211</title>
+    <title>AI 539 數據中心 v212</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --core: #ffd60a; --expand: #af52de; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 14px; }
@@ -31,14 +31,14 @@
 
 <div class="container">
     <div class="panel">
-        <div class="panel-header">數據注入 (v211 - 雙重螺旋優化)</div>
+        <div class="panel-header">數據注入 (v212 - 跳躍震盪策略)</div>
         <input type="file" id="csvFile" accept=".csv" style="color:var(--sub);">
     </div>
 
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px;">
             <div class="panel">
-                <div class="panel-header">Panel 2: 結構預測 (物理連號強化)</div>
+                <div class="panel-header">Panel 2: 結構預測 (跳躍散點模式)</div>
                 <div id="finalCombo" class="ball-row"></div>
             </div>
             <div class="panel">
@@ -47,7 +47,7 @@
             </div>
         </div>
         <div class="panel">
-            <div class="panel-header">Panel 4: 分區走勢矩陣</div>
+            <div class="panel-header">Panel 4: 分區走勢 (跳值規律分析)</div>
             <div class="matrix-wrapper" id="matrixContainer"></div>
         </div>
     </div>
@@ -68,7 +68,7 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV211Pick(hist) {
+    function getV212Pick(hist) {
         if(hist.length < 5) return {res:[], coreNodes:[], expandNodes:[]};
         const last = hist[hist.length-1].nums;
         let pool = [];
@@ -76,42 +76,43 @@
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
-            let slant = last.some(ln => Math.abs(ln-i) === 1);
             
-            // 權重重新分配：斜連(40) + 極熱(30) + 溫碼補償(20)
-            let score = (slant ? 40 : 0) + (gap <= 3 ? 30 : 0) + (gap >= 5 && gap <= 8 ? 20 : 0);
+            // 跳值邏輯：隔一碼 (±2) 權重最高
+            let isJump = last.some(ln => Math.abs(ln-i) === 2);
+            let score = (isJump ? 45 : 0) + (gap >= 4 && gap <= 8 ? 30 : 0) + (gap === 0 ? 15 : 0);
+            
             pool.push({n: i, gap, score});
         }
 
-        // 核心 5 碼：連號綁定算法
+        // 核心 5 碼：跳脫連號框架
         let coreNodes = [];
         let sortedPool = [...pool].sort((a,b) => b.score - a.score);
         
-        // 尋找最高分的連號對
-        for(let i=0; i<sortedPool.length; i++) {
-            let p1 = sortedPool[i];
-            let p2 = sortedPool.find(p => Math.abs(p.n - p1.n) === 1);
-            if(p2 && !coreNodes.includes(p1.n) && !coreNodes.includes(p2.n)) {
-                coreNodes.push(p1.n, p2.n);
-                break; // 鎖定一組最強連號
-            }
-        }
-        
-        // 補足剩餘核心碼
         for(let p of sortedPool) {
             if(coreNodes.length >= 5) break;
-            if(!coreNodes.includes(p.n)) coreNodes.push(p.n);
+            // 檢查是否與已選號碼相連，若相連則降低優先級
+            let isConsecutive = coreNodes.some(cn => Math.abs(cn - p.n) === 1);
+            if(!isConsecutive) {
+                coreNodes.push(p.n);
+            }
+        }
+        // 若核心碼不足 5 (因為排斥太嚴重)，則按分數補足
+        if(coreNodes.length < 5) {
+            for(let p of sortedPool) {
+                if(coreNodes.length >= 5) break;
+                if(!coreNodes.includes(p.n)) coreNodes.push(p.n);
+            }
         }
 
-        // 擴展 3 碼：週期共振 (避開核心，選中性遺漏碼)
+        // 擴展 3 碼：捕捉極端熱門重開或深層遺漏
         let expandNodes = pool.filter(p => !coreNodes.includes(p.n))
-                             .sort((a,b) => b.gap - a.gap).slice(0, 3).map(p => p.n);
+                             .sort((a,b) => b.score - a.score).slice(0, 3).map(p => p.n);
 
         return { res: [...coreNodes, ...expandNodes].sort((a,b)=>a-b), coreNodes, expandNodes };
     }
 
     function render() {
-        const fullData = [...state.data], finalPred = getV211Pick(fullData), recentForBT = fullData.slice(-12).reverse();
+        const fullData = [...state.data], finalPred = getV212Pick(fullData), recentForBT = fullData.slice(-12).reverse();
         document.getElementById('finalCombo').innerHTML = finalPred.res.map(n => 
             `<div class="ball ${finalPred.coreNodes.includes(n)?'core-node':'expand-node'}">${n}</div>`).join('');
 
@@ -119,7 +120,7 @@
         bt.innerHTML = `<div class="bt-row" style="color:var(--sub); border:none"><span>日期</span><span>開獎</span><span>預測</span><span>星</span></div>`;
         recentForBT.slice(0, 10).forEach(row => {
             const histUntil = fullData.slice(0, fullData.findIndex(d => d.date === row.date));
-            const pred = getV211Pick(histUntil);
+            const pred = getV212Pick(histUntil);
             const hits = pred.res.filter(n => row.nums.includes(n));
             bt.innerHTML += `<div class="bt-row"><span>${row.date.slice(5)}</span><span>${row.nums.join(' ')}</span><div style="font-size:11px;">${pred.res.map(n => row.nums.includes(n)?`<b style="color:var(--hit)">${n}</b>`:n).join(' ')}</div><span class="hit-count">${hits.length}</span></div>`;
         });
