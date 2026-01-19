@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v144</title>
+    <title>AI 539 數據中心 v145</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; }
@@ -13,9 +13,7 @@
         .panel-header::after { content: ''; flex: 1; height: 1px; background: var(--border); }
         .ball-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
         .ball { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 8px; font-weight: bold; font-size: 0.9rem; border: 1px solid var(--border); }
-        .ball.core { background: var(--primary); color: #000; border: none; }
-        .ball.repeat { border: 2px solid var(--primary); color: var(--primary); }
-        .ball.orphan { border: 2px solid #ff375f; color: #ff375f; }
+        .ball.top-tier { background: var(--primary); color: #000; border: none; }
         .bt-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #2c2c2e; }
         .hit-count { color: var(--success); font-weight: bold; font-size: 1.2rem; }
     </style>
@@ -24,19 +22,19 @@
 
 <div class="container">
     <div class="panel">
-        <div class="panel-header">數據注入 (v144)</div>
+        <div class="panel-header">數據注入 (v145)</div>
         <input type="file" id="csvFile" style="width:100%; color:var(--sub);" accept=".csv">
     </div>
 
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:15px;">
             <div class="panel">
-                <div class="panel-header">下期預測 (摺疊 8 碼)</div>
-                <p style="font-size:0.7rem; color:var(--sub);">黃底:核心 | 黃框:連莊 | 紅框:孤兒補償</p>
+                <div class="panel-header">下期預測 (流體 8 碼)</div>
                 <div id="finalCombo" class="ball-row"></div>
+                <p style="font-size:0.7rem; color:var(--sub); margin-top:10px;">基於：尾數矩陣 + 時空三重奏優化</p>
             </div>
             <div class="panel">
-                <div class="panel-header">回測數據 (目標命中4)</div>
+                <div class="panel-header">回測數據 (修復覆蓋率)</div>
                 <div id="btContainer"></div>
             </div>
         </div>
@@ -59,56 +57,53 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV144Pick(hist) {
-        if(hist.length < 5) return {res:[], core:[], rep:[], orp:[]};
+    function getV145Pick(hist) {
+        if(hist.length < 10) return {res:[]};
         const last = hist[hist.length-1].nums;
+        
+        // 統計熱門尾數 (近5期)
+        let tailMap = {};
+        hist.slice(-5).forEach(d => d.nums.forEach(n => tailMap[n%10] = (tailMap[n%10]||0)+1));
+        let topTails = Object.entries(tailMap).sort((a,b)=>b[1]-a[1]).slice(0,3).map(e=>Number(e[0]));
+
         let pool = [];
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
+            
             let score = 0;
-            if(gap <= 2) score += 6000;
-            if(last.some(ln => Math.abs(ln-i) === 1)) score += 5000;
-            pool.push({n: i, gap: gap, sc: score});
+            // 基礎：遺漏值修正
+            if (gap <= 2) score += 5000;
+            if (gap >= 3 && gap <= 6) score += 4000;
+            
+            // 時空加成
+            if (last.some(ln => Math.abs(ln-i) === 1)) score += 5500; // 斜連
+            if (last.includes(i)) score += 3000; // 連莊
+            
+            // 尾數矩陣加成
+            if (topTails.includes(i%10)) score += 3500;
+            
+            // 爆發區共振
+            if (gap >= 3 && gap <= 6 && topTails.includes(i%10)) score *= 1.2;
+
+            pool.push({n: i, sc: score});
         }
 
-        // 1. 連莊錨點 (Repeat): 1碼
-        let rep = pool.filter(p => last.includes(p.n)).sort((a,b) => b.sc - a.sc).slice(0, 1).map(p=>p.n);
-
-        // 2. 熱核心 (Core): 4碼 (扣除已選連莊)
-        let core = pool.filter(p => !rep.includes(p.n)).sort((a,b) => b.sc - a.sc).slice(0, 4).map(p => p.n);
-        let coreTails = [...core, ...rep].map(n => n % 10);
-
-        // 3. 孤兒補償 (Orphan): 1碼 (L10+ 且同尾優先)
-        let orp = pool.filter(p => p.gap >= 10 && !core.includes(p.n) && !rep.includes(p.n))
-                      .sort((a,b) => (coreTails.includes(a.n%10)?10000:0) - (coreTails.includes(b.n%10)?10000:0))
-                      .reverse().slice(0, 1).map(p=>p.n);
-
-        // 4. 填充組 (Fill): 補足 8 碼
-        let res = [...rep, ...core, ...orp];
-        let fillers = pool.filter(p => !res.includes(p.n) && p.gap >= 3 && p.gap <= 8)
-                         .sort((a,b) => (coreTails.includes(a.n%10)?5000:0) - (coreTails.includes(b.n%10)?5000:0))
-                         .reverse();
-        
-        for(let f of fillers) { if(res.length < 8) res.push(f.n); }
-
-        return { res: res.sort((a,b)=>a-b), core, rep, orp };
+        let res = pool.sort((a,b) => b.sc - a.sc).slice(0, 8).map(p => p.n).sort((a,b)=>a-b);
+        return { res };
     }
 
     function render() {
         const btContainer = document.getElementById('btContainer');
         btContainer.innerHTML = '';
         for (let i = state.data.length - 1; i >= Math.max(0, state.data.length - 10); i--) {
-            const pred = getV144Pick(state.data.slice(0, i));
+            const pred = getV145Pick(state.data.slice(0, i));
             const real = state.data[i].nums;
             const hits = pred.res.filter(n => real.includes(n));
             btContainer.innerHTML += `<div class="bt-item"><div><span style="color:var(--sub)">${state.data[i].date.slice(5)}</span><br><span style="font-size:0.8rem">${real.join(' ')}</span></div><div class="hit-count">${hits.length}</div></div>`;
         }
-        const final = getV144Pick(state.data);
-        document.getElementById('finalCombo').innerHTML = final.res.map(n => {
-            let cls = final.core.includes(n) ? 'core' : (final.rep.includes(n) ? 'repeat' : (final.orp.includes(n) ? 'orphan' : ''));
-            return `<div class="ball ${cls}">${n}</div>`;
-        }).join('');
+        const final = getV145Pick(state.data);
+        document.getElementById('finalCombo').innerHTML = final.res.map(n => `<div class="ball top-tier">${n}</div>`).join('');
         document.getElementById('mainDisplay').style.display = 'block';
     }
 </script>
