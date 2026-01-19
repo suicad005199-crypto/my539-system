@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v139</title>
+    <title>AI 539 數據中心 v140</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; }
@@ -13,7 +13,8 @@
         .panel-header::after { content: ''; flex: 1; height: 1px; background: var(--border); }
         .ball-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
         .ball { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 8px; font-weight: bold; font-size: 0.9rem; border: 1px solid var(--border); }
-        .ball.anchor { background: var(--primary); color: #000; border: none; }
+        .ball.group-a { border-color: var(--primary); color: var(--primary); }
+        .ball.group-b { border-color: var(--success); color: var(--success); }
         .bt-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #2c2c2e; }
         .hit-count { color: var(--success); font-weight: bold; font-size: 1.2rem; }
     </style>
@@ -29,14 +30,12 @@
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:15px;">
             <div class="panel">
-                <div class="panel-header">下期預測 (v139 穩定支撐 8碼)</div>
-                <p style="font-size:0.7rem; color:var(--sub);">熱號支撐核心：</p>
-                <div id="anchorBall" class="ball-row"></div>
-                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">8碼最終組合：</p>
+                <div class="panel-header">下期預測 (v140 雙心並行 8碼)</div>
+                <p style="font-size:0.7rem; color:var(--sub);">黃: A組(熱) | 綠: B組(轉折)</p>
                 <div id="finalCombo" class="ball-row"></div>
             </div>
             <div class="panel">
-                <div class="panel-header">滾動回測 (修復覆蓋率)</div>
+                <div class="panel-header">滾動回測 (修復核心覆蓋)</div>
                 <div id="btContainer"></div>
             </div>
         </div>
@@ -59,68 +58,55 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV139Pick(hist) {
-        if(hist.length < 10) return {res:[], anchors:[]};
+    function getV140Pick(hist) {
+        if(hist.length < 5) return {res:[], ga:[], gb:[]};
         const last = hist[hist.length-1].nums;
-        const shadow3 = hist[hist.length-3]?.nums || [];
-        const shadow5 = hist[hist.length-5]?.nums || [];
-        
         let pool = [];
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
-            let score = 0;
-            
-            // v139 權重修正
-            if(gap >= 1 && gap <= 2) score += 5000; // 強化隔期支撐
-            if(shadow3.includes(i) && shadow5.includes(i) && gap >= 2) score += 2000; // 弱化影子
-            
-            if(last.some(ln => Math.abs(ln-i) === 1)) score += 5500; 
-            if(last.some(ln => Math.abs(ln-i) === 2)) score += 2000;
-            if(last.includes(i)) score += 3000;
-
-            pool.push({n: i, gap: gap, sc: score});
+            pool.push({n: i, gap: gap, isDiagonal: last.some(ln => Math.abs(ln-i) === 1)});
         }
 
-        let hot = pool.filter(p => p.gap <= 2).sort((a,b)=>b.sc - a.sc).slice(0, 3).map(p=>p.n);
-        let coreTails = hot.map(n => n % 10);
+        // A組 (熱): 4碼
+        let ga = pool.filter(p => p.gap <= 3)
+            .sort((a,b) => (b.isDiagonal ? 1 : 0) - (a.isDiagonal ? 1 : 0))
+            .slice(0, 4).map(p => p.n);
 
-        let midPool = pool.filter(p => p.gap >= 3 && p.gap <= 11 && !hot.includes(p.n)).sort((a,b)=>b.sc-a.sc);
-        let mid = [];
-        if(midPool.length > 0) {
-            let midAnchor = midPool[0].n;
-            mid.push(midAnchor);
-            // v139 坍縮：優先匹配熱號尾數
-            let others = midPool.slice(1).sort((a,b) => {
-                let bonusA = (coreTails.includes(a.n % 10) ? 4000 : 0) + (Math.abs(a.n - midAnchor) <= 1 ? 2000 : 0);
-                let bonusB = (coreTails.includes(b.n % 10) ? 4000 : 0) + (Math.abs(b.n - midAnchor) <= 1 ? 2000 : 0);
-                return (b.sc + bonusB) - (a.sc + bonusA);
+        // B組 (轉折): 4碼 - 盡量與 A 組不同區間
+        let gaAvg = ga.reduce((a,b)=>a+b, 0) / 4;
+        let targetZone = gaAvg > 20 ? [1, 20] : [20, 39];
+        
+        let gbPool = pool.filter(p => !ga.includes(p.n) && p.gap >= 5 && p.gap <= 15)
+            .sort((a,b) => {
+                let zoneA = (a.n >= targetZone[0] && a.n <= targetZone[1]) ? 1 : 0;
+                let zoneB = (b.n >= targetZone[0] && b.n <= targetZone[1]) ? 1 : 0;
+                return zoneB - zoneA || a.gap - b.gap;
             });
-            for(let n of others) { if(mid.length < 3) mid.push(n.n); }
-        }
+        
+        let gb = gbPool.slice(0, 4).map(p => p.n);
 
-        let cold = pool.filter(p => p.gap > 11 && !hot.includes(p.n) && !mid.includes(p.n))
-                       .sort((a,b)=>b.sc - a.sc).slice(0, 2).map(p=>p.n);
-
-        let res = [...new Set([...hot, ...mid, ...cold])];
-        let fallback = pool.sort((a,b)=>b.sc - a.sc);
-        for(let p of fallback) { if(res.length >= 8) break; if(!res.includes(p.n)) res.push(p.n); }
-
-        return { res: res.slice(0, 8).sort((a,b)=>a-b), anchors: hot };
+        return { 
+            res: [...ga, ...gb].sort((a,b)=>a-b), 
+            ga: ga, 
+            gb: gb 
+        };
     }
 
     function render() {
         const btContainer = document.getElementById('btContainer');
         btContainer.innerHTML = '';
         for (let i = state.data.length - 1; i >= Math.max(0, state.data.length - 10); i--) {
-            const pred = getV139Pick(state.data.slice(0, i));
+            const pred = getV140Pick(state.data.slice(0, i));
             const real = state.data[i].nums;
             const hits = pred.res.filter(n => real.includes(n));
             btContainer.innerHTML += `<div class="bt-item"><div><span style="color:var(--sub)">${state.data[i].date.slice(5)}</span><br><span style="font-size:0.8rem">${real.join(' ')}</span></div><div class="hit-count">${hits.length}</div></div>`;
         }
-        const final = getV139Pick(state.data);
-        document.getElementById('anchorBall').innerHTML = final.anchors.map(n => `<div class="ball anchor">${n}</div>`).join('');
-        document.getElementById('finalCombo').innerHTML = final.res.map(n => `<div class="ball ${final.anchors.includes(n)?'anchor':''}">${n}</div>`).join('');
+        const final = getV140Pick(state.data);
+        document.getElementById('finalCombo').innerHTML = final.res.map(n => {
+            let cls = final.ga.includes(n) ? 'group-a' : 'group-b';
+            return `<div class="ball ${cls}">${n}</div>`;
+        }).join('');
         document.getElementById('mainDisplay').style.display = 'block';
     }
 </script>
