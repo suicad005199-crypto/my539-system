@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v189</title>
+    <title>AI 539 數據中心 v190</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --expect: #ff2d55; --thermal: #32d74b; --comp: #af52de; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 14px; }
@@ -15,7 +15,7 @@
         .ball.active { background: var(--primary); color: #000; border: none; }
         .ball.expect-node { border: 2px solid var(--expect); color: var(--expect); }
         .ball.thermal-node { border: 2px solid var(--thermal); color: var(--thermal); }
-        .ball.comp-node { border: 2px solid var(--comp); color: var(--comp); box-shadow: 0 0 8px rgba(175,82,222,0.5); }
+        .ball.comp-node { border: 2px solid var(--comp); color: var(--comp); }
         
         .matrix-wrapper { width: 100%; overflow-x: auto; }
         .matrix-table { width: 100%; border-collapse: collapse; text-align: center; table-layout: fixed; min-width: 850px; }
@@ -33,19 +33,19 @@
 
 <div class="container">
     <div class="panel">
-        <div class="panel-header">數據注入 (v189)</div>
+        <div class="panel-header">數據注入 (v190 - 修正 8 碼限制)</div>
         <input type="file" id="csvFile" accept=".csv" style="color:var(--sub);">
     </div>
 
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px;">
             <div class="panel" id="panel2">
-                <div class="panel-header">Panel 2: 下期精準 8 碼 (鄰里壓縮版)</div>
+                <div class="panel-header">Panel 2: 下期精準 8 碼 (群聚修正版)</div>
                 <div id="finalCombo" class="ball-row"></div>
                 <p style="font-size:0.7rem; color:var(--sub);">
                     <span style="color:var(--thermal)">綠框: 熱核</span> | 
                     <span style="color:var(--expect)">紅框: 期望</span> | 
-                    <span style="color:var(--comp)">紫框: 壓縮碼</span>
+                    <span style="color:var(--comp)">紫框: 鄰里群聚</span>
                 </p>
             </div>
             <div class="panel" id="panel3">
@@ -77,7 +77,7 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV189Pick(hist) {
+    function getV190Pick(hist) {
         if(hist.length < 5) return {res:[], expectNodes:[], thermalNodes:[], compNodes:[]};
         const last = hist[hist.length-1].nums;
         
@@ -98,28 +98,26 @@
         let expectNodes = [];
         let compNodes = [];
 
-        // 1. 選取 3 顆核心碼
+        // 1. 先抓 3 顆核心碼
         sorted.slice(0, 3).forEach(p => {
             res.push(p.n);
             if(p.gap <= 2) thermalNodes.push(p.n);
         });
 
-        // 2. 鄰里壓縮邏輯：尋找距離 <= 3 的第三者
+        // 2. 鄰里群聚權重提升
+        let potentialComp = [];
         for(let i=0; i<res.length; i++) {
             for(let j=i+1; j<res.length; j++) {
                 let dist = Math.abs(res[i] - res[j]);
-                if(dist <= 3 && res.length < 8) {
+                if(dist <= 3) {
                     let mid = Math.floor((res[i] + res[j]) / 2);
-                    let side = res[i] > res[j] ? res[i]+1 : res[j]+1;
-                    [mid, side].forEach(n => {
-                        if(n >= 1 && n <= 39 && !res.includes(n) && res.length < 8) {
-                            res.push(n);
-                            compNodes.push(n);
-                        }
-                    });
+                    if(mid >= 1 && mid <= 39 && !res.includes(mid)) potentialComp.push(mid);
                 }
             }
         }
+        potentialComp.slice(0, 2).forEach(n => {
+            if(!res.includes(n)) { res.push(n); compNodes.push(n); }
+        });
 
         // 3. 期望冷碼 (紅)
         sorted.filter(p => p.gap >= 10 && !res.includes(p.n)).slice(0, 2).forEach(p => {
@@ -127,17 +125,18 @@
             expectNodes.push(p.n);
         });
 
-        // 4. 補齊
+        // 4. 最後補齊並嚴格限制 8 碼
         for(let p of sorted) {
             if(res.length < 8 && !res.includes(p.n)) res.push(p.n);
         }
 
-        return { res: res.sort((a,b)=>a-b), expectNodes, thermalNodes, compNodes };
+        const finalRes = res.slice(0, 8).sort((a,b)=>a-b);
+        return { res: finalRes, expectNodes, thermalNodes, compNodes };
     }
 
     function render() {
         const fullData = [...state.data];
-        const finalPred = getV189Pick(fullData);
+        const finalPred = getV190Pick(fullData);
         const recentForBT = fullData.slice(-10).reverse();
         
         document.getElementById('finalCombo').innerHTML = finalPred.res.map(n => {
@@ -153,7 +152,7 @@
         
         recentForBT.forEach((row) => {
             const historyUntilPoint = fullData.slice(0, fullData.findIndex(d => d.date === row.date));
-            const pred = getV189Pick(historyUntilPoint);
+            const pred = getV190Pick(historyUntilPoint);
             const hits = pred.res.filter(n => row.nums.includes(n));
             bt.innerHTML += `<div class="bt-row"><span>${row.date}</span><span style="color:var(--primary)">${row.nums.map(n => String(n).padStart(2,'0')).join(' ')}</span><div class="bt-pred-nums">${pred.res.map(n => { let isHit = row.nums.includes(n); return `<span style="color:${isHit ? 'var(--hit)' : 'inherit'}; font-weight:${isHit ? 'bold' : 'normal'}">${String(n).padStart(2,'0')}</span>`; }).join(' ')}</div><span class="hit-count">${hits.length}</span></div>`;
         });
