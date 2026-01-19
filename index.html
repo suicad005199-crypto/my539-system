@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v163</title>
+    <title>AI 539 數據中心 v164</title>
     <style>
-        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --anchor: #5856d6; }
+        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --res: #007aff; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 14px; }
         .container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
         .panel { background: var(--panel); border-radius: 12px; padding: 15px; border: 1px solid var(--border); overflow-x: auto; }
@@ -13,13 +13,12 @@
         .ball-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
         .ball { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 6px; font-weight: bold; font-size: 12px; border: 1px solid var(--border); }
         .ball.active { background: var(--primary); color: #000; border: none; }
-        .ball.anchor { border: 2px solid var(--anchor); color: var(--anchor); }
+        .ball.res-node { border: 2px solid var(--res); color: var(--res); }
         .pred-mark { background: rgba(255, 214, 10, 0.15); border: 1px inset var(--primary) !important; }
         table { width: 100%; border-collapse: collapse; font-size: 10px; text-align: center; }
         th, td { border: 1px solid #38383a; padding: 6px 2px; }
         th { background: #2c2c2e; color: var(--sub); }
         .is-hit { background: var(--hit); color: #fff; font-weight: bold; }
-        .is-serial { background: var(--success); color: #000; font-weight: bold; }
         .bt-row { border-bottom: 1px solid #2c2c2e; padding: 8px 0; display: grid; grid-template-columns: 60px 1.2fr 1.2fr 40px; align-items: center; gap: 10px; font-size: 11px; }
         .hit-count { color: var(--success); font-weight: bold; text-align: right; font-size: 14px; }
     </style>
@@ -28,16 +27,16 @@
 
 <div class="container">
     <div class="panel">
-        <div class="panel-header">數據注入 (v163)</div>
+        <div class="panel-header">數據注入 (v164)</div>
         <input type="file" id="csvFile" accept=".csv" style="color:var(--sub);">
     </div>
 
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px;">
             <div class="panel" id="panel2">
-                <div class="panel-header">Panel 2: 下期精準 8 碼 (熱力錨點)</div>
+                <div class="panel-header">Panel 2: 下期精準 8 碼 (共振加壓)</div>
                 <div id="finalCombo" class="ball-row"></div>
-                <p style="font-size:0.7rem; color:var(--sub);">深藍框: 熱力中心錨點 | 策略: 強制熱區三角包圍</p>
+                <p style="font-size:0.7rem; color:var(--sub);">藍框: 共振核心碼 | 策略: 強化命中 3 並衝擊 4</p>
             </div>
             <div class="panel" id="panel3">
                 <div class="panel-header">Panel 3: 滾動回測紀錄</div>
@@ -68,44 +67,34 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV163Pick(hist) {
-        if(hist.length < 5) return {res:[], anchors:[]};
+    function getV164Pick(hist) {
+        if(hist.length < 5) return {res:[], resNodes:[]};
         const last = hist[hist.length-1].nums;
         
-        // 1. 偵測熱力中心
-        const zones = [0,0,0,0];
-        hist.slice(-5).forEach(d => d.nums.forEach(n => zones[Math.floor((n-1)/10)]++));
-        const hotZone = zones.indexOf(Math.max(...zones));
-
         let pool = [];
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
             let score = 0;
-            if(gap <= 2) score += 5000;
-            if(last.some(ln => Math.abs(ln-i) === 1)) score += 8000;
-            if(Math.floor((i-1)/10) === hotZone) score += 3000; // 熱區加成
-            if(gap >= 5 && gap <= 10) score += 2000; // 溫碼補償
+            if(gap <= 2) score += 6000;
+            if(last.some(ln => Math.abs(ln-i) === 1)) score += 9000; // 斜連加壓
             pool.push({n: i, gap: gap, sc: score, t: i%10});
         }
 
         let sorted = pool.sort((a,b) => b.sc - a.sc);
         let res = [];
-        let anchors = [];
+        let resNodes = [];
 
-        // 2. 選取核心錨點並實施三角包圍
+        // 核心：共振節點選取
         for(let p of sorted) {
             if(res.length >= 8) break;
             if(!res.includes(p.n)) {
                 res.push(p.n);
-                if(p.sc > 10000) anchors.push(p.n);
+                if(p.sc > 12000) resNodes.push(p.n);
                 
-                // 尋找同尾與鄰號形成三角形
-                let tPair = pool.find(x => x.t === p.t && x.n !== p.n && !res.includes(x.n) && x.sc > 2000);
-                if(tPair && res.length < 8) res.push(tPair.n);
-                
-                let nPair = pool.find(x => Math.abs(x.n - p.n) === 1 && !res.includes(x.n) && x.sc > 2000);
-                if(nPair && res.length < 8) res.push(nPair.n);
+                // 強制尋找「斜連+同尾」的加壓碼
+                let pressureCode = pool.find(x => !res.includes(x.n) && x.t === p.t && last.some(ln => Math.abs(ln-x.n) === 1));
+                if(pressureCode && res.length < 8) res.push(pressureCode.n);
             }
         }
 
@@ -114,13 +103,12 @@
             if(next) res.push(next.n); else break;
         }
 
-        return { res: res.sort((a,b)=>a-b), anchors };
+        return { res: res.sort((a,b)=>a-b), resNodes };
     }
 
     function render() {
-        const finalPred = getV163Pick(state.data);
+        const finalPred = getV164Pick(state.data);
         
-        // Panel 4
         let tableHtml = `<table><thead><tr><th>日期</th>`;
         for(let i=1; i<=39; i++) tableHtml += `<th>${i}</th>`;
         tableHtml += `</tr></thead><tbody><tr style="background:#2c2c2e"><td>預測</td>`;
@@ -133,33 +121,30 @@
             tableHtml += `<tr><td>${row.date.slice(5)}</td>`;
             for(let i=1; i<=39; i++) {
                 let isHit = row.nums.includes(i);
-                let isSerial = isHit && (row.nums.includes(i-1) || row.nums.includes(i+1));
-                tableHtml += `<td class="${isSerial ? 'is-serial' : (isHit ? 'is-hit' : '')}">${isHit ? i : ''}</td>`;
+                tableHtml += `<td class="${isHit ? 'is-hit' : ''}">${isHit ? i : ''}</td>`;
             }
             tableHtml += `</tr>`;
         });
         tableHtml += `</tbody></table>`;
         document.getElementById('matrixContainer').innerHTML = tableHtml;
 
-        // Panel 3
         const bt = document.getElementById('btContainer');
         bt.innerHTML = `<div class="bt-row" style="color:var(--sub); border:none"><span>日期</span><span>開獎號碼</span><span>AI 預測號碼</span><span>命中</span></div>`;
         state.data.slice(-10).reverse().forEach((row) => {
-            const currentDataIdx = state.data.findIndex(d => d.date === row.date);
-            const pred = getV163Pick(state.data.slice(0, currentDataIdx));
+            const currentIdx = state.data.findIndex(d => d.date === row.date);
+            const pred = getV164Pick(state.data.slice(0, currentIdx));
             const hits = pred.res.filter(n => row.nums.includes(n));
             bt.innerHTML += `
                 <div class="bt-row">
                     <span>${row.date.slice(5)}</span>
-                    <span style="color:var(--primary)">${row.nums.map(n => n<10?'0'+n:n).join(' ')}</span>
+                    <span style="color:var(--primary)">${row.nums.join(' ')}</span>
                     <span style="font-size:10px">${pred.res.map(n => hits.includes(n)? `<b style="color:var(--hit)">${n}</b>`:n).join(' ')}</span>
                     <span class="hit-count">${hits.length}</span>
                 </div>`;
         });
 
-        // Panel 2
         document.getElementById('finalCombo').innerHTML = finalPred.res.map(n => {
-            let cls = finalPred.anchors.includes(n) ? 'anchor' : 'active';
+            let cls = finalPred.resNodes.includes(n) ? 'res-node' : 'active';
             return `<div class="ball ${cls}">${n}</div>`;
         }).join('');
         document.getElementById('mainDisplay').style.display = 'block';
