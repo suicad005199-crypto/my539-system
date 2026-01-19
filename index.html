@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v191</title>
+    <title>AI 539 數據中心 v192</title>
     <style>
-        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --expect: #ff2d55; --thermal: #32d74b; --comp: #af52de; --hedge: #8e8e93; }
+        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --expect: #ff2d55; --thermal: #32d74b; --momentum: #ff9500; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 14px; }
         .container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
         .panel { background: var(--panel); border-radius: 12px; padding: 15px; border: 1px solid var(--border); }
@@ -15,8 +15,7 @@
         .ball.active { background: var(--primary); color: #000; border: none; }
         .ball.expect-node { border: 2px solid var(--expect); color: var(--expect); }
         .ball.thermal-node { border: 2px solid var(--thermal); color: var(--thermal); }
-        .ball.comp-node { border: 2px solid var(--comp); color: var(--comp); }
-        .ball.hedge-node { border: 2px solid var(--hedge); color: var(--hedge); }
+        .ball.momentum-node { border: 2px solid var(--momentum); color: var(--momentum); box-shadow: 0 0 8px rgba(255,149,0,0.4); }
         
         .matrix-table { width: 100%; border-collapse: collapse; text-align: center; table-layout: fixed; min-width: 850px; }
         .matrix-table th, .matrix-table td { border: 1px solid var(--border); padding: 8px 0; width: 2.4%; font-size: 11px; }
@@ -30,23 +29,23 @@
 
 <div class="container">
     <div class="panel">
-        <div class="panel-header">數據注入 (v191 - 跨度對沖)</div>
+        <div class="panel-header">數據注入 (v192 - 動量聚合)</div>
         <input type="file" id="csvFile" accept=".csv" style="color:var(--sub);">
     </div>
 
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px;">
             <div class="panel" id="panel2">
-                <div class="panel-header">Panel 2: 下期精準 8 碼</div>
+                <div class="panel-header">Panel 2: 下期精準 8 碼 (動量聚合版)</div>
                 <div id="finalCombo" class="ball-row"></div>
                 <p style="font-size:0.7rem; color:var(--sub);">
                     <span style="color:var(--thermal)">綠: 熱核</span> | 
-                    <span style="color:var(--comp)">紫: 群聚</span> | 
-                    <span style="color:var(--hedge)">灰: 對沖</span>
+                    <span style="color:var(--momentum)">橘: 動量連動</span> | 
+                    <span style="color:var(--expect)">紅: 期望</span>
                 </p>
             </div>
             <div class="panel" id="panel3">
-                <div class="panel-header">Panel 3: 滾動回測</div>
+                <div class="panel-header">Panel 3: 滾動回測 (高星衝刺)</div>
                 <div id="btContainer"></div>
             </div>
         </div>
@@ -73,56 +72,50 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV191Pick(hist) {
-        if(hist.length < 5) return {res:[], expectNodes:[], thermalNodes:[], compNodes:[], hedgeNodes:[]};
+    function getV192Pick(hist) {
+        if(hist.length < 5) return {res:[], expectNodes:[], thermalNodes:[], momentumNodes:[]};
         const last = hist[hist.length-1].nums;
         let pool = [];
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
             let score = 0;
-            if(gap <= 2) score += 20000; 
-            if(gap >= 3 && gap <= 7) score += 12000;
-            if(last.some(ln => Math.abs(ln-i) === 1)) score += 18000;
+            if(gap <= 2) score += 25000; // 強化極熱碼
+            if(last.includes(i)) score += 10000; // 莊家重複碼
+            if(last.some(ln => Math.abs(ln-i) === 1)) score += 20000; // 強斜連
             pool.push({n: i, gap: gap, sc: score});
         }
         let sorted = pool.sort((a,b) => b.sc - a.sc);
-        let res = [], thermalNodes = [], expectNodes = [], compNodes = [], hedgeNodes = [];
+        let res = [], thermalNodes = [], expectNodes = [], momentumNodes = [];
 
-        // 1. 核心熱碼 (3碼)
-        sorted.slice(0, 3).forEach(p => { res.push(p.n); if(p.gap <= 2) thermalNodes.push(p.n); });
+        // 1. 強勢熱核 (5碼) - 衝擊高星的核心
+        sorted.slice(0, 5).forEach(p => { 
+            res.push(p.n); 
+            if(p.gap <= 2) thermalNodes.push(p.n);
+            else momentumNodes.push(p.n);
+        });
 
-        // 2. 鄰里群聚 (限制1碼)
-        for(let i=0; i<res.length && compNodes.length < 1; i++) {
-            for(let j=i+1; j<res.length && compNodes.length < 1; j++) {
-                if(Math.abs(res[i] - res[j]) <= 3) {
-                    let mid = Math.floor((res[i] + res[j]) / 2);
-                    if(mid >= 1 && mid <= 39 && !res.includes(mid)) { res.push(mid); compNodes.push(mid); }
-                }
-            }
-        }
+        // 2. 期望反彈 (2碼)
+        sorted.filter(p => p.gap >= 12 && !res.includes(p.n)).slice(0, 2).forEach(p => {
+            res.push(p.n);
+            expectNodes.push(p.n);
+        });
 
-        // 3. 極端跨度對沖 (確保頭尾)
-        const hasHead = res.some(n => n <= 9);
-        const hasTail = res.some(n => n >= 30);
-        if(!hasHead) { let head = sorted.find(p => p.n <= 9 && !res.includes(p.n)); if(head){res.push(head.n); hedgeNodes.push(head.n);} }
-        if(!hasTail) { let tail = sorted.find(p => p.n >= 30 && !res.includes(p.n)); if(tail){res.push(tail.n); hedgeNodes.push(tail.n);} }
-
-        // 4. 補齊至 8 碼
+        // 3. 補齊至 8 碼 (嚴格)
         for(let p of sorted) {
             if(res.length < 8 && !res.includes(p.n)) res.push(p.n);
         }
 
-        return { res: res.slice(0, 8).sort((a,b)=>a-b), expectNodes, thermalNodes, compNodes, hedgeNodes };
+        return { res: res.slice(0, 8).sort((a,b)=>a-b), expectNodes, thermalNodes, momentumNodes };
     }
 
     function render() {
-        const fullData = [...state.data], finalPred = getV191Pick(fullData), recentForBT = fullData.slice(-10).reverse();
+        const fullData = [...state.data], finalPred = getV192Pick(fullData), recentForBT = fullData.slice(-10).reverse();
         document.getElementById('finalCombo').innerHTML = finalPred.res.map(n => {
             let cls = 'active';
             if(finalPred.thermalNodes.includes(n)) cls = 'thermal-node';
-            if(finalPred.compNodes.includes(n)) cls = 'comp-node';
-            if(finalPred.hedgeNodes.includes(n)) cls = 'hedge-node';
+            if(finalPred.momentumNodes.includes(n)) cls = 'momentum-node';
+            if(finalPred.expectNodes.includes(n)) cls = 'expect-node';
             return `<div class="ball ${cls}">${n}</div>`;
         }).join('');
 
@@ -130,7 +123,7 @@
         bt.innerHTML = `<div class="bt-row" style="color:var(--sub); border:none"><span>日期</span><span>開獎</span><span>AI 預測</span><span>命中</span></div>`;
         recentForBT.forEach((row) => {
             const histUntil = fullData.slice(0, fullData.findIndex(d => d.date === row.date));
-            const pred = getV191Pick(histUntil);
+            const pred = getV192Pick(histUntil);
             const hits = pred.res.filter(n => row.nums.includes(n));
             bt.innerHTML += `<div class="bt-row"><span>${row.date}</span><span style="color:var(--primary)">${row.nums.join(' ')}</span><div style="display:flex; gap:3px;">${pred.res.map(n => row.nums.includes(n)?`<b style="color:var(--hit)">${n}</b>`:n).join(' ')}</div><span class="hit-count">${hits.length}</span></div>`;
         });
