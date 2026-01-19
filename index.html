@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v128</title>
+    <title>AI 539 數據中心 v129</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; }
@@ -36,15 +36,15 @@
     <div id="mainDisplay" style="display:none;">
         <div class="grid-split">
             <div class="panel">
-                <div class="panel-header">下期預測 (v128 同尾雙星8碼)</div>
-                <p style="font-size:0.7rem; color:var(--sub);">雙重同尾核心：</p>
+                <div class="panel-header">下期預測 (v129 雙簇8碼)</div>
+                <p style="font-size:0.7rem; color:var(--sub);">雙簇引力中心：</p>
                 <div id="anchorBall" class="ball-row"></div>
-                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">8碼共振組合：</p>
+                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">8碼平衡組合：</p>
                 <div id="finalCombo" class="ball-row"></div>
             </div>
 
             <div class="panel">
-                <div class="panel-header">滾動回測 (攻堅命中3)</div>
+                <div class="panel-header">滾動回測 (前10期效能)</div>
                 <div id="btContainer"></div>
             </div>
         </div>
@@ -84,7 +84,7 @@
         mBody.innerHTML = ''; btContainer.innerHTML = '';
 
         for (let i = state.data.length - 1; i >= Math.max(0, state.data.length - 10); i--) {
-            const pred = getV128Pick(state.data.slice(0, i));
+            const pred = getV129Pick(state.data.slice(0, i));
             const real = state.data[i].nums;
             const hits = pred.res.filter(n => real.includes(n));
             const item = document.createElement('div');
@@ -101,53 +101,55 @@
             }
             tr.innerHTML = trHtml; mBody.appendChild(tr);
         }
-        const final = getV128Pick(state.data);
+        const final = getV129Pick(state.data);
         document.getElementById('anchorBall').innerHTML = final.anchors.map(n => `<div class="ball anchor">${n}</div>`).join('');
         document.getElementById('finalCombo').innerHTML = final.res.map(n => `<div class="ball ${final.anchors.includes(n)?'anchor':''}">${n}</div>`).join('');
         document.getElementById('mainDisplay').style.display = 'block';
     }
 
-    function getV128Pick(hist) {
+    function getV129Pick(hist) {
         if(hist.length === 0) return {res:[], anchors:[]};
         let sc = Array(40).fill(0);
-        const last = hist[hist.length-1].nums, recent = hist.slice(-20).flatMap(h => h.nums);
+        const last = hist[hist.length-1].nums, recent = hist.slice(-15).flatMap(h => h.nums);
         let tailF = Array(10).fill(0); recent.forEach(n => tailF[n%10]++);
 
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
-            if(gap >= 5 && gap <= 9) sc[i] += 5500;
-            else if(gap === 1) sc[i] += 3600;
-            else if(gap === 0) sc[i] += 2500; 
+            if(gap >= 5 && gap <= 12) sc[i] += 5800; // v129: 優化冷號區間
+            else if(gap === 1) sc[i] += 3800;
+            else if(gap === 0) sc[i] += 2600; 
 
-            sc[i] += tailF[i%10] * 1000; 
-            if(last.some(ln => Math.abs(ln-i) === 1)) sc[i] += 2500;
-            if(last.some(ln => Math.abs(ln-i) === 10)) sc[i] += 1800; // L-型補償
+            sc[i] += tailF[i%10] * 1050; 
+            if(last.some(ln => Math.abs(ln-i) === 1)) sc[i] += 2600;
+            if(last.some(ln => Math.abs(ln-i) === 2)) sc[i] += 800;  // 間隔跳號加成
+            if(last.some(ln => Math.abs(ln-i) === 10)) sc[i] += 1800;
         }
 
         let sorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>sc[b]-sc[a]);
-        // 選擇兩個具有不同尾數的強核心
+        // 核心選取：選取兩個距離較遠的熱點中心
         let anchor1 = sorted[0];
-        let anchor2 = sorted.find(n => n % 10 !== anchor1 % 10) || sorted[1];
+        let anchor2 = sorted.find(n => Math.abs(n - anchor1) > 8) || sorted[1];
         let anchors = [anchor1, anchor2];
-        let res = [...anchors];
+        let res = [];
         
-        // v128: 強制同尾雙星配對邏輯
+        // 雙簇填充：每個核心周邊填入連動號
         anchors.forEach(a => {
-            let sameTail = sorted.filter(n => n % 10 === a % 10 && n !== a);
-            if(sameTail.length > 0 && res.length < 8) res.push(sameTail[0]);
-        });
-
-        // 剩餘名額使用高密度坍縮
-        let collSc = [...sc];
-        anchors.forEach(a => {
+            res.push(a);
+            let localSc = Array(40).fill(0);
             for(let i=1; i<=39; i++) {
-                if(Math.abs(i - a) <= 2) collSc[i] += 4000;
+                if(Math.abs(i - a) <= 2) localSc[i] += 5000; // 連號/鄰號
+                if(i % 10 === a % 10) localSc[i] += 3000;    // 同尾
+            }
+            let localSorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=> (localSc[b]+sc[b]) - (localSc[a]+sc[a]));
+            for(let n of localSorted) {
+                if(res.filter(r => Math.abs(r-a) <= 5).length >= 4) break; // 每個簇群限 4 碼
+                if(!res.includes(n)) res.push(n);
             }
         });
 
-        let collSorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>collSc[b]-sc[a]);
-        for(let n of collSorted) {
+        // 補齊至 8 碼
+        for(let n of sorted) {
             if(res.length >= 8) break;
             if(!res.includes(n)) res.push(n);
         }
