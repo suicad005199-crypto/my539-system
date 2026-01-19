@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v183</title>
+    <title>AI 539 數據中心 v184</title>
     <style>
-        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --expect: #ff2d55; }
+        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --core: #32d74b; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 14px; }
         .container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
         .panel { background: var(--panel); border-radius: 12px; padding: 15px; border: 1px solid var(--border); }
@@ -13,7 +13,7 @@
         .ball-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
         .ball { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 6px; font-weight: bold; font-size: 12px; border: 1px solid var(--border); }
         .ball.active { background: var(--primary); color: #000; border: none; }
-        .ball.expect-node { border: 2px solid var(--expect); color: var(--expect); box-shadow: 0 0 10px rgba(255,45,85,0.4); }
+        .ball.core-node { border: 2px solid var(--core); color: var(--core); box-shadow: 0 0 10px rgba(50,215,75,0.4); }
         
         .matrix-wrapper { width: 100%; overflow-x: auto; }
         .matrix-table { width: 100%; border-collapse: collapse; text-align: center; table-layout: fixed; min-width: 850px; }
@@ -30,16 +30,16 @@
 
 <div class="container">
     <div class="panel">
-        <div class="panel-header">數據注入 (v183)</div>
+        <div class="panel-header">數據注入 (v184)</div>
         <input type="file" id="csvFile" accept=".csv" style="color:var(--sub);">
     </div>
 
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px;">
             <div class="panel" id="panel2">
-                <div class="panel-header">Panel 2: 下期精準 8 碼 (遺漏期望值版)</div>
+                <div class="panel-header">Panel 2: 下期精準 8 碼 (熱核錨定版)</div>
                 <div id="finalCombo" class="ball-row"></div>
-                <p style="font-size:0.7rem; color:var(--sub);">紅框: 期望值修正碼 | 策略: 遺漏回歸+熱力慣性，衝擊 4-5 星</p>
+                <p style="font-size:0.7rem; color:var(--sub);">綠框: 熱核種子碼 | 策略: 熱碼錨定+分形耦合，修復覆蓋率</p>
             </div>
             <div class="panel" id="panel3">
                 <div class="panel-header">Panel 3: 滾動回測 (最新置頂)</div>
@@ -70,77 +70,61 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV183Pick(hist) {
-        if(hist.length < 10) return {res:[], expectNodes:[]};
+    function getV184Pick(hist) {
+        if(hist.length < 10) return {res:[], coreNodes:[]};
         const last = hist[hist.length-1].nums;
         
-        // 計算遺漏統計與平均遺漏
         let pool = [];
         for (let i=1; i<=39; i++) {
-            let currentGap = 0;
-            let totalGap = 0;
-            let hitCount = 0;
-            let tempGap = 0;
-
-            for(let j=0; j<hist.length; j++) {
-                if(hist[j].nums.includes(i)) {
-                    totalGap += tempGap;
-                    hitCount++;
-                    tempGap = 0;
-                } else {
-                    tempGap++;
-                }
-            }
-            // 當前遺漏
-            for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) currentGap++; else break; }
+            let gap = 0;
+            for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
             
-            let avgGap = hitCount > 0 ? totalGap / hitCount : 8;
             let score = 0;
+            // 熱核分：極近期開出 (0-2期)
+            if(gap <= 2) score += 20000;
+            // 斜連分
+            if(last.some(ln => Math.abs(ln-i) === 1)) score += 15000;
+            // 溫碼基礎分
+            if(gap >= 3 && gap <= 7) score += 8000;
             
-            // 基礎分：斜連慣性
-            if(last.some(ln => Math.abs(ln-i) === 1)) score += 18000;
-            
-            // 遺漏期望權重：當前遺漏接近或大於平均遺漏時加分
-            let expectScore = 0;
-            if(currentGap >= avgGap) {
-                expectScore = 12000;
-                score += expectScore;
-            }
-
-            pool.push({n: i, gap: currentGap, sc: score, isExpect: expectScore > 0});
+            pool.push({n: i, gap: gap, sc: score, t: i%10});
         }
 
         let sorted = pool.sort((a,b) => b.sc - a.sc);
         let res = [];
-        let expectNodes = [];
+        let coreNodes = [];
 
-        // 1. 強制選取 3 顆高分期望碼 (紅框)
-        sorted.filter(p => p.isExpect).slice(0, 3).forEach(p => {
+        // 1. 強制選取 4 顆熱核種子 (綠框)
+        sorted.filter(p => p.gap <= 2).slice(0, 4).forEach(p => {
             res.push(p.n);
-            expectNodes.push(p.n);
+            coreNodes.push(p.n);
         });
 
-        // 2. 補齊高分斜連碼與溫碼
+        // 2. 基於熱核種子選取同尾耦合碼 (2碼)
+        let coreTails = coreNodes.map(n => n%10);
+        sorted.filter(p => !res.includes(p.n) && coreTails.includes(p.t)).slice(0, 2).forEach(p => res.push(p.n));
+
+        // 3. 補齊剩餘高分碼 (斜連或溫碼)
         for(let p of sorted) {
             if(res.length < 8 && !res.includes(p.n)) res.push(p.n);
         }
 
-        return { res: res.slice(0, 8).sort((a,b)=>a-b), expectNodes };
+        return { res: res.slice(0, 8).sort((a,b)=>a-b), coreNodes };
     }
 
     function render() {
-        const finalPred = getV183Pick(state.data);
+        const finalPred = getV184Pick(state.data);
         const recentData = [...state.data].reverse().slice(0, 10);
         
         document.getElementById('finalCombo').innerHTML = finalPred.res.map(n => 
-            `<div class="ball ${finalPred.expectNodes.includes(n)?'expect-node':'active'}">${n}</div>`
+            `<div class="ball ${finalPred.coreNodes.includes(n)?'core-node':'active'}">${n}</div>`
         ).join('');
 
         const bt = document.getElementById('btContainer');
         bt.innerHTML = `<div class="bt-row" style="color:var(--sub); border:none"><span>日期</span><span>開獎</span><span>AI 預測</span><span>命中</span></div>`;
         recentData.forEach((row) => {
             const idx = state.data.findIndex(d => d.date === row.date);
-            const pred = getV183Pick(state.data.slice(0, idx));
+            const pred = getV184Pick(state.data.slice(0, idx));
             const hits = pred.res.filter(n => row.nums.includes(n));
             bt.innerHTML += `<div class="bt-row"><span>${row.date}</span><span style="color:var(--primary)">${row.nums.join(' ')}</span><span style="font-size:10px">${pred.res.map(n => hits.includes(n)? `<b style="color:var(--hit)">${n}</b>`:n).join(' ')}</span><span class="hit-count">${hits.length}</span></div>`;
         });
@@ -148,7 +132,10 @@
         let tableHtml = `<table class="matrix-table"><thead><tr><th>日期</th>`;
         for(let i=1; i<=39; i++) tableHtml += `<th>${i}</th>`;
         tableHtml += `</tr></thead><tbody><tr style="background:#2c2c2e"><td>下期預測</td>`;
-        for(let i=1; i<=39; i++) tableHtml += `<td class="${finalPred.res.includes(i)?'pred-mark':''}">${finalPred.res.includes(i)?'●':''}</td>`;
+        for(let i=1; i<=39; i++) {
+            let isP = finalPred.res.includes(i);
+            tableHtml += `<td class="${isP?'pred-mark':''}">${isP?'●':''}</td>`;
+        }
         tableHtml += `</tr>`;
         recentData.forEach(row => {
             tableHtml += `<tr><td>${row.date.slice(5)}</td>`;
