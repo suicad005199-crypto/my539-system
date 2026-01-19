@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v218</title>
+    <title>AI 539 數據中心 v219</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --core: #ffd60a; --expand: #af52de; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 14px; }
@@ -31,16 +31,16 @@
 
 <div class="container">
     <div class="panel">
-        <div class="panel-header">數據注入 (v218 - 跨區共鳴優化)</div>
+        <div class="panel-header">數據注入 (v219 - 雙重引力優化)</div>
         <input type="file" id="csvFile" accept=".csv" style="color:var(--sub);">
     </div>
 
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px;">
             <div class="panel">
-                <div class="panel-header">Panel 2: 結構預測 (同尾對接 + 斜連)</div>
+                <div class="panel-header">Panel 2: 結構預測 (拖碼連動 + 餘數平衡)</div>
                 <div id="finalCombo" class="ball-row"></div>
-                <p style="font-size:0.75rem; color:var(--sub); margin-top:5px;">策略：強制區間內同尾連動，並優化 3+2 集火區塊內的物理偏移。</p>
+                <p style="font-size:0.75rem; color:var(--sub); margin-top:5px;">策略：優化號碼間的引力連動，確保 5 餘數分布平衡，鞏固高星戰果。</p>
             </div>
             <div class="panel">
                 <div class="panel-header">Panel 3: 10 期滾動回測</div>
@@ -48,7 +48,7 @@
             </div>
         </div>
         <div class="panel">
-            <div class="panel-header">Panel 4: 分區走勢矩陣 (尾數對接分析)</div>
+            <div class="panel-header">Panel 4: 分區走勢矩陣 (拖碼引力分析)</div>
             <div class="matrix-wrapper" id="matrixContainer"></div>
         </div>
     </div>
@@ -69,62 +69,50 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV218Pick(hist) {
+    function getV219Pick(hist) {
         if(hist.length < 5) return {res:[], coreNodes:[], expandNodes:[]};
         const last = hist[hist.length-1].nums;
         let pool = [];
-        let zoneStats = [0,0,0,0,0];
 
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
             
-            // 權重分配：斜連(40) + 同尾(30) + 溫碼(20)
-            let score = (last.some(ln => Math.abs(ln-i) === 1) ? 40 : 0) +
-                        (last.some(ln => ln % 10 === i % 10) ? 30 : 0) +
-                        (gap >= 4 && gap <= 9 ? 20 : 0);
+            // v219 評分：斜連(35) + 拖碼相關(35) + 同尾(20) + 餘數平衡補償
+            let isDrag = last.some(ln => [5, 10, 12].includes(Math.abs(ln-i))); // 模擬拖碼物理距離
+            let score = (last.some(ln => Math.abs(ln-i) === 1) ? 35 : 0) +
+                        (isDrag ? 35 : 0) +
+                        (last.some(ln => ln % 10 === i % 10) ? 20 : 0);
             
-            let zIdx = Math.min(Math.floor((i-1)/8), 4);
-            zoneStats[zIdx] += score;
-            pool.push({n: i, gap, score, zone: zIdx, tail: i % 10});
+            pool.push({n: i, gap, score, mod5: i % 5});
         }
 
-        let topZones = zoneStats.map((s, i) => ({i, s})).sort((a,b) => b.s - a.s).slice(0, 2).map(z => z.i);
+        let sortedPool = [...pool].sort((a,b) => b.score - a.score);
         let coreNodes = [];
-        
-        // 區間集火 + 同尾鎖定
-        let zAPool = pool.filter(p => p.zone === topZones[0]).sort((a,b) => b.score - a.score);
-        let zBPool = pool.filter(p => p.zone === topZones[1]).sort((a,b) => b.score - a.score);
+        let mod5Count = [0,0,0,0,0];
 
-        if (zAPool.length >= 3) {
-            coreNodes.push(zAPool[0].n, zAPool[1].n, zAPool[2].n);
-        }
-        
-        // 在區間 B 中強制對接 A 的尾數
-        let aTails = coreNodes.map(n => n % 10);
-        zBPool.sort((a,b) => {
-            let aBonus = aTails.includes(a.tail) ? 60 : 0;
-            let bBonus = aTails.includes(b.tail) ? 60 : 0;
-            return (b.score + bBonus) - (a.score + aBonus);
-        });
-        
-        if (zBPool.length >= 2) {
-            coreNodes.push(zBPool[0].n, zBPool[1].n);
+        for (let p of sortedPool) {
+            if (coreNodes.length >= 5) break;
+            // 餘數平衡限制：單一餘數組不超過 2 碼
+            if (mod5Count[p.mod5] < 2) {
+                coreNodes.push(p.n);
+                mod5Count[p.mod5]++;
+            }
         }
 
-        // 擴展 3 碼：槓鈴 2.0 (冷/熱/溫 平衡)
+        // 擴展 3 碼：槓鈴 3.0 (冷熱極端對齊)
         let rest = pool.filter(p => !coreNodes.includes(p.n));
-        let cold = rest.sort((a,b) => b.gap - a.gap)[0]?.n;
-        let hot = rest.filter(p => p.gap === 0).sort((a,b) => b.score - a.score)[0]?.n;
-        let warm = rest.filter(p => p.gap >= 10 && p.gap <= 15).sort((a,b) => b.score - a.score)[0]?.n;
+        let maxCold = rest.sort((a,b) => b.gap - a.gap)[0].n;
+        let maxHot = rest.sort((a,b) => a.gap - b.gap)[0].n;
+        let midWarm = rest.filter(p => p.gap === 7 || p.gap === 8).sort((a,b) => b.score - a.score)[0]?.n || rest[1].n;
         
-        let expandNodes = [cold, hot, warm].filter(n => n !== undefined);
+        let expandNodes = [maxCold, maxHot, midWarm];
 
         return { res: [...coreNodes, ...expandNodes].sort((a,b)=>a-b), coreNodes, expandNodes };
     }
 
     function render() {
-        const fullData = [...state.data], finalPred = getV218Pick(fullData), recentForBT = fullData.slice(-12).reverse();
+        const fullData = [...state.data], finalPred = getV219Pick(fullData), recentForBT = fullData.slice(-12).reverse();
         document.getElementById('finalCombo').innerHTML = finalPred.res.map(n => 
             `<div class="ball ${finalPred.coreNodes.includes(n)?'core-node':'expand-node'}">${n}</div>`).join('');
 
@@ -132,7 +120,7 @@
         bt.innerHTML = `<div class="bt-row" style="color:var(--sub); border:none"><span>日期</span><span>開獎</span><span>預測</span><span>星</span></div>`;
         recentForBT.slice(0, 10).forEach(row => {
             const histUntil = fullData.slice(0, fullData.findIndex(d => d.date === row.date));
-            const pred = getV218Pick(histUntil);
+            const pred = getV219Pick(histUntil);
             const hits = pred.res.filter(n => row.nums.includes(n));
             bt.innerHTML += `<div class="bt-row"><span>${row.date.slice(5)}</span><span>${row.nums.join(' ')}</span><div style="font-size:11px;">${pred.res.map(n => row.nums.includes(n)?`<b style="color:var(--hit)">${n}</b>`:n).join(' ')}</div><span class="hit-count">${hits.length}</span></div>`;
         });
