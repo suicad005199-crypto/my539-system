@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AI 539 數據中心 v178</title>
     <style>
-        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --res: #ff9f0a; }
+        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --mirror: #00f2ff; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 14px; }
         .container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
         .panel { background: var(--panel); border-radius: 12px; padding: 15px; border: 1px solid var(--border); overflow-x: auto; }
@@ -13,7 +13,7 @@
         .ball-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
         .ball { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 6px; font-weight: bold; font-size: 12px; border: 1px solid var(--border); }
         .ball.active { background: var(--primary); color: #000; border: none; }
-        .ball.res-node { border: 2px solid var(--res); color: var(--res); box-shadow: 0 0 10px rgba(255,159,10,0.4); }
+        .ball.mirror-node { border: 2px solid var(--mirror); color: var(--mirror); box-shadow: 0 0 10px rgba(0,242,255,0.3); }
         .pred-mark { background: rgba(255, 214, 10, 0.15); border: 1px inset var(--primary) !important; }
         table { width: 100%; border-collapse: collapse; font-size: 10px; text-align: center; }
         th, td { border: 1px solid #38383a; padding: 6px 2px; }
@@ -34,15 +34,16 @@
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px;">
             <div class="panel" id="panel2">
-                <div class="panel-header">Panel 2: 下期精準 8 碼 (週期共振版)</div>
+                <div class="panel-header">Panel 2: 下期精準 8 碼 (鏡像拓撲版)</div>
                 <div id="finalCombo" class="ball-row"></div>
-                <p style="font-size:0.7rem; color:var(--sub);">橘框: 週期共振點 | 策略: 兩極重心鎖定 + 時空週期疊加</p>
+                <p style="font-size:0.7rem; color:var(--sub);">青框: 鏡像對稱碼 | 策略: 鏡像催化 + 區間聚類，衝擊 4-5 星</p>
             </div>
             <div class="panel" id="panel3">
                 <div class="panel-header">Panel 3: 滾動回測紀錄</div>
                 <div id="btContainer"></div>
             </div>
         </div>
+
         <div class="panel" id="panel4">
             <div class="panel-header">Panel 4: 全號碼分布矩陣</div>
             <div id="matrixContainer"></div>
@@ -58,7 +59,8 @@
         reader.onload = () => {
             const rows = reader.result.trim().split('\n').map(r => r.split(','));
             state.data = rows.filter(r => !isNaN(r[1])).map(r => ({
-                date: r[0], nums: r.slice(1, 6).map(Number).sort((a,b)=>a-b)
+                date: r[0],
+                nums: r.slice(1, 6).map(Number).sort((a,b)=>a-b)
             }));
             render();
         };
@@ -66,48 +68,45 @@
     });
 
     function getV178Pick(hist) {
-        if(hist.length < 10) return {res:[], resNodes:[]};
+        if(hist.length < 5) return {res:[], mirrorNodes:[]};
         const last = hist[hist.length-1].nums;
         
         let pool = [];
         for (let i=1; i<=39; i++) {
-            let gaps = [];
-            let currentGap = 0;
-            for(let j=hist.length-1; j>=0; j--) {
-                if(!hist[j].nums.includes(i)) currentGap++;
-                else { gaps.push(currentGap); currentGap = 0; }
-            }
-            let avgGap = gaps.length > 0 ? gaps.reduce((a,b)=>a+b)/gaps.length : 10;
-            let nowGap = currentGap;
-            
+            let gap = 0;
+            for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
             let score = 0;
-            if(Math.abs(nowGap - avgGap) <= 1) score += 15000; // 週期共振點
-            if(last.some(ln => Math.abs(ln-i) === 1)) score += 12000; // 斜連
-            pool.push({n: i, gap: nowGap, sc: score, avg: avgGap});
+            if(gap >= 3 && gap <= 10) score += 12000;
+            if(last.some(ln => Math.abs(ln-i) === 1)) score += 15000;
+            pool.push({n: i, gap: gap, sc: score});
         }
+
+        const getMirror = (n) => {
+            let s = n.toString().padStart(2, '0');
+            let m = parseInt(s.split('').reverse().join(''));
+            return (m >= 1 && m <= 39 && m !== n) ? m : null;
+        };
 
         let sorted = pool.sort((a,b) => b.sc - a.sc);
         let res = [];
-        let resNodes = [];
+        let mirrorNodes = [];
 
-        // 1. 抓取高共振點
         for(let p of sorted) {
-            if(res.length < 4 && p.sc >= 15000) {
+            if(res.length >= 8) break;
+            if(!res.includes(p.n)) {
                 res.push(p.n);
-                resNodes.push(p.n);
+                let m = getMirror(p.n);
+                if(m && !res.includes(m) && res.length < 8) {
+                    let mData = pool.find(x => x.n === m);
+                    if(mData && mData.gap < 15) { 
+                        res.push(m);
+                        mirrorNodes.push(m);
+                    }
+                }
             }
         }
 
-        // 2. 兩極重心補齊 (大/小號平衡)
-        let smalls = sorted.filter(p => p.n <= 19 && !res.includes(p.n));
-        let larges = sorted.filter(p => p.n > 19 && !res.includes(p.n));
-        
-        while(res.length < 8) {
-            if(smalls.length > 0) res.push(smalls.shift().n);
-            if(res.length < 8 && larges.length > 0) res.push(larges.shift().n);
-        }
-
-        return { res: res.slice(0, 8).sort((a,b)=>a-b), resNodes };
+        return { res: res.slice(0, 8).sort((a,b)=>a-b), mirrorNodes };
     }
 
     function render() {
@@ -120,8 +119,19 @@
             const hits = pred.res.filter(n => row.nums.includes(n));
             bt.innerHTML += `<div class="bt-row"><span>${row.date.slice(5)}</span><span style="color:var(--primary)">${row.nums.join(' ')}</span><span style="font-size:10px">${pred.res.map(n => hits.includes(n)? `<b style="color:var(--hit)">${n}</b>`:n).join(' ')}</span><span class="hit-count">${hits.length}</span></div>`;
         });
-        document.getElementById('finalCombo').innerHTML = finalPred.res.map(n => `<div class="ball ${finalPred.resNodes.includes(n)?'res-node':'active'}">${n}</div>`).join('');
-        document.getElementById('matrixContainer').innerHTML = "（矩陣已根據 v178 更新，請參閱上方回測數據）"; 
+        document.getElementById('finalCombo').innerHTML = finalPred.res.map(n => `<div class="ball ${finalPred.mirrorNodes.includes(n)?'mirror-node':'active'}">${n}</div>`).join('');
+        
+        let tableHtml = `<table><thead><tr><th>日期</th>`;
+        for(let i=1; i<=39; i++) tableHtml += `<th>${i}</th>`;
+        tableHtml += `</tr></thead><tbody><tr style="background:#2c2c2e"><td>下期預測</td>`;
+        for(let i=1; i<=39; i++) tableHtml += `<td class="${finalPred.res.includes(i)?'pred-mark':''}" style="color:var(--primary)">${finalPred.res.includes(i)?'●':''}</td>`;
+        tableHtml += `</tr>`;
+        state.data.slice(-10).reverse().forEach(row => {
+            tableHtml += `<tr><td>${row.date.slice(5)}</td>`;
+            for(let i=1; i<=39; i++) tableHtml += `<td class="${row.nums.includes(i)?'is-hit':''}">${row.nums.includes(i)?i:''}</td>`;
+            tableHtml += `</tr>`;
+        });
+        document.getElementById('matrixContainer').innerHTML = tableHtml + `</tbody></table>`;
         document.getElementById('mainDisplay').style.display = 'block';
     }
 </script>
