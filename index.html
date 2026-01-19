@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v264</title>
+    <title>AI 539 數據中心 v265</title>
     <style>
-        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --grid: #007aff; --sym: #32d74b; }
+        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --gravity: #bf5af2; --mature: #32d74b; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 14px; }
         .container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
         .panel { background: var(--panel); border-radius: 12px; padding: 15px; border: 1px solid var(--border); overflow: hidden; }
@@ -13,8 +13,8 @@
         .ball-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
         .ball { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 50%; font-weight: bold; border: 1px solid var(--border); }
         .ball.active { background: var(--primary); color: #000; border: none; }
-        .ball.grid-node { border: 2px solid var(--grid); color: var(--grid); box-shadow: 0 0 10px rgba(0,122,255,0.4); }
-        .ball.sym-node { border: 2px solid var(--sym); color: var(--sym); }
+        .ball.gravity-node { border: 2px solid var(--gravity); color: var(--gravity); box-shadow: 0 0 10px rgba(191,90,242,0.4); }
+        .ball.mature-node { border: 2px solid var(--mature); color: var(--mature); }
         .matrix-wrapper { width: 100%; overflow-x: auto; margin-top: 10px; border-radius: 8px; border: 1px solid var(--border); }
         .matrix-table { width: 100%; border-collapse: collapse; text-align: center; table-layout: fixed; min-width: 1100px; }
         .matrix-table th, .matrix-table td { border: 1px solid var(--border); height: 34px; font-size: 11px; }
@@ -27,16 +27,16 @@
 
 <div class="container">
     <div class="panel">
-        <div class="panel-header">數據注入 (v264 - 動態彈性網策略)</div>
+        <div class="panel-header">數據注入 (v265 - 時空摺疊策略)</div>
         <input type="file" id="csvFile" accept=".csv" style="color:var(--sub);">
     </div>
 
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px;">
             <div class="panel">
-                <div class="panel-header">精選 10 碼 (多維聯動核心 + 對稱補償)</div>
+                <div class="panel-header">精選 10 碼 (引力重疊 + 均值回歸)</div>
                 <div id="finalCombo" class="ball-row"></div>
-                <p style="font-size:0.75rem; color:var(--sub); margin-top:5px;">藍框：聯動網格碼 | 綠框：對稱性補償碼 | 策略：保持 4 星咬合，透過多維度網格找回失蹤的 2-3 星保底。</p>
+                <p style="font-size:0.75rem; color:var(--sub); margin-top:5px;">紫框：引力重疊位 | 綠框：成熟回歸碼 | 策略：鎖定雙重屬性熱點，提升 3 星轉 4 星的成功率。</p>
             </div>
             <div class="panel">
                 <div class="panel-header">10 期滾動回測 (滾動驗證)</div>
@@ -45,7 +45,7 @@
         </div>
         
         <div class="panel">
-            <div class="panel-header">軌跡與網格矩陣</div>
+            <div class="panel-header">軌跡矩陣 (成熟度偵測)</div>
             <div class="matrix-wrapper"><div id="matrixContainer"></div></div>
         </div>
     </div>
@@ -66,53 +66,53 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV264Pick(hist) {
-        if(hist.length < 5) return {res:[], gridNodes:[], symNodes:[]};
+    function getV265Pick(hist) {
+        if(hist.length < 10) return {res:[], gravityNodes:[], matureNodes:[]};
         const last = hist[hist.length-1].nums;
         
+        // 1. 均值遺漏分析 (簡化版：設定均值為 8 期)
+        const avgGap = 8;
         let pool = [];
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
-            let sc = (last.some(ln => Math.abs(ln-i) === 1) ? 30000 : 0) + 
-                     (last.some(ln => Math.abs(ln-i) === 4 || Math.abs(ln-i) === 7) ? 40000 : 0) + 
-                     (gap >= 3 && gap <= 9 ? 25000 : 0);
-            pool.push({n: i, sc, gap, z: Math.floor((i-1)/10)});
+            
+            // 鄰位重疊計算
+            let isNeighbor = last.some(ln => Math.abs(ln-i) === 1);
+            let sc = (isNeighbor ? 40000 : 0) + 
+                     (gap >= 3 && gap <= 10 ? 30000 : 0) +
+                     (gap === 0 ? 20000 : 0);
+            pool.push({n: i, sc, gap, isNeighbor});
         }
         let sorted = pool.sort((a,b) => b.sc - a.sc);
-        let res = [], gridNodes = [], symNodes = [];
+        let res = [], gravityNodes = [], matureNodes = [];
 
-        // 1. 多維聯動核心 (4碼): 黃金跨度組合
-        for(let p of sorted) {
-            if(gridNodes.length >= 4) break;
-            if(!res.includes(p.n)) {
-                let pair = pool.find(n => (n.n === p.n + 4 || n.n === p.n + 7) && !res.includes(n.n));
-                if(pair) { res.push(p.n, pair.n); gridNodes.push(p.n, pair.n); }
-            }
-        }
+        // 2. 引力重疊位 (4碼): 鄰位中分數最高者
+        sorted.filter(p => p.isNeighbor).slice(0, 4).forEach(p => {
+            res.push(p.n); gravityNodes.push(p.n);
+        });
 
-        // 2. 對稱性遺漏補償 (2碼): 尋找 Gap 相補對
-        const avgGap = 8;
-        let symCandidates = pool.filter(p => !res.includes(p.n)).sort((a,b) => Math.abs(a.gap + sorted[0].gap - 16) - Math.abs(b.gap + sorted[0].gap - 16));
-        symCandidates.slice(0, 2).forEach(p => { res.push(p.n); symNodes.push(p.n); });
+        // 3. 成熟回歸碼 (2碼): 遺漏期數接近均值 (7-9期)
+        let matures = pool.filter(p => !res.includes(p.n) && p.gap >= 7 && p.gap <= 9).sort((a,b)=>b.sc-a.sc);
+        matures.slice(0, 2).forEach(p => { res.push(p.n); matureNodes.push(p.n); });
 
-        // 3. 補齊 (真空區與高分補回)
+        // 4. 補齊 (高權重補充)
         let fillers = sorted.filter(p => !res.includes(p.n));
         while(res.length < 10) res.push(fillers.shift().n);
 
-        return { res: res.sort((a,b)=>a-b), gridNodes, symNodes };
+        return { res: res.sort((a,b)=>a-b), gravityNodes, matureNodes };
     }
 
     function render() {
-        const fullData = [...state.data], finalPred = getV264Pick(fullData), recent = fullData.slice(-12).reverse();
+        const fullData = [...state.data], finalPred = getV265Pick(fullData), recent = fullData.slice(-12).reverse();
         document.getElementById('finalCombo').innerHTML = finalPred.res.map(n => 
-            `<div class="ball ${finalPred.gridNodes.includes(n)?'grid-node':(finalPred.symNodes.includes(n)?'sym-node':'active')}">${n}</div>`).join('');
+            `<div class="ball ${finalPred.gravityNodes.includes(n)?'gravity-node':(finalPred.matureNodes.includes(n)?'mature-node':'active')}">${n}</div>`).join('');
         
         const bt = document.getElementById('btContainer');
         bt.innerHTML = `<div class="bt-row" style="color:var(--sub); border:none"><span>日期</span><span>開獎</span><span>預測</span><span>星</span></div>`;
         recent.slice(0, 10).forEach(row => {
             const histUntil = fullData.slice(0, fullData.findIndex(d => d.date === row.date));
-            const pred = getV264Pick(histUntil);
+            const pred = getV265Pick(histUntil);
             const hits = pred.res.filter(n => row.nums.includes(n));
             bt.innerHTML += `<div class="bt-row"><span>${row.date.slice(5)}</span><span>${row.nums.join(' ')}</span><div style="font-size:10px;">${pred.res.map(n => row.nums.includes(n)?`<b style="color:var(--hit)">${n}</b>`:n).join(' ')}</div><span class="hit-count">${hits.length}</span></div>`;
         });
