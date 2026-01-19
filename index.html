@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v129.1</title>
+    <title>AI 539 數據中心 v130</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; }
@@ -30,10 +30,10 @@
     <div id="mainDisplay" style="display:none;">
         <div class="grid-split">
             <div class="panel">
-                <div class="panel-header">下期預測 (v129.1 修正版 8碼)</div>
-                <p style="font-size:0.7rem; color:var(--sub);">雙簇引力中心：</p>
+                <div class="panel-header">下期預測 (v130 流體8碼)</div>
+                <p style="font-size:0.7rem; color:var(--sub);">矩陣引力核心：</p>
                 <div id="anchorBall" class="ball-row"></div>
-                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">嚴格 8 碼預測：</p>
+                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">8碼流體組合：</p>
                 <div id="finalCombo" class="ball-row"></div>
             </div>
             <div class="panel">
@@ -65,23 +65,23 @@
         btContainer.innerHTML = '';
 
         for (let i = state.data.length - 1; i >= Math.max(0, state.data.length - 10); i--) {
-            const pred = getV129_1Pick(state.data.slice(0, i));
+            const pred = getV130Pick(state.data.slice(0, i));
             const real = state.data[i].nums;
             const hits = pred.res.filter(n => real.includes(n));
             const item = document.createElement('div');
             item.className = 'bt-item';
             item.innerHTML = `<div><span style="color:var(--sub)">${state.data[i].date.slice(5)}</span><br><span style="font-size:0.8rem">${real.join(' ')}</span></div>
-                              <div style="font-size:0.6rem; color:#666; max-width:160px;">[${pred.res.join(',')}]</div>
+                              <div style="font-size:0.6rem; color:#666; max-width:180px;">[${pred.res.join(',')}]</div>
                               <div class="hit-count">${hits.length}</div>`;
             btContainer.appendChild(item);
         }
-        const final = getV129_1Pick(state.data);
+        const final = getV130Pick(state.data);
         document.getElementById('anchorBall').innerHTML = final.anchors.map(n => `<div class="ball anchor">${n}</div>`).join('');
         document.getElementById('finalCombo').innerHTML = final.res.map(n => `<div class="ball ${final.anchors.includes(n)?'anchor':''}">${n}</div>`).join('');
         document.getElementById('mainDisplay').style.display = 'block';
     }
 
-    function getV129_1Pick(hist) {
+    function getV130Pick(hist) {
         if(hist.length === 0) return {res:[], anchors:[]};
         let sc = Array(40).fill(0);
         const last = hist[hist.length-1].nums, recent = hist.slice(-15).flatMap(h => h.nums);
@@ -90,42 +90,44 @@
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
-            if(gap >= 5 && gap <= 12) sc[i] += 6000; 
-            else if(gap === 1) sc[i] += 4000;
-            else if(gap === 0) sc[i] += 2800; 
-            sc[i] += tailF[i%10] * 1100; 
-            if(last.some(ln => Math.abs(ln-i) === 1)) sc[i] += 2800;
-            if(last.some(ln => Math.abs(ln-i) === 10)) sc[i] += 2000;
+            
+            // v130: 優化中期熱號 L2-4，調降深冷號 L5-12
+            if(gap >= 2 && gap <= 4) sc[i] += 5200;
+            else if(gap >= 5 && gap <= 12) sc[i] += 4200;
+            else if(gap === 1) sc[i] += 3800;
+            else if(gap === 0) sc[i] += 2500; 
+
+            sc[i] += tailF[i%10] * 1000; 
+            if(last.some(ln => Math.abs(ln-i) === 1)) sc[i] += 2500;
+            if(last.some(ln => Math.abs(ln-i) === 10)) sc[i] += 1800;
         }
 
         let sorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>sc[b]-sc[a]);
-        let a1 = sorted[0], a2 = sorted.find(n => Math.abs(n - a1) > 8) || sorted[1];
-        let anchors = [a1, a2], res = [];
+        let anchor = sorted[0];
+        let res = [anchor];
+        
+        // v130: 流體填充邏輯 (去重、多尾數、區間均衡)
+        for(let n of sorted) {
+            if(res.length >= 8) break;
+            if(res.includes(n)) continue;
 
-        // 核心簇群填充 (每個中心找最連動的 3 碼，確保不重複)
-        anchors.forEach(a => {
-            if(!res.includes(a)) res.push(a);
-            let candidates = Array.from({length:39},(_,i)=>i+1)
-                .filter(n => !res.includes(n))
-                .sort((x, y) => {
-                    let scX = (Math.abs(x-a) <= 2 ? 5000:0) + (x%10 === a%10 ? 3000:0) + sc[x];
-                    let scY = (Math.abs(y-a) <= 2 ? 5000:0) + (y%10 === a%10 ? 3000:0) + sc[y];
-                    return scY - scX;
-                });
-            // 每個核心嘗試補齊到簇群規模，但總數受控
-            for(let c of candidates) {
-                if(res.filter(r => Math.abs(r-a) <= 5).length >= 4) break;
-                if(res.length < 8) res.push(c);
+            let t = n % 10;
+            let currentTails = res.map(r => r % 10);
+            let tailCount = currentTails.filter(ct => ct === t).length;
+            
+            // 限制同一尾數最多 2 顆，增加流動性
+            if(tailCount < 2) {
+                res.push(n);
             }
-        });
+        }
 
-        // 最終保險：若不足 8 碼由總分最高者補齊
+        // 墊底補齊
         for(let n of sorted) {
             if(res.length >= 8) break;
             if(!res.includes(n)) res.push(n);
         }
 
-        return { res: res.slice(0, 8).sort((a,b)=>a-b), anchors: anchors };
+        return { res: res.slice(0, 8).sort((a,b)=>a-b), anchors: [anchor] };
     }
 </script>
 </body>
