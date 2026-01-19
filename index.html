@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v233</title>
+    <title>AI 539 數據中心 v234</title>
     <style>
-        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --chain: #af52de; }
+        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --trinity: #007aff; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 14px; }
         .container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
         .panel { background: var(--panel); border-radius: 12px; padding: 15px; border: 1px solid var(--border); }
@@ -13,7 +13,7 @@
         .ball-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
         .ball { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 50%; font-weight: bold; border: 1px solid var(--border); }
         .ball.active { background: var(--primary); color: #000; border: none; }
-        .ball.chain-node { border: 2px solid var(--chain); color: var(--chain); box-shadow: 0 0 8px rgba(175,82,222,0.3); }
+        .ball.trinity-node { border: 2px solid var(--trinity); color: var(--trinity); box-shadow: 0 0 8px rgba(0,122,255,0.4); }
         .matrix-table { width: 100%; border-collapse: collapse; text-align: center; min-width: 900px; }
         .matrix-table th, .matrix-table td { border: 1px solid var(--border); height: 30px; font-size: 11px; }
         .is-hit { background: var(--hit) !important; color: #fff; font-weight: bold; }
@@ -25,16 +25,16 @@
 
 <div class="container">
     <div class="panel">
-        <div class="panel-header">數據注入 (v233 - 7 碼雙極共振)</div>
+        <div class="panel-header">數據注入 (v234 - 同尾三角優化)</div>
         <input type="file" id="csvFile" accept=".csv" style="color:var(--sub);">
     </div>
 
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px;">
             <div class="panel">
-                <div class="panel-header">Panel 2: 精選 7 碼 (連號鏈強合)</div>
+                <div class="panel-header">Panel 2: 精選 7 碼 (同尾三角 + 位移包圍)</div>
                 <div id="finalCombo" class="ball-row"></div>
-                <p style="font-size:0.75rem; color:var(--sub); margin-top:5px;">紫框：連號鏈節點 | 策略：強制生成兩組連號結構，集中火力於熱點區塊。</p>
+                <p style="font-size:0.75rem; color:var(--sub); margin-top:5px;">藍框：三角核心碼 | 策略：鎖定單一強勢尾數三連發，並針對上期號碼進行鄰位包夾。</p>
             </div>
             <div class="panel">
                 <div class="panel-header">Panel 3: 10 期滾動回測 (7 碼)</div>
@@ -42,7 +42,7 @@
             </div>
         </div>
         <div class="panel">
-            <div class="panel-header">Panel 4: 熱區重疊分析矩陣</div>
+            <div class="panel-header">Panel 4: 同尾密度矩陣</div>
             <div style="overflow-x:auto;"><div id="matrixContainer"></div></div>
         </div>
     </div>
@@ -63,70 +63,57 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV233Pick(hist) {
-        if(hist.length < 5) return {res:[], chainNodes:[]};
+    function getV234Pick(hist) {
+        if(hist.length < 5) return {res:[], trinityNodes:[]};
         const last = hist[hist.length-1].nums;
         
-        // 1. 識別黃金區塊 (熱度重心)
-        const zones = [0,0,0,0];
-        hist.slice(-5).forEach(d => d.nums.forEach(n => zones[Math.floor((n-1)/10)]++));
-        const topZone = zones.indexOf(Math.max(...zones));
+        // 1. 識別最強同尾
+        const tails = {};
+        hist.slice(-10).forEach(d => d.nums.forEach(n => tails[n%10] = (tails[n%10] || 0) + 1));
+        const topTail = Number(Object.entries(tails).sort((a,b)=>b[1]-a[1])[0][0]);
 
         let pool = [];
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
-            let sc = (last.some(ln => Math.abs(ln-i) === 1) ? 40000 : 0) +
-                     (Math.floor((i-1)/10) === topZone ? 20000 : 0) +
-                     (gap <= 3 ? 15000 : 0) +
-                     (last.includes(i) ? 10000 : 0);
-            pool.push({n: i, gap, sc, z: Math.floor((i-1)/10)});
+            let sc = (i%10 === topTail ? 50000 : 0) + // 同尾三角權重最高
+                     (last.some(ln => Math.abs(ln-i) <= 1) ? 30000 : 0) + // 包夾鄰位
+                     (gap >= 4 && gap <= 9 ? 15000 : 0); // 溫碼
+            pool.push({n: i, gap, sc, t: i%10});
         }
 
         let sorted = pool.sort((a,b) => b.sc - a.sc);
         let res = [];
-        let chainNodes = [];
+        let trinityNodes = [];
 
-        // 策略：雙連號鏈 (4碼)
-        let seeds = sorted.slice(0, 5); 
-        for(let s of seeds) {
-            if(res.length >= 4) break;
-            if(!res.includes(s.n)) {
-                res.push(s.n);
-                // 尋找最強鄰號湊成鏈
-                let neighbor = pool.find(p => Math.abs(p.n - s.n) === 1 && !res.includes(p.n));
-                if(neighbor) {
-                    res.push(neighbor.n);
-                    chainNodes.push(s.n, neighbor.n);
-                }
-            }
-        }
+        // 策略 1: 同尾三角 (3碼)
+        let tailGroup = sorted.filter(p => p.t === topTail).slice(0, 3);
+        tailGroup.forEach(p => { res.push(p.n); trinityNodes.push(p.n); });
 
-        // 策略：熱區填補 (剩餘名額)
-        let zonePicks = sorted.filter(p => !res.includes(p.n) && p.z === topZone);
-        while(res.length < 7 && zonePicks.length > 0) {
-            res.push(zonePicks.shift().n);
-        }
+        // 策略 2: 位移包夾 (2碼)
+        // 選取上期得分最高的一個核心碼鄰近區
+        let slidingSeeds = sorted.filter(p => !res.includes(p.n) && last.some(ln => Math.abs(ln-p.n) === 1)).slice(0, 2);
+        slidingSeeds.forEach(p => res.push(p.n));
 
-        // 保底補齊
+        // 策略 3: 溫碼/遺漏補位 (2碼)
+        let fillers = sorted.filter(p => !res.includes(p.n));
         while(res.length < 7) {
-            let next = sorted.find(p => !res.includes(p.n));
-            res.push(next.n);
+            res.push(fillers.shift().n);
         }
 
-        return { res: res.sort((a,b)=>a-b), chainNodes };
+        return { res: res.sort((a,b)=>a-b), trinityNodes };
     }
 
     function render() {
-        const fullData = [...state.data], finalPred = getV233Pick(fullData), recentForBT = fullData.slice(-12).reverse();
+        const fullData = [...state.data], finalPred = getV234Pick(fullData), recentForBT = fullData.slice(-12).reverse();
         document.getElementById('finalCombo').innerHTML = finalPred.res.map(n => 
-            `<div class="ball ${finalPred.chainNodes.includes(n)?'chain-node':'active'}">${n}</div>`).join('');
+            `<div class="ball ${finalPred.trinityNodes.includes(n)?'trinity-node':'active'}">${n}</div>`).join('');
 
         const bt = document.getElementById('btContainer');
         bt.innerHTML = `<div class="bt-row" style="color:var(--sub); border:none"><span>日期</span><span>開獎</span><span>預測</span><span>星</span></div>`;
         recentForBT.slice(0, 10).forEach(row => {
             const histUntil = fullData.slice(0, fullData.findIndex(d => d.date === row.date));
-            const pred = getV233Pick(histUntil);
+            const pred = getV234Pick(histUntil);
             const hits = pred.res.filter(n => row.nums.includes(n));
             bt.innerHTML += `<div class="bt-row"><span>${row.date.slice(5)}</span><span>${row.nums.join(' ')}</span><div style="font-size:10px;">${pred.res.map(n => row.nums.includes(n)?`<b style="color:var(--hit)">${n}</b>`:n).join(' ')}</div><span class="hit-count">${hits.length}</span></div>`;
         });
