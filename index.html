@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v181</title>
+    <title>AI 539 數據中心 v182</title>
     <style>
-        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --span: #5ac8fa; }
+        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --triple: #af52de; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 14px; }
         .container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
         .panel { background: var(--panel); border-radius: 12px; padding: 15px; border: 1px solid var(--border); }
@@ -13,15 +13,14 @@
         .ball-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
         .ball { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 6px; font-weight: bold; font-size: 12px; border: 1px solid var(--border); }
         .ball.active { background: var(--primary); color: #000; border: none; }
-        .ball.span-node { border: 2px solid var(--span); color: var(--span); box-shadow: 0 0 10px rgba(90,200,250,0.3); }
+        .ball.triple-node { border: 2px solid var(--triple); color: var(--triple); box-shadow: 0 0 10px rgba(175,82,222,0.4); }
         
-        /* Panel 4 矩陣修正 */
         .matrix-wrapper { width: 100%; overflow-x: auto; }
-        .matrix-table { width: 100%; border-collapse: collapse; text-align: center; table-layout: fixed; min-width: 800px; }
+        .matrix-table { width: 100%; border-collapse: collapse; text-align: center; table-layout: fixed; min-width: 850px; }
         .matrix-table th, .matrix-table td { border: 1px solid var(--border); padding: 8px 0; width: 2.4%; font-size: 11px; }
-        .matrix-table th:first-child, .matrix-table td:first-child { width: 70px; font-size: 10px; color: var(--sub); }
+        .matrix-table th:first-child, .matrix-table td:first-child { width: 80px; font-size: 10px; color: var(--sub); }
         .pred-mark { background: rgba(255, 214, 10, 0.2); color: var(--primary); font-weight: bold; }
-        .is-hit { background: var(--hit); color: #fff; font-weight: bold; border-radius: 0; }
+        .is-hit { background: var(--hit); color: #fff; font-weight: bold; }
 
         .bt-row { border-bottom: 1px solid #38383a; padding: 10px 0; display: grid; grid-template-columns: 85px 1.2fr 1.2fr 40px; align-items: center; gap: 10px; font-size: 11px; }
         .hit-count { color: var(--success); font-weight: bold; text-align: right; font-size: 14px; }
@@ -31,25 +30,25 @@
 
 <div class="container">
     <div class="panel">
-        <div class="panel-header">數據注入 (v181)</div>
+        <div class="panel-header">數據注入 (v182)</div>
         <input type="file" id="csvFile" accept=".csv" style="color:var(--sub);">
     </div>
 
     <div id="mainDisplay" style="display:none;">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px;">
             <div class="panel" id="panel2">
-                <div class="panel-header">Panel 2: 下期精準 8 碼 (動態跨度修正)</div>
+                <div class="panel-header">Panel 2: 下期精準 8 碼 (三元約束版)</div>
                 <div id="finalCombo" class="ball-row"></div>
-                <p style="font-size:0.7rem; color:var(--sub);">藍框: 跨度修正碼 | 策略: 平衡連號與區間跨度，優化轉化率</p>
+                <p style="font-size:0.7rem; color:var(--sub);">紫框: 三元結構碼 | 策略: 斜連+同尾+冷補強行耦合，衝擊 4 星</p>
             </div>
             <div class="panel" id="panel3">
-                <div class="panel-header">Panel 3: 滾動回測 (最新在上)</div>
+                <div class="panel-header">Panel 3: 滾動回測 (最新置頂)</div>
                 <div id="btContainer"></div>
             </div>
         </div>
 
         <div class="panel" id="panel4">
-            <div class="panel-header">Panel 4: 全號碼分布矩陣 (UI 修正版)</div>
+            <div class="panel-header">Panel 4: 全號碼分布矩陣 (等寬對齊)</div>
             <div class="matrix-wrapper" id="matrixContainer"></div>
         </div>
     </div>
@@ -71,77 +70,69 @@
         reader.readAsText(e.target.files[0]);
     });
 
-    function getV181Pick(hist) {
-        if(hist.length < 5) return {res:[], spanNodes:[]};
+    function getV182Pick(hist) {
+        if(hist.length < 5) return {res:[], tripleNodes:[]};
         const last = hist[hist.length-1].nums;
-        
+        const tails = {};
+        hist.slice(-5).forEach(d => d.nums.forEach(n => tails[n%10] = (tails[n%10] || 0) + 1));
+        const topTail = Number(Object.entries(tails).sort((a,b)=>b[1]-a[1])[0][0]);
+
         let pool = [];
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
             let score = 0;
-            if(gap >= 3 && gap <= 8) score += 12000;
-            if(last.some(ln => Math.abs(ln-i) === 1)) score += 14000;
-            pool.push({n: i, gap: gap, sc: score, z: Math.floor((i-1)/10)});
+            if(gap >= 3 && gap <= 8) score += 10000;
+            if(last.some(ln => Math.abs(ln-i) === 1)) score += 18000; // 斜連核心
+            if(i%10 === topTail) score += 8000; // 同尾加成
+            if(gap > 12) score += 5000; // 冷碼反彈
+            pool.push({n: i, gap: gap, sc: score, t: i%10});
         }
 
         let sorted = pool.sort((a,b) => b.sc - a.sc);
         let res = [];
-        let spanNodes = [];
+        let tripleNodes = [];
 
-        // 1. 選取不同區間的種子碼 (防止過度擁擠)
-        let usedZones = new Set();
-        for(let p of sorted) {
-            if(res.length < 5 && !usedZones.has(p.z)) {
-                res.push(p.n);
-                usedZones.add(p.z);
-            }
-        }
+        // 1. 強制加入斜連種子 (2碼)
+        sorted.filter(p => last.some(ln => Math.abs(ln-p.n) === 1)).slice(0, 2).forEach(p => res.push(p.n));
 
-        // 2. 針對高分種子進行「鄰里引力」
-        for(let p of sorted) {
-            if(res.length < 8 && !res.includes(p.n)) {
-                if(res.some(rn => Math.abs(rn - p.n) === 1)) {
-                    res.push(p.n);
-                    spanNodes.push(p.n);
-                }
-            }
-        }
+        // 2. 強制加入同尾耦合 (2碼)
+        sorted.filter(p => !res.includes(p.n) && p.t === topTail).slice(0, 2).forEach(p => {
+            res.push(p.n);
+            tripleNodes.push(p.n);
+        });
 
-        // 3. 補齊
+        // 3. 強制加入高分冷補 (2碼)
+        sorted.filter(p => !res.includes(p.n) && p.gap > 10).slice(0, 2).forEach(p => {
+            res.push(p.n);
+            tripleNodes.push(p.n);
+        });
+
+        // 4. 補齊高分碼
         for(let p of sorted) {
             if(res.length < 8 && !res.includes(p.n)) res.push(p.n);
         }
 
-        return { res: res.slice(0, 8).sort((a,b)=>a-b), spanNodes };
+        return { res: res.slice(0, 8).sort((a,b)=>a-b), tripleNodes };
     }
 
     function render() {
-        const finalPred = getV181Pick(state.data);
+        const finalPred = getV182Pick(state.data);
         const recentData = [...state.data].reverse().slice(0, 10);
         
-        // Render Panel 2
         document.getElementById('finalCombo').innerHTML = finalPred.res.map(n => 
-            `<div class="ball ${finalPred.spanNodes.includes(n)?'span-node':'active'}">${n}</div>`
+            `<div class="ball ${finalPred.tripleNodes.includes(n)?'triple-node':'active'}">${n}</div>`
         ).join('');
 
-        // Render Panel 3
         const bt = document.getElementById('btContainer');
         bt.innerHTML = `<div class="bt-row" style="color:var(--sub); border:none"><span>日期</span><span>開獎</span><span>AI 預測</span><span>命中</span></div>`;
         recentData.forEach((row) => {
             const idx = state.data.findIndex(d => d.date === row.date);
-            const pred = getV181Pick(state.data.slice(0, idx));
+            const pred = getV182Pick(state.data.slice(0, idx));
             const hits = pred.res.filter(n => row.nums.includes(n));
-            bt.innerHTML += `
-                <div class="bt-row">
-                    <span>${row.date}</span>
-                    <span style="color:var(--primary)">${row.nums.join(' ')}</span>
-                    <span style="font-size:10px">${pred.res.map(n => hits.includes(n)? `<b style="color:var(--hit)">${n}</b>`:n).join(' ')}</span>
-                    <span class="hit-count">${hits.length}</span>
-                </div>`;
+            bt.innerHTML += `<div class="bt-row"><span>${row.date}</span><span style="color:var(--primary)">${row.nums.join(' ')}</span><span style="font-size:10px">${pred.res.map(n => hits.includes(n)? `<b style="color:var(--hit)">${n}</b>`:n).join(' ')}</span><span class="hit-count">${hits.length}</span></div>`;
         });
 
-        // Render Panel 4 (Table Fix)
         let tableHtml = `<table class="matrix-table"><thead><tr><th>日期</th>`;
         for(let i=1; i<=39; i++) tableHtml += `<th>${i}</th>`;
         tableHtml += `</tr></thead><tbody><tr style="background:#2c2c2e"><td>下期預測</td>`;
@@ -152,10 +143,7 @@
         tableHtml += `</tr>`;
         recentData.forEach(row => {
             tableHtml += `<tr><td>${row.date.slice(5)}</td>`;
-            for(let i=1; i<=39; i++) {
-                let isH = row.nums.includes(i);
-                tableHtml += `<td class="${isH?'is-hit':''}">${isH ? i : ''}</td>`;
-            }
+            for(let i=1; i<=39; i++) tableHtml += `<td class="${row.nums.includes(i)?'is-hit':''}">${row.nums.includes(i)?i:''}</td>`;
             tableHtml += `</tr>`;
         });
         document.getElementById('matrixContainer').innerHTML = tableHtml + `</tbody></table>`;
