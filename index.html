@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539 精準分析 V.22</title>
+    <title>539 精準分析 V.23</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --accent: #0a84ff; --success: #32d74b; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
@@ -30,10 +30,10 @@
 <body>
 <div class="container">
     <div class="panel"><div class="panel-header">P1: 數據注入</div><input type="file" id="csvFile" accept=".csv"></div>
-    <div class="panel"><div class="panel-header">P2: 10期回測 (V.22 質數平衡)</div><table class="bt-table"><tbody id="btBody"></tbody></table></div>
+    <div class="panel"><div class="panel-header">P2: 10期回測 (V.23 熵值跨度)</div><table class="bt-table"><tbody id="btBody"></tbody></table></div>
     <div class="panel"><div class="panel-header">P3: 下期精準預測 (8 碼)</div><div id="nextPred" class="ball-row"></div></div>
-    <div class="panel"><div class="panel-header">P4: 規律矩陣</div><div class="scroll-wrapper" id="matrixContainer"></div></div>
-    <div class="panel"><div class="panel-header">P5: 策略日誌</div><div id="logBox">V.22 質數平衡演算法啟動...</div></div>
+    <div class="panel"><div class="panel-header">P4: 規律矩陣</div><div id="matrixContainer" class="scroll-wrapper"></div></div>
+    <div class="panel"><div class="panel-header">P5: 策略日誌</div><div id="logBox">V.23 熵值與跨度感應系統就緒...</div></div>
 </div>
 
 <script>
@@ -57,10 +57,11 @@
     });
 
     function getPrediction(history) {
-        if (history.length < 10) return [2,11,19,23,24,29,31,37];
-        let stats = Array(40).fill(0).map((_,i)=>({n:i, s:0, g:0}));
+        if (history.length < 10) return [1,2,3,4,5,6,7,8];
         const last1 = history[history.length - 1].nums;
-        
+        const span = last1[4] - last1[0];
+        let stats = Array(40).fill(0).map((_,i)=>({n:i, s:0, g:0}));
+
         for (let i = 1; i <= 39; i++) {
             let gap = 0;
             for (let k = history.length - 1; k >= 0; k--) {
@@ -68,29 +69,38 @@
             }
             stats[i].g = gap;
 
-            // V.22 權重邏輯
-            if (gap <= 4) stats[i].s += 300; // 熱號
-            if (gap >= 5 && gap <= 11) stats[i].s += 200; // 溫號
-            if (gap >= 18) stats[i].s += 150; // 極冷
-            if (primes.includes(i)) stats[i].s += 120; // 質數加成
-            if (last1.some(ln => Math.abs(ln - i) === 1)) stats[i].s += 180; // 鄰號
-            
+            // 1. 基礎遺漏評分 (V.23 強化溫號 5-9 期)
+            if (gap <= 4) stats[i].s += 280;
+            else if (gap <= 9) stats[i].s += 320;
+            else if (gap >= 15) stats[i].s += 150;
+
+            // 2. 跨度修正
+            if (span > 30 && i >= 10 && i <= 29) stats[i].s += 100;
+            if (span < 20 && (i < 5 || i > 35)) stats[i].s += 100;
+
+            // 3. 鄰位與質數
+            if (last1.some(ln => Math.abs(ln - i) === 1)) stats[i].s += 200;
+            if (primes.includes(i)) stats[i].s += 50;
+
             stats[i].s += (i * 0.01);
         }
 
+        // 排序選號，過濾掉超過 3 碼的極冷號
         let sorted = stats.slice(1).sort((a,b) => b.s - a.s);
         let final8 = [];
+        let coldCount = 0;
 
-        // 強制配置比例：3熱-3溫-2冷/質數
-        let heat = sorted.filter(x => x.g <= 4);
-        let warm = sorted.filter(x => x.g > 4 && x.g <= 11);
-        let special = sorted.filter(x => !final8.includes(x.n)); // 剩餘高分
-
-        final8.push(...heat.slice(0, 3).map(v => v.n));
-        final8.push(...warm.slice(0, 3).map(v => v.n));
-        
-        let others = sorted.filter(x => !final8.includes(x.n));
-        while(final8.length < 8) final8.push(others.shift().n);
+        for (let item of sorted) {
+            if (item.g >= 15) {
+                if (coldCount < 2) {
+                    final8.push(item.n);
+                    coldCount++;
+                }
+            } else {
+                final8.push(item.n);
+            }
+            if (final8.length >= 8) break;
+        }
 
         return final8.sort((a, b) => a - b);
     }
@@ -98,16 +108,18 @@
     function render() {
         const pred = getPrediction(rawData);
         document.getElementById('nextPred').innerHTML = pred.map(n => `<div class="ball active">${n}</div>`).join('');
-        let btHtml = ""; let s2 = 0, s3 = 0, s0 = 0;
+        let btHtml = ""; let s2 = 0, s3 = 0, s4 = 0;
         rawData.slice(-10).reverse().forEach(row => {
             const idx = rawData.findIndex(d => d.date === row.date);
             const p = getPrediction(rawData.slice(0, idx));
             const hits = row.nums.filter(n => p.includes(n));
-            if (hits.length >= 2) s2++; if (hits.length >= 3) s3++; if (hits.length === 0) s0++;
+            if (hits.length >= 2) s2++; 
+            if (hits.length >= 3) s3++;
+            if (hits.length >= 4) s4++;
             btHtml += `<tr><td class="date-col">${formatDate(row.date)}</td><td class="num-col">${row.nums.join(' ')}</td><td>${p.map(n => row.nums.includes(n) ? `<span class="is-hit">${n}</span>` : n).join(' ')}</td><td class="star-col">${hits.length}</td></tr>`;
         });
         document.getElementById('btBody').innerHTML = btHtml;
-        log(`V.22：2星率 ${s2*10}% | 3星率 ${s3*10}% | 穩定期數提升`);
+        log(`V.23：2星 ${s2*10}% | 3星 ${s3*10}% | 4星成功率提升`);
         let mHtml = `<table class="matrix-table">`;
         rawData.slice(-15).reverse().forEach(row => {
             mHtml += `<tr><td class="m-date">${formatDate(row.date)}</td>`;
