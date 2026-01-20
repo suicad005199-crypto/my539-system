@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539 精準分析 V.25</title>
+    <title>539 精準分析 V.26</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --accent: #0a84ff; --success: #32d74b; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
@@ -17,7 +17,7 @@
         .star-col { width: 25px; color: var(--success); font-weight: bold; font-size: 14px; }
         .is-hit { color: var(--hit); font-weight: bold; text-decoration: underline; }
         .ball-row { display: flex; flex-wrap: wrap; gap: 5px; justify-content: space-between; }
-        .ball { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 50%; font-weight: 700; border: 1px solid var(--border); font-size: 16px; }
+        .ball { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 50%; font-weight: 700; border: 1px solid var(--border); font-size: 15px; }
         .ball.active { border-color: var(--accent); color: var(--accent); background: rgba(10,132,255,0.1); }
         #logBox { background: #000; color: #32d74b; padding: 8px; height: 60px; overflow-y: auto; font-family: monospace; font-size: 10px; border: 1px solid var(--border); }
     </style>
@@ -25,20 +25,18 @@
 <body>
 <div class="container">
     <div class="panel"><div class="panel-header">P1: 數據注入</div><input type="file" id="csvFile" accept=".csv"></div>
-    <div class="panel"><div class="panel-header">P2: 10期回測 (V.25 矩陣空洞)</div><table class="bt-table"><tbody id="btBody"></tbody></table></div>
-    <div class="panel"><div class="panel-header">P3: 下期精準預測 (8 碼)</div><div id="nextPred" class="ball-row"></div></div>
-    <div class="panel"><div class="panel-header">P5: 策略日誌</div><div id="logBox">V.25 矩陣空洞與三維熱核啟動...</div></div>
+    <div class="panel"><div class="panel-header">P2: 10期回測 (V.26 交叉遞補)</div><table class="bt-table"><tbody id="btBody"></tbody></table></div>
+    <div class="panel"><div class="panel-header">P3: 下期預測 (8 碼)</div><div id="nextPred" class="ball-row"></div></div>
+    <div class="panel"><div class="panel-header">P5: 策略日誌</div><div id="logBox">V.26 交叉熵邏輯啟動：減少冷區佔位，強化遞補規律...</div></div>
 </div>
 
 <script>
     let rawData = [];
-    const primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37];
     const log = (m) => { const b = document.getElementById('logBox'); b.innerHTML += `> ${m}<br>`; b.scrollTop = b.scrollHeight; };
     function formatDate(dateStr) { const p = dateStr.split(/[-/]/); return p.length >= 3 ? `${parseInt(p[1])}/${parseInt(p[2])}` : dateStr; }
 
     document.getElementById('csvFile').addEventListener('change', e => {
-        const file = e.target.files[0];
-        if (!file) return;
+        const file = e.target.files[file.length-1]; // 確保讀取
         const reader = new FileReader();
         reader.onload = () => {
             const rows = reader.result.trim().split('\n');
@@ -47,30 +45,18 @@
             }));
             render();
         };
-        reader.readAsText(file);
+        reader.readAsText(e.target.files[0]);
     });
 
     function getPrediction(history) {
-        if (history.length < 5) return [2,10,12,19,23,24,29,34];
+        if (history.length < 10) return [1,2,11,12,21,22,31,32];
         const last1 = history[history.length - 1].nums;
-        const last5 = history.slice(-5);
-        
+        const last3 = history.slice(-3);
         let stats = Array(40).fill(0).map((_,i)=>({n:i, s:0, g:0}));
-        
-        // 尾數統計
-        const tails = last5.flatMap(d => d.nums.map(n => n % 10));
-        const tFreq = tails.reduce((a, b) => (a[b] = (a[b] || 0) + 1, a), {});
-        const topTails = Object.entries(tFreq).sort((a,b)=>b[1]-a[1]).slice(0, 3).map(x => parseInt(x[0]));
 
-        // 偵測矩陣空洞 (Gap)
-        let zoneCounts = [0, 0, 0, 0]; // 1-10, 11-20, 21-30, 31-39
-        last5.flatMap(d => d.nums).forEach(n => {
-            if (n <= 10) zoneCounts[0]++;
-            else if (n <= 20) zoneCounts[1]++;
-            else if (n <= 30) zoneCounts[2]++;
-            else zoneCounts[3]++;
-        });
-        const gapZone = zoneCounts.indexOf(Math.min(...zoneCounts));
+        // 尾數對位 (例如 1尾帶6尾)
+        const tails = last3.flatMap(d => d.nums.map(n => n % 10));
+        const tFreq = tails.reduce((a, b) => (a[b] = (a[b] || 0) + 1, a), {});
 
         for (let i = 1; i <= 39; i++) {
             let gap = 0;
@@ -79,46 +65,41 @@
             }
             stats[i].g = gap;
 
-            // V.25 權重
-            if (gap === 0) stats[i].s += 300; 
-            if (gap >= 1 && gap <= 5) stats[i].s += 350; // 熱號加強
-            if (gap >= 6 && gap <= 10) stats[i].s += 200; // 溫號防禦
-            
-            // 空洞補償
-            const myZone = i <= 10 ? 0 : i <= 20 ? 1 : i <= 30 ? 2 : 3;
-            if (myZone === gapZone) stats[i].s += 150;
+            // V.26 核心權重：交叉熵
+            if (gap === 0) stats[i].s += 380; // 連莊慣性
+            if (gap >= 1 && gap <= 3) stats[i].s += 320; // 超熱
+            if (gap >= 5 && gap <= 9) stats[i].s += 450; // 遞補區 (539最常開出區間)
+            if (gap >= 15) stats[i].s -= 100; // 懲罰純冷號，減少掛0
 
-            // 尾數與鄰位
-            if (topTails.includes(i % 10)) stats[i].s += 120;
-            if (last1.some(ln => Math.abs(ln - i) === 1)) stats[i].s += 180;
-            if (primes.includes(i)) stats[i].s += 50;
+            // 尾數連動
+            const t = i % 10;
+            if (tFreq[t] >= 2) stats[i].s += 150;
+            if (tFreq[(t + 5) % 10] >= 2) stats[i].s += 100; // 對位尾補償
 
-            stats[i].s += (i * 0.01);
+            // 鄰位感應
+            if (last1.some(ln => Math.abs(ln - i) === 1)) stats[i].s += 200;
+
+            stats[i].s += (i * 0.05);
         }
 
+        // 排序選號
         let sorted = stats.slice(1).sort((a,b) => b.s - a.s);
-        let final8 = [];
-
-        // 硬性結構挑選
-        final8.push(...sorted.filter(x => x.g <= 5).slice(0, 4).map(v => v.n)); // 4 碼熱
-        final8.push(...sorted.filter(x => !final8.includes(x.n) && x.g > 5).slice(0, 4).map(v => v.n)); // 4 碼溫/冷補位
-
-        return final8.sort((a, b) => a - b);
+        return sorted.slice(0, 8).map(v => v.n).sort((a, b) => a - b);
     }
 
     function render() {
         const pred = getPrediction(rawData);
         document.getElementById('nextPred').innerHTML = pred.map(n => `<div class="ball active">${n}</div>`).join('');
-        let btHtml = ""; let s2 = 0, s3 = 0, s4 = 0;
+        let btHtml = ""; let s2 = 0, s3 = 0, s4 = 0, s0 = 0;
         rawData.slice(-10).reverse().forEach(row => {
             const idx = rawData.findIndex(d => d.date === row.date);
             const p = getPrediction(rawData.slice(0, idx));
             const hits = row.nums.filter(n => p.includes(n));
-            if (hits.length >= 2) s2++; if (hits.length >= 3) s3++; if (hits.length >= 4) s4++;
+            if (hits.length >= 2) s2++; if (hits.length >= 3) s3++; if (hits.length >= 4) s4++; if (hits.length === 0) s0++;
             btHtml += `<tr><td class="date-col">${formatDate(row.date)}</td><td class="num-col">${row.nums.join(' ')}</td><td>${p.map(n => row.nums.includes(n) ? `<span class="is-hit">${n}</span>` : n).join(' ')}</td><td class="star-col">${hits.length}</td></tr>`;
         });
         document.getElementById('btBody').innerHTML = btHtml;
-        log(`V.25 完畢。2星率目標回升，並強化 3-4 星匯聚力。`);
+        log(`V.26 回測：2星 ${s2*10}% | 3星 ${s3*10}% | 掛0期數: ${s0}`);
     }
 </script>
 </body>
