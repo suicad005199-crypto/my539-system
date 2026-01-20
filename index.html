@@ -99,55 +99,56 @@
         });
 
         /**
-         * v262 策略：相位攻擊(5) + 冷門防禦(3)
-         */
-        function getV262Pick8(hist) {
-            if(hist.length < 10) return {res:[], phaseNodes:[], balanceNodes:[]};
-            const last = hist[hist.length-1].nums;
-            
-            let pool = [];
-            for (let i=1; i<=39; i++) {
-                let gap = 0;
-                for(let k=hist.length-1; k>=0; k--) { 
-                    if(!hist[k].nums.includes(i)) gap++; else break; 
-                }
-                
-                // 相位分析：鄰位 +/- 1 與 +/- 2
-                let drift = 0;
-                if (last.some(ln => Math.abs(ln-i) === 1)) drift = 45000;
-                if (last.some(ln => Math.abs(ln-i) === 2)) drift = 20000;
-                
-                // 遺漏分析
-                let gapSc = (gap >= 5 && gap <= 12) ? 35000 : 0;
-                if (gap > 20) gapSc = 50000; 
-                
-                let sc = drift + gapSc + (gap === 0 ? 10000 : 0);
-                pool.push({n: i, sc, odd: i%2!==0, gap});
-            }
-
-            let sorted = pool.sort((a,b) => b.sc - a.sc);
-            let res = [], phaseNodes = [], balanceNodes = [];
-
-            // A. 核心 5 碼 (相位攻擊)
-            sorted.slice(0, 5).forEach(p => { 
-                res.push(p.n); 
-                phaseNodes.push(p.n); 
-            });
-
-            // B. 補足 3 碼 (冷門防禦)
-            let coldCandidates = pool
-                .filter(p => !res.includes(p.n))
-                .sort((a,b) => b.gap - a.gap);
-            
-            for(let i=0; i<3; i++) {
-                if(coldCandidates[i]) {
-                    res.push(coldCandidates[i].n);
-                    balanceNodes.push(coldCandidates[i].n);
-                }
-            }
-            return { res: res.sort((a,b)=>a-b), phaseNodes, balanceNodes };
+ * v263 策略：聚能相位(6) + 強制防禦(2)
+ * 目標：提升命中 > 2 與命中 > 3 的期數
+ */
+function getV263Pick8(hist) {
+    if(hist.length < 10) return {res:[], phaseNodes:[], balanceNodes:[]};
+    const last = hist[hist.length-1].nums;
+    
+    let pool = [];
+    for (let i=1; i<=39; i++) {
+        let gap = 0;
+        for(let k=hist.length-1; k>=0; k--) { 
+            if(!hist[k].nums.includes(i)) gap++; else break; 
         }
+        
+        // 1. 聚焦相位 (+/- 1)
+        let drift = 0;
+        if (last.some(ln => Math.abs(ln-i) === 1)) drift = 60000; // 提高核心權重
+        
+        // 2. 重號加成 (重複開出邏輯)
+        let repeatSc = last.includes(i) ? 25000 : 0;
+        
+        // 3. 遺漏區間優化
+        let gapSc = (gap >= 3 && gap <= 8) ? 40000 : 0; // 縮小噴發區間至更精確範圍
+        
+        let sc = drift + repeatSc + gapSc;
+        pool.push({n: i, sc, gap});
+    }
 
+    let sorted = pool.sort((a,b) => b.sc - a.sc);
+    let res = [], phaseNodes = [], balanceNodes = [];
+
+    // A. 擴大核心至 6 碼 (提高捕捉高星機率)
+    sorted.slice(0, 6).forEach(p => { 
+        res.push(p.n); 
+        phaseNodes.push(p.n); 
+    });
+
+    // B. 僅保留 2 碼極端冷門 (減少雜訊)
+    let coldCandidates = pool
+        .filter(p => !res.includes(p.n))
+        .sort((a,b) => b.gap - a.gap);
+    
+    for(let i=0; i<2; i++) {
+        if(coldCandidates[i]) {
+            res.push(coldCandidates[i].n);
+            balanceNodes.push(coldCandidates[i].n);
+        }
+    }
+    return { res: res.sort((a,b)=>a-b), phaseNodes, balanceNodes };
+}
         function render() {
             const full = state.data;
             const latest = getV262Pick8(full); // 全面使用 v262
@@ -200,3 +201,4 @@
     </script>
 </body>
 </html>
+
