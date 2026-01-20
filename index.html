@@ -3,29 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 預測回測系統</title>
+    <title>AI 逐期回測系統</title>
+    
     <style>
-        :root { --ios-blue: #007AFF; --ios-bg: #F2F2F7; --ios-card: #FFFFFF; --hit-red: #FF3B30; --gold: #FFD700; }
-        body { font-family: -apple-system, system-ui; background: var(--ios-bg); margin: 0; padding: 15px 15px 80px; }
-        .panel { background: var(--ios-card); border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .panel-title { font-size: 13px; font-weight: 600; color: #8E8E93; margin-bottom: 10px; display: flex; justify-content: space-between; }
+        :root {
+            --ios-blue: #007AFF;
+            --ios-bg: #F2F2F7;
+            --ios-card: #FFFFFF;
+            --hit-red: #FF3B30;
+            --predict-gold: #FFF9E6;
+        }
+
+        body {
+            font-family: -apple-system, system-ui, sans-serif;
+            background: var(--ios-bg);
+            margin: 0;
+            padding: 15px 15px 50px;
+            color: #000;
+        }
+
+        .panel {
+            background: var(--ios-card);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .panel-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #8E8E93;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* 表格與滾動設定 */
+        .auto-scroll {
+            max-height: 350px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 12px;
+        }
+
+        th, td {
+            border-bottom: 0.5px solid #E5E5EA;
+            padding: 10px 4px;
+            text-align: center;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background: #F8F8F8;
+            z-index: 10;
+        }
+
+        /* 顏色標記 */
+        .predict-row { background: var(--predict-gold); font-weight: bold; }
+        .hit-count { color: var(--hit-red); font-weight: bold; font-size: 14px; }
+        .num-highlight { color: var(--ios-blue); font-weight: 500; }
         
-        /* 自動滾動容器 */
-        .auto-scroll { max-height: 300px; overflow-y: auto; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
-        
-        table { border-collapse: collapse; width: 100%; font-size: 13px; }
-        th, td { border-bottom: 0.5px solid #E5E5EA; padding: 12px 4px; text-align: center; }
-        th { position: sticky; top: 0; background: #F8F8F8; z-index: 10; }
-        
-        .predict-row { background: #FFF9E6; font-weight: bold; }
-        .hit-count { color: var(--hit-red); font-weight: bold; font-size: 15px; }
-        .num-cell { min-width: 25px; color: #C7C7CC; }
-        .hit { background: var(--gold); color: #000; border-radius: 4px; font-weight: bold; }
-        
-        #bestNumbers { font-size: 24px; color: var(--hit-red); font-weight: bold; text-align: center; letter-spacing: 1px; }
-        
-        /* 控制按鈕 */
-        .badge { background: var(--ios-blue); color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 10px; }
+        /* Panel 4 分佈圖 */
+        .num-cell { min-width: 22px; color: #C7C7CC; font-size: 10px; }
+        .hit { background: #FFCC00; color: #000; border-radius: 4px; font-weight: bold; }
+
+        #bestNumbers { font-size: 26px; color: var(--hit-red); font-weight: bold; text-align: center; }
     </style>
 </head>
 <body>
@@ -36,22 +85,29 @@
     </div>
 
     <div class="panel">
-        <span class="panel-title">PANEL 2: 下期 8 碼預測</span>
-        <div id="bestNumbers">---</div>
+        <span class="panel-title">PANEL 2: 下期(最新)精準預測</span>
+        <div id="bestNumbers">等待數據...</div>
     </div>
 
     <div class="panel">
-        <span class="panel-title">PANEL 3: 自動回測分析 <span class="badge" id="scrollStatus">滾動中</span></span>
+        <span class="panel-title">PANEL 3: 歷史逐期預測回測 <span style="color:var(--ios-blue)">● 自動滾動中</span></span>
         <div class="auto-scroll" id="p3Scroll">
             <table>
-                <thead><tr><th>日期</th><th>開獎</th><th>預測</th><th>命中</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>日期</th>
+                        <th>開獎號碼</th>
+                        <th>當期預測</th>
+                        <th>命中</th>
+                    </tr>
+                </thead>
                 <tbody id="p3Body"></tbody>
             </table>
         </div>
     </div>
 
     <div class="panel">
-        <span class="panel-title">PANEL 4: 分佈圖表 (1-39)</span>
+        <span class="panel-title">PANEL 4: 連號分佈圖 (1-39)</span>
         <div style="overflow-x:auto">
             <table>
                 <thead><tr id="distHeader"><th>日期</th></tr></thead>
@@ -61,80 +117,109 @@
     </div>
 
     <script>
-        let scrollInterval;
-        const p3Scroll = document.getElementById('p3Scroll');
-
-        // 初始化 P4 標題
+        // 初始化 Panel 4 標題
+        const distHeader = document.getElementById('distHeader');
         for (let i = 1; i <= 39; i++) {
             let th = document.createElement('th');
             th.innerText = i; th.className = 'num-cell';
-            document.getElementById('distHeader').appendChild(th);
+            distHeader.appendChild(th);
+        }
+
+        // 模擬策略生成器 (目前為 8 碼隨機，後續可在此替換策略)
+        function strategyGenerator() {
+            let res = [];
+            while(res.length < 8) {
+                let r = Math.floor(Math.random() * 39) + 1;
+                let s = r.toString().padStart(2, '0');
+                if(!res.includes(s)) res.push(s);
+            }
+            return res.sort();
         }
 
         document.getElementById('csvFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
             const reader = new FileReader();
-            reader.onload = (ev) => process(ev.target.result);
+            reader.onload = (ev) => processData(ev.target.result);
             reader.readAsText(file);
         });
 
-        function process(csv) {
+        function processData(csv) {
             let rows = csv.trim().split(/\r?\n/)
                 .map(l => l.split(',').map(c => c.trim().replace(/"/g, '')))
                 .filter(c => !isNaN(Date.parse(c[0])) && !c[0].includes("日期"));
 
-            // 1. 日期與預測 (8碼)
+            if (rows.length === 0) return;
+
+            // 1. 計算最新日期與 Panel 2
             const dates = rows.map(r => new Date(r[0]));
-            const nextD = new Date(Math.max.apply(null, dates));
+            const maxD = new Date(Math.max.apply(null, dates));
+            let nextD = new Date(maxD);
             nextD.setDate(nextD.getDate() + 1);
             
-            const pred = [];
-            while(pred.length < 8) {
-                let r = Math.floor(Math.random() * 39) + 1;
-                let s = r.toString().padStart(2, '0');
-                if(!pred.includes(s)) pred.push(s);
-            }
-            const predSorted = pred.sort();
-            document.getElementById('bestNumbers').innerText = predSorted.join(' ');
+            const latestPred = strategyGenerator();
+            document.getElementById('bestNumbers').innerText = latestPred.join(' ');
 
-            // 2. 排序與渲染
+            // 2. 排序歷史資料 (降序)
             rows.sort((a, b) => new Date(b[0]) - new Date(a[0]));
-            let p3h = `<tr class="predict-row"><td>${nextD.toISOString().split('T')[0]}</td><td>待開</td><td>${predSorted.join(' ')}</td><td>-</td></tr>`;
-            let p4h = `<tr class="predict-row"><td>預測</td>${'<td></td>'.repeat(39)}</tr>`;
 
+            let p3h = "";
+            let p4h = "";
+
+            // --- 插入最新的預測行 ---
+            p3h += `<tr class="predict-row">
+                <td>${nextD.toISOString().split('T')[0]}</td>
+                <td>待開獎</td>
+                <td class="num-highlight">${latestPred.join(' ')}</td>
+                <td>-</td>
+            </tr>`;
+
+            // --- 逐期生成歷史預測並比對 ---
             rows.forEach(r => {
-                const d = r[0];
-                const nums = r.slice(1).map(n => n.padStart(2, '0'));
+                const date = r[0];
+                const drawNums = r.slice(1).map(n => n.padStart(2, '0'));
                 
-                // 自動回測：計算命中數量 (比對當日開獎與 Panel 2 預測)
-                const hits = nums.filter(n => predSorted.includes(n)).length;
+                // 為每一期模擬生成一組預測 (8碼)
+                const historyPred = strategyGenerator();
                 
-                p3h += `<tr><td>${d}</td><td>${nums.join(' ')}</td><td>-</td><td class="hit-count">${hits}</td></tr>`;
+                // 計算該期命中數
+                const hitCount = drawNums.filter(n => historyPred.includes(n)).length;
 
+                // Panel 3 內容
+                p3h += `<tr>
+                    <td>${date}</td>
+                    <td>${drawNums.join(' ')}</td>
+                    <td class="num-highlight">${historyPred.join(' ')}</td>
+                    <td class="hit-count">${hitCount}</td>
+                </tr>`;
+
+                // Panel 4 內容
                 let cells = "";
                 for(let i=1; i<=39; i++) {
                     let cur = i.toString().padStart(2, '0');
-                    let isHit = nums.includes(cur);
+                    let isHit = drawNums.includes(cur);
                     cells += `<td class="num-cell ${isHit ? 'hit' : ''}">${isHit ? i : ''}</td>`;
                 }
-                p4h += `<tr><td>${d}</td>${cells}</tr>`;
+                p4h += `<tr><td>${date}</td>${cells}</tr>`;
             });
 
             document.getElementById('p3Body').innerHTML = p3h;
             document.getElementById('p4Body').innerHTML = p4h;
+            
             startAutoScroll();
         }
 
         // 自動滾動邏輯
+        let scrollInterval;
         function startAutoScroll() {
+            const container = document.getElementById('p3Scroll');
             if (scrollInterval) clearInterval(scrollInterval);
             scrollInterval = setInterval(() => {
-                if (p3Scroll.scrollTop + p3Scroll.clientHeight >= p3Scroll.scrollHeight) {
-                    p3Scroll.scrollTop = 0;
+                if (container.scrollTop + container.clientHeight >= container.scrollHeight) {
+                    container.scrollTop = 0;
                 } else {
-                    p3Scroll.scrollTop += 1;
+                    container.scrollTop += 0.8; // 控制滾動速度
                 }
-            }, 50);
+            }, 30);
         }
     </script>
 </body>
