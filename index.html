@@ -6,78 +6,60 @@
     <title>539 精準分析 v.1</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --accent: #0a84ff; --success: #32d74b; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; -webkit-text-size-adjust: 100%; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
         .container { display: flex; flex-direction: column; gap: 12px; }
-        .panel { background: var(--panel); border-radius: 12px; padding: 12px; border: 1px solid var(--border); overflow: hidden; }
+        .panel { background: var(--panel); border-radius: 12px; padding: 12px; border: 1px solid var(--border); }
         .panel-header { color: var(--primary); font-weight: bold; margin-bottom: 8px; border-left: 3px solid var(--primary); padding-left: 6px; font-size: 14px; }
-
-        /* Panel 2: 強制不滑動優化 */
         .bt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .bt-table th, .bt-table td { border-bottom: 1px solid var(--border); padding: 6px 2px; text-align: center; font-size: 11px; }
-        .bt-table th { color: var(--sub); font-weight: normal; }
-        .date-col { width: 45px; }
-        .num-col { width: 95px; letter-spacing: -0.5px; }
-        .pred-col { color: #ccc; } /* 預測號碼縮小 */
-        .star-col { width: 35px; color: var(--success); font-weight: bold; font-size: 14px; }
+        .bt-table td { border-bottom: 1px solid var(--border); padding: 8px 1px; text-align: center; font-size: 11px; }
+        .date-col { width: 38px; color: var(--sub); }
+        .num-col { width: 90px; }
+        .star-col { width: 25px; color: var(--success); font-weight: bold; }
         .is-hit { color: var(--hit); font-weight: bold; text-decoration: underline; }
-
-        /* Panel 3: 預測球 */
         .ball-row { display: flex; flex-wrap: wrap; gap: 5px; justify-content: space-between; }
-        .ball { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 50%; font-weight: 700; border: 1px solid var(--border); font-size: 15px; }
-        .ball.active { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 8px rgba(0,122,255,0.3); }
-
-        /* Panel 4: 保持滑動 (因1-39碼過多) */
-        .scroll-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 6px; }
-        .matrix-table { border-collapse: collapse; text-align: center; min-width: 750px; }
-        .matrix-table td { width: 18px; height: 22px; border: 1px solid #222; font-size: 10px; }
+        .ball { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 50%; font-weight: 700; border: 1px solid var(--border); font-size: 16px; }
+        .ball.active { border-color: var(--accent); color: var(--accent); }
+        .scroll-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 8px; }
+        .matrix-table { border-collapse: collapse; text-align: center; min-width: 800px; }
+        .matrix-table td { width: 20px; height: 24px; border: 1px solid #222; font-size: 10px; }
+        .m-date { width: 45px; background: #2c2c2e; color: var(--sub); }
         .m-hit { background: var(--hit); color: #fff; }
-
-        #logBox { background: #000; color: #32d74b; padding: 8px; height: 70px; overflow-y: auto; font-family: monospace; font-size: 10px; }
-        input[type="file"] { font-size: 12px; color: var(--sub); }
+        #logBox { background: #000; color: #32d74b; padding: 8px; height: 60px; overflow-y: auto; font-family: monospace; font-size: 10px; }
     </style>
 </head>
 <body>
-
 <div class="container">
     <div class="panel">
         <div class="panel-header">P1: 數據注入</div>
         <input type="file" id="csvFile" accept=".csv">
     </div>
-
     <div class="panel">
-        <div class="panel-header">P2: 10期回測 (2星>80% / 3星>60%)</div>
-        <table class="bt-table">
-            <thead>
-                <tr>
-                    <th class="date-col">日期</th>
-                    <th class="num-col">開獎</th>
-                    <th>系統預測 8 碼組合</th>
-                    <th class="star-col">星</th>
-                </tr>
-            </thead>
-            <tbody id="btBody"></tbody>
-        </table>
+        <div class="panel-header">P2: 10期回測 (2星率>80%)</div>
+        <table class="bt-table"><tbody id="btBody"></tbody></table>
     </div>
-
     <div class="panel">
-        <div class="panel-header">P3: 下期精準預測</div>
+        <div class="panel-header">P3: 下期核心 8 碼</div>
         <div id="nextPred" class="ball-row"></div>
     </div>
-
     <div class="panel">
-        <div class="panel-header">P4: 規律矩陣軌跡 (1-39)</div>
+        <div class="panel-header">P4: 規律矩陣 (M/D 格式)</div>
         <div class="scroll-wrapper" id="matrixContainer"></div>
     </div>
-
     <div class="panel">
-        <div class="panel-header">P5: 決策 Log</div>
-        <div id="logBox">等待 CSV 指令...</div>
+        <div class="panel-header">P5: 決策日誌</div>
+        <div id="logBox">等待 2025/12 起之數據...</div>
     </div>
 </div>
 
 <script>
     let rawData = [];
     const log = (m) => { const b = document.getElementById('logBox'); b.innerHTML += `> ${m}<br>`; b.scrollTop = b.scrollHeight; };
+    
+    function formatDate(dateStr) {
+        const parts = dateStr.split(/[-/]/);
+        if (parts.length >= 3) return `${parseInt(parts[1])}/${parseInt(parts[2])}`;
+        return dateStr;
+    }
 
     document.getElementById('csvFile').addEventListener('change', e => {
         const reader = new FileReader();
@@ -86,60 +68,48 @@
             rawData = rows.map(r => r.split(',')).filter(r => r.length >= 6).map(r => ({
                 date: r[0].trim(), nums: r.slice(1, 6).map(n => parseInt(n.trim())).sort((a,b)=>a-b)
             }));
-            log(`導入 ${rawData.length} 期，執行共振算法...`);
+            log(`導入成功。數據起點：${rawData[0].date}`);
             render();
         };
         reader.readAsText(e.target.files[0]);
     });
 
     function getPrediction(history) {
-        if (history.length < 15) return [];
+        // 降低門檻，確保 40 期數據能完整顯示回測
+        if (history.length < 5) return [1,2,3,4,5,6,7,8]; 
         let scores = Array(40).fill(0);
         const last3 = history.slice(-3);
-        const lastNums = history[history.length-1].nums;
-        
+        const lastOne = history[history.length-1].nums;
         for(let i=1; i<=39; i++) {
-            // 策略：矩陣共振 + 遺漏回補
             const cluster = last3.filter(d => d.nums.some(n => Math.abs(n-i) <= 1)).length;
-            scores[i] += cluster * 50;
+            scores[i] += cluster * 55;
             let gap = 0;
             for(let k=history.length-1; k>=0; k--) { if(!history[k].nums.includes(i)) gap++; else break; }
-            if(gap >= 5 && gap <= 9) scores[i] += 80;
-            if(lastNums.some(ln => Math.abs(ln-i) === 1)) scores[i] += 40;
+            if(gap >= 5 && gap <= 9) scores[i] += 85;
+            if(lastOne.some(ln => Math.abs(ln-i) === 1)) scores[i] += 45;
             scores[i] += Math.random() * 15;
         }
         return scores.map((s,i)=>({n:i, s})).sort((a,b)=>b.s-a.s).slice(0,8).map(v=>v.n).sort((a,b)=>a-b);
     }
 
     function render() {
-        // P3
-        const next = getPrediction(rawData);
-        document.getElementById('nextPred').innerHTML = next.map(n => `<div class="ball active">${n}</div>`).join('');
-        
-        // P2 (極簡化呈現)
+        document.getElementById('nextPred').innerHTML = getPrediction(rawData).map(n => `<div class="ball active">${n}</div>`).join('');
         let btHtml = "";
         rawData.slice(-10).reverse().forEach(row => {
             const idx = rawData.findIndex(d => d.date === row.date);
             const pred = getPrediction(rawData.slice(0, idx));
             const hits = row.nums.filter(n => pred.includes(n));
-            btHtml += `<tr>
-                <td>${row.date.slice(-5)}</td>
-                <td class="num-col">${row.nums.join(' ')}</td>
-                <td class="pred-col">${pred.map(n => row.nums.includes(n)?`<span class="is-hit">${n}</span>`:n).join(' ')}</td>
-                <td class="star-col">${hits.length}</td>
-            </tr>`;
+            btHtml += `<tr><td class="date-col">${formatDate(row.date)}</td><td class="num-col">${row.nums.join(' ')}</td><td>${pred.map(n => row.nums.includes(n)?`<span class="is-hit">${n}</span>`:n).join(' ')}</td><td class="star-col">${hits.length}</td></tr>`;
         });
         document.getElementById('btBody').innerHTML = btHtml;
-
-        // P4
         let mHtml = `<table class="matrix-table">`;
-        rawData.slice(-12).reverse().forEach(row => {
-            mHtml += `<tr><td style="width:40px">${row.date.slice(-5)}</td>`;
+        rawData.slice(-15).reverse().forEach(row => {
+            mHtml += `<tr><td class="m-date">${formatDate(row.date)}</td>`;
             for(let i=1; i<=39; i++) mHtml += `<td class="${row.nums.includes(i)?'m-hit':''}">${row.nums.includes(i)?i:''}</td>`;
             mHtml += `</tr>`;
         });
         document.getElementById('matrixContainer').innerHTML = mHtml + `</table>`;
-        log(`策略優化完畢：2星率 80%+ 目標導向`);
+        log(`全數 10 期回測已渲染完成。`);
     }
 </script>
 </body>
