@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539 精準分析 V.51</title>
+    <title>539 精準分析 V.52.1</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --accent: #0a84ff; --success: #32d74b; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
@@ -16,6 +16,13 @@
         .n-box { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: #2c2c2e; font-size: 11px; font-weight: bold; }
         .n-box.hit { background: var(--primary); color: #000; box-shadow: 0 0 5px var(--primary); }
         .star-tag { background: var(--success); color: #000; padding: 2px 8px; border-radius: 4px; font-weight: 900; }
+        /* P4 矩陣樣式 */
+        .matrix-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+        .m-table { border-collapse: collapse; white-space: nowrap; width: 100%; }
+        .m-table td, .m-table th { border: 1px solid #333; width: 18px; height: 18px; text-align: center; font-size: 9px; }
+        .m-head { background: #2c2c2e; color: var(--primary); position: sticky; top: 0; }
+        .m-date { background: #2c2c2e; color: var(--sub); position: sticky; left: 0; width: 50px; z-index: 5; }
+        .m-ball { background: var(--hit); border-radius: 50%; width: 12px; height: 12px; display: inline-block; }
         #logBox { background: #000; color: var(--success); padding: 10px; height: 100px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); }
         .ball-row { display: flex; flex-wrap: wrap; gap: 6px; }
         .ball { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 50%; font-weight: bold; border: 2px solid var(--accent); color: var(--accent); font-size: 16px; }
@@ -23,9 +30,22 @@
 </head>
 <body>
 <div class="container">
-    <div class="panel"><div class="panel-header">P1: 數據注入 (V.51 三星獵殺)</div><input type="file" id="csvFile" accept=".csv"></div>
-    <div class="panel"><div class="panel-header">P2: 深度回測</div><div id="btBody"></div></div>
-    <div class="panel"><div class="panel-header">P3: 雙核共振預測 (8 碼)</div><div id="nextPred" class="ball-row"></div></div>
+    <div class="panel">
+        <div class="panel-header">P1: 數據注入 (V.52.1 修正版)</div>
+        <input type="file" id="csvFile" accept=".csv">
+    </div>
+    <div class="panel">
+        <div class="panel-header">P2: 深度回測 (網格覆蓋)</div>
+        <div id="btBody"></div>
+    </div>
+    <div class="panel">
+        <div class="panel-header">P3: 網格跳選預測 (8 碼)</div>
+        <div id="nextPred" class="ball-row"></div>
+    </div>
+    <div class="panel">
+        <div class="panel-header">P4: 分布矩陣 (恢復顯示)</div>
+        <div class="matrix-scroll" id="matrixCont"></div>
+    </div>
     <div class="panel"><div id="logBox">等待 CSV...</div></div>
 </div>
 
@@ -33,8 +53,9 @@
     let rawData = [];
     const log = (m) => { const b = document.getElementById('logBox'); b.innerHTML += `> ${m}<br>`; b.scrollTop = b.scrollHeight; };
     const pad = (n) => n.toString().padStart(2, '0');
+    const formatDate = (s) => { const p = s.split(/[-/]/); return p.length >= 3 ? `${p[1]}/${p[2]}` : s; };
 
-    function getV51Prediction(hist) {
+    function getV52Prediction(hist) {
         if(hist.length < 20) return [1,2,3,4,5,6,7,8];
         let stats = Array(40).fill(0).map((_, i) => ({ n: i, score: 0 }));
         const lastRow = hist[hist.length-1].nums;
@@ -44,35 +65,29 @@
             for(let k=hist.length-1; k>=0; k--) {
                 if(!hist[k].nums.includes(i)) gap++; else break;
             }
-            stats[i].score += (gap <= 10) ? (gap * 5) : Math.max(0, 40 - gap); 
+            stats[i].score += (gap <= 10) ? (gap * 4.5) : Math.max(0, 40 - gap); 
         }
 
         let tailMap = Array(10).fill(0);
         hist.slice(-15).forEach(d => d.nums.forEach(n => tailMap[n%10]++));
-        for(let i=1; i<=39; i++) stats[i].score += (tailMap[i%10] * 6);
-        lastRow.forEach(ln => { stats[ln].score += 30; if(ln>1) stats[ln-1].score += 40; if(ln<39) stats[ln+1].score += 40; });
+        for(let i=1; i<=39; i++) stats[i].score += (tailMap[i%10] * 8);
+
+        lastRow.forEach(ln => {
+            if(ln > 2) stats[ln-2].score += 30;
+            if(ln < 37) stats[ln+2].score += 30;
+            stats[ln].score += 15;
+        });
 
         let sorted = stats.filter(x => x.n > 0).sort((a,b) => b.score - a.score);
         let final = [];
-        let used = new Set();
-
-        // 建立兩個 4 碼「陷阱塊」
         for(let i=0; i<sorted.length && final.length < 8; i++) {
-            let core = sorted[i].n;
-            if(used.has(core)) continue;
-            
-            let block = [core];
-            let nbs = [];
-            if(core > 1) nbs.push(core-1);
-            if(core < 39) nbs.push(core+1);
-            for(let j=1; j<=39; j++) if(j!==core && j%10 === core%10) nbs.push(j);
-            
-            nbs.sort((a,b) => stats[b].score - stats[a].score);
-            nbs.forEach(n => { if(block.length < 4 && !used.has(n)) block.push(n); });
-            
-            block.forEach(n => { if(final.length < 8) { final.push(n); used.add(n); } });
+            let num = sorted[i].n;
+            let isConsecutive = final.some(fn => Math.abs(fn - num) === 1);
+            if(!isConsecutive || sorted[i].score > 160) {
+                final.push(num);
+            }
         }
-        return final.sort((a,b) => a-b);
+        return final.sort((a,b) => a-b).slice(0, 8);
     }
 
     document.getElementById('csvFile').addEventListener('change', e => {
@@ -83,28 +98,42 @@
                 return { date: c[0].trim(), nums: c.slice(1, 6).map(x => parseInt(x.trim())).filter(x => !isNaN(x)).sort((a,b)=>a-b) };
             }).filter(r => r.nums.length === 5);
             document.getElementById('logBox').innerHTML = "";
-            runV51();
+            runV52();
         };
         reader.readAsText(e.target.files[0]);
     });
 
-    function runV51() {
+    function runV52() {
         let btHtml = "";
         let counts = { 0:0, 1:0, 2:0, 3:0, 4:0 };
+        // P2 & P3
         rawData.slice(-10).reverse().forEach(row => {
-            const p = getV51Prediction(rawData.slice(0, rawData.indexOf(row)));
+            const p = getV52Prediction(rawData.slice(0, rawData.indexOf(row)));
             const hits = row.nums.filter(n => p.includes(n));
             counts[Math.min(hits.length, 4)]++;
             btHtml += `<div class="bt-row">
-                <div class="bt-meta"><span>📅 ${row.date}</span> <span class="star-tag">${hits.length} ★</span></div>
-                <div class="num-group">${row.nums.map(n => `<div class="n-box ${p.includes(n)?'hit':''}">${pad(n)}</div>`).join('')}</div>
+                <div class="bt-meta"><span>📅 ${formatDate(row.date)}</span> <span class="star-tag">${hits.length} ★</span></div>
+                <div class="num-group"><span style="width:30px;color:#888">開</span>${row.nums.map(n => `<div class="n-box ${p.includes(n)?'hit':''}">${pad(n)}</div>`).join('')}</div>
+                <div class="num-group"><span style="width:30px;color:#888">預</span>${p.map(n => `<div class="n-box" style="color:${row.nums.includes(n)?'var(--primary)':'#888'}">${pad(n)}</div>`).join('')}</div>
             </div>`;
         });
         document.getElementById('btBody').innerHTML = btHtml;
-        const next = getV51Prediction(rawData);
+        const next = getV52Prediction(rawData);
         document.getElementById('nextPred').innerHTML = next.map(n => `<div class="ball">${pad(n)}</div>`).join('');
-        log(`命中：2星:${counts[2]}期, 3星:${counts[3]}期, 4星:${counts[4]}期`);
-        log(`正在實施 4+4 陷阱策略，目標轉化 60% 的 1 星。`);
+        
+        // P4 矩陣重建
+        let mHtml = `<table class="m-table"><thead><tr><th class="m-date">日</th>`;
+        for(let i=1; i<=39; i++) mHtml += `<th class="m-head">${pad(i)}</th>`;
+        mHtml += `</tr></thead><tbody>`;
+        rawData.slice(-15).reverse().forEach(row => {
+            mHtml += `<tr><td class="m-date">${formatDate(row.date)}</td>`;
+            for(let i=1; i<=39; i++) mHtml += `<td>${row.nums.includes(i) ? '<span class="m-ball"></span>' : ''}</td>`;
+            mHtml += `</tr>`;
+        });
+        document.getElementById('matrixCont').innerHTML = mHtml + `</tbody></table>`;
+
+        log(`回測完成：2星:${counts[2]}期, 3星:${counts[3]}期, 4星:${counts[4]}期`);
+        log(`P4 矩陣已恢復，V.52 網格邏輯運行中。`);
     }
 </script>
 </body>
