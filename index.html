@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>CSV 預測系統</title>
+    <title>CSV 預測系統修正版</title>
     <style>
         body { font-family: sans-serif; padding: 20px; display: flex; flex-direction: column; gap: 20px; max-width: 900px; margin: auto; }
         .panel { border: 1px solid #ccc; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -50,11 +50,8 @@
         document.getElementById('csvFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
-            reader.onload = function(event) {
-                processData(event.target.result);
-            };
+            reader.onload = (event) => processData(event.target.result);
             reader.readAsText(file);
         });
 
@@ -73,24 +70,29 @@
                 .map(row => row.split(',').map(cell => cell.trim()))
                 .filter(columns => {
                     const isDate = !isNaN(Date.parse(columns[0]));
-                    const isNotHeader = !columns[0].includes("日期");
-                    return isDate && isNotHeader;
+                    return isDate && !columns[0].includes("日期");
                 });
 
             if (rows.length === 0) return;
 
+            // --- 關鍵修正：找出檔案中最大的日期 ---
+            const dates = rows.map(r => new Date(r[0]));
+            const maxDate = new Date(Math.max.apply(null, dates));
+            
+            // 計算 +1 天
+            maxDate.setDate(maxDate.getDate() + 1);
+            const predictDateStr = maxDate.toISOString().split('T')[0];
+
+            // 產生 8 碼
             const prediction8 = generatePrediction();
             document.getElementById('bestNumbers').innerText = prediction8;
 
-            const lastDataRow = rows[rows.length - 1];
-            const lastDate = new Date(lastDataRow[0]);
-            lastDate.setDate(lastDate.getDate() + 1);
-            const predictDateStr = lastDate.toISOString().split('T')[0];
+            // 排序資料為降序 (最新在前)
+            const sortedRows = rows.sort((a, b) => new Date(b[0]) - new Date(a[0]));
 
-            const reversedRows = [...rows].reverse();
             const tbody = document.getElementById('dataTableBody');
             
-            // 建立首列 (最新預測)
+            // 建立首列 (最新日期+1)
             let html = `<tr class="predict-row">
                 <td>${predictDateStr}</td>
                 <td>待開獎</td>
@@ -99,12 +101,10 @@
             </tr>`;
 
             // 建立歷史資料列
-            reversedRows.forEach(columns => {
-                const date = columns[0];
-                const numbers = columns.slice(1).join(' ');
+            sortedRows.forEach(columns => {
                 html += `<tr>
-                    <td>${date}</td>
-                    <td>${numbers}</td>
+                    <td>${columns[0]}</td>
+                    <td>${columns.slice(1).join(' ')}</td>
                     <td>-</td>
                     <td>-</td>
                 </tr>`;
