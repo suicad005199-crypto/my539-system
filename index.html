@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539 精準分析 V.12</title>
+    <title>539 精準分析 V.13</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --accent: #0a84ff; --success: #32d74b; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
@@ -30,10 +30,10 @@
 <body>
 <div class="container">
     <div class="panel"><div class="panel-header">P1: 數據注入</div><input type="file" id="csvFile" accept=".csv"></div>
-    <div class="panel"><div class="panel-header">P2: 10期回測 (V.12 區間分佔)</div><table class="bt-table"><tbody id="btBody"></tbody></table></div>
+    <div class="panel"><div class="panel-header">P2: 10期回測 (V.13 尾數共振)</div><table class="bt-table"><tbody id="btBody"></tbody></table></div>
     <div class="panel"><div class="panel-header">P3: 下期精準預測 (8 碼)</div><div id="nextPred" class="ball-row"></div></div>
     <div class="panel"><div class="panel-header">P4: 規律矩陣</div><div class="scroll-wrapper" id="matrixContainer"></div></div>
-    <div class="panel"><div class="panel-header">P5: 策略日誌</div><div id="logBox">V.12 區間 3-3-2 佈防中...</div></div>
+    <div class="panel"><div class="panel-header">P5: 策略日誌</div><div id="logBox">V.13 尾數嵌套算法載入中...</div></div>
 </div>
 
 <script>
@@ -61,21 +61,22 @@
         const last1 = history[history.length - 1].nums;
         const last3 = history.slice(-3);
         const tails = last3.flatMap(d => d.nums.map(n => n % 10));
+        const tFreq = tails.reduce((a, b) => (a[b] = (a[b] || 0) + 1, a), {});
 
         for (let i = 1; i <= 39; i++) {
             let gap = 0;
             for (let k = history.length - 1; k >= 0; k--) {
                 if (!history[k].nums.includes(i)) gap++; else break;
             }
-            // 基礎分：遺漏 1-5 期熱區
-            if (gap <= 5) scores[i] += 150;
-            if (gap === 0) scores[i] += 70;
-            // 鄰位加權
-            if (last1.some(ln => Math.abs(ln - i) === 1)) scores[i] += 100;
-            // 尾數微權重
-            const tCount = tails.filter(t => t === (i % 10)).length;
-            scores[i] += tCount * 40;
-            // 穩定係數
+            // 1. 核心熱區 (1-4期)
+            if (gap >= 1 && gap <= 4) scores[i] += 180;
+            if (gap === 0) scores[i] += 80;
+            // 2. 鄰位加權
+            if (last1.some(ln => Math.abs(ln - i) === 1)) scores[i] += 110;
+            // 3. 尾數共振 (V.13 核心)
+            const myTail = i % 10;
+            if (tFreq[myTail]) scores[i] += tFreq[myTail] * 50;
+            // 4. 排序穩定
             scores[i] += (i * 0.01);
         }
 
@@ -89,8 +90,9 @@
             else high.push(c.n);
         });
 
-        // 強制分佔 3-3-2 比例
-        final8 = [...low.slice(0,3), ...mid.slice(0,3), ...high.slice(0,2)];
+        // 嵌套邏輯：確保選出的號碼盡可能擁有相同尾數
+        const pick = (list, count) => list.slice(0, count);
+        final8 = [...pick(low, 3), ...pick(mid, 3), ...pick(high, 2)];
         return final8.sort((a, b) => a - b);
     }
 
@@ -105,7 +107,7 @@
             btHtml += `<tr><td class="date-col">${formatDate(row.date)}</td><td class="num-col">${row.nums.join(' ')}</td><td>${pred.map(n => row.nums.includes(n) ? `<span class="is-hit">${n}</span>` : n).join(' ')}</td><td class="star-col">${hits.length}</td></tr>`;
         });
         document.getElementById('btBody').innerHTML = btHtml;
-        log(`V.12 回測：2星率 ${s2 * 10}% / 3星率 ${s3 * 10}%`);
+        log(`V.13 回測：2星率 ${s2 * 10}% / 3星率 ${s3 * 10}%`);
         let mHtml = `<table class="matrix-table">`;
         rawData.slice(-15).reverse().forEach(row => {
             mHtml += `<tr><td class="m-date">${formatDate(row.date)}</td>`;
