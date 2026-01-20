@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539 精準分析 V.27</title>
+    <title>539 精準分析 V.28</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --accent: #0a84ff; --success: #32d74b; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
@@ -25,9 +25,9 @@
 <body>
 <div class="container">
     <div class="panel"><div class="panel-header">P1: 數據注入</div><input type="file" id="csvFile" accept=".csv"></div>
-    <div class="panel"><div class="panel-header">P2: 10期回測 (V.27 區間壓縮)</div><table class="bt-table"><tbody id="btBody"></tbody></table></div>
+    <div class="panel"><div class="panel-header">P2: 10期回測 (V.28 引力矩陣)</div><table class="bt-table"><tbody id="btBody"></tbody></table></div>
     <div class="panel"><div class="panel-header">P3: 下期預測 (8 碼)</div><div id="nextPred" class="ball-row"></div></div>
-    <div class="panel"><div class="panel-header">P5: 策略日誌</div><div id="logBox">V.27 區間壓縮演算法啟動：強化 3 星匯聚與同尾對碰...</div></div>
+    <div class="panel"><div class="panel-header">P5: 策略日誌</div><div id="logBox">V.28 雙重引力矩陣啟動：執行尾數縱橫鎖定與飽和攻擊...</div></div>
 </div>
 
 <script>
@@ -49,16 +49,16 @@
     });
 
     function getPrediction(history) {
-        if (history.length < 10) return [1,2,11,12,21,22,31,32];
+        if (history.length < 10) return [1,11,12,22,23,33,34,35];
         const last1 = history[history.length - 1].nums;
         const last3 = history.slice(-3);
-        const last3Nums = last3.flatMap(d => d.nums);
+        const last10 = history.slice(-10);
         
-        let stats = Array(40).fill(0).map((_,i)=>({n:i, s:0, g:0}));
+        let stats = Array(40).fill(0).map((_,i)=>({n:i, s:0, g:0, h3:0, h10:0}));
 
-        // 密集區間感應
-        let zoneHeat = Array(40).fill(0);
-        last3Nums.forEach(n => { for(let i=-2; i<=2; i++) if(n+i>=1 && n+i<=39) zoneHeat[n+i]++; });
+        // 計算引力值 (近3期頻率 vs 近10期均值)
+        last3.forEach(d => d.nums.forEach(n => stats[n].h3++));
+        last10.forEach(d => d.nums.forEach(n => stats[n].h10++));
 
         for (let i = 1; i <= 39; i++) {
             let gap = 0;
@@ -67,42 +67,47 @@
             }
             stats[i].g = gap;
 
-            // V.27 核心邏輯
+            // V.28 引力權重
             if (gap === 0) stats[i].s += 350; // 連莊
-            if ([4, 7, 9].includes(gap)) stats[i].s += 480; // 核心跳轉熱點
-            if (gap >= 1 && gap <= 3) stats[i].s += 300; // 短熱
-            if (gap >= 12) stats[i].s -= 150; // 減少冷號干擾
+            if ([1, 2, 5].includes(gap)) stats[i].s += 500; // 飽和攻擊區 (V.28 核心)
+            
+            // 雙引力交叉加成
+            if (stats[i].h3 > 0 && stats[i].h10 > 2) stats[i].s += 250;
+            
+            // 鄰位加強
+            if (last1.some(ln => Math.abs(ln - i) === 1)) stats[i].s += 200;
 
-            // 區間壓縮加權
-            stats[i].s += zoneHeat[i] * 40;
-
-            // 鄰位修正
-            if (last1.some(ln => Math.abs(ln - i) === 1)) stats[i].s += 220;
-
-            stats[i].s += (i * 0.02);
+            stats[i].s += (i * 0.05);
         }
 
         let sorted = stats.slice(1).sort((a,b) => b.s - a.s);
         let final8 = [];
-        
-        // 確保尾數對碰 (優先選取同尾的高分號)
-        let tailGroups = {};
+
+        // 1. 強制縱向 (同尾數)
+        let tailCounts = {};
         sorted.forEach(item => {
             let t = item.n % 10;
-            if(!tailGroups[t]) tailGroups[t] = [];
-            tailGroups[t].push(item);
+            tailCounts[t] = (tailCounts[t] || 0) + 1;
+        });
+        let topTails = Object.entries(tailCounts).sort((a,b)=>b[1]-a[1]).slice(0, 2).map(x => parseInt(x[0]));
+        
+        topTails.forEach(t => {
+            let matches = sorted.filter(x => x.n % 10 === t).slice(0, 2);
+            matches.forEach(m => { if(final8.length < 4) final8.push(m.n); });
         });
 
-        // 挑選評分最高的前兩組尾數對
-        let sortedTails = Object.values(tailGroups).sort((a,b) => (b[0]?.s || 0) - (a[0]?.s || 0));
-        
-        for(let tg of sortedTails) {
-            if(final8.length < 4 && tg.length >= 2) {
-                final8.push(tg[0].n, tg[1].n);
-            }
-        }
+        // 2. 強制橫向 (同字頭連號)
+        let headGroups = {0:[], 1:[], 2:[], 3:[]};
+        sorted.forEach(item => {
+            let h = Math.floor(item.n / 10);
+            headGroups[h].push(item);
+        });
+        let topHead = Object.entries(headGroups).sort((a,b)=>b[1].length-a[1].length)[0][0];
+        headGroups[topHead].slice(0, 2).forEach(m => {
+            if(!final8.includes(m.n) && final8.length < 6) final8.push(m.n);
+        });
 
-        // 補齊剩餘名額
+        // 3. 補齊剩餘
         for(let item of sorted) {
             if(!final8.includes(item.n)) final8.push(item.n);
             if(final8.length >= 8) break;
@@ -123,7 +128,7 @@
             btHtml += `<tr><td class="date-col">${formatDate(row.date)}</td><td class="num-col">${row.nums.join(' ')}</td><td>${p.map(n => row.nums.includes(n) ? `<span class="is-hit">${n}</span>` : n).join(' ')}</td><td class="star-col">${hits.length}</td></tr>`;
         });
         document.getElementById('btBody').innerHTML = btHtml;
-        log(`V.27 回測完畢。強化尾數對碰機率，準備衝擊 3 星連發。`);
+        log(`V.28 回測完畢。縱橫鎖定機制已強制壓縮命中空間，準備破除 1 星地獄。`);
     }
 </script>
 </body>
