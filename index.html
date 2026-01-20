@@ -2,26 +2,27 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>CSV 預測資料面板</title>
+    <title>CSV 降序預測面板</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; gap: 20px; padding: 20px; }
+        body { font-family: sans-serif; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
         .panel { border: 1px solid #ccc; padding: 15px; border-radius: 8px; }
         table { border-collapse: collapse; width: 100%; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
         th { background-color: #f4f4f4; }
-        .predict-col { color: #d9534f; font-weight: bold; }
+        .predict-row { background-color: #fff9e6; font-weight: bold; }
+        .predict-col { color: #d9534f; }
     </style>
 </head>
 <body>
 
     <div class="panel">
-        <h3>Panel 1: 上傳 CSV 檔案</h3>
+        <h3>Panel 1: 上傳 CSV</h3>
         <input type="file" id="csvFile" accept=".csv">
     </div>
 
     <div class="panel">
-        <h3>Panel 2: 資料表格 (含預測欄位)</h3>
-        <div id="tableContainer">請先上傳檔案...</div>
+        <h3>Panel 2: 資料預覽 (日期降序)</h3>
+        <div id="tableContainer">請上傳檔案...</div>
     </div>
 
     <script>
@@ -37,32 +38,35 @@
         });
 
         function processData(csvText) {
-            const rows = csvText.trim().split('\n').map(row => row.split(','));
+            // 濾掉空行並轉為陣列
+            let rows = csvText.trim().split('\n').map(row => row.split(','));
             if (rows.length === 0) return;
 
-            // 假設 CSV 第一欄是日期，其餘是號碼
+            // 1. 取得最後一筆日期並 +1 天 (作為預測日)
+            const lastDataRow = rows[rows.length - 1];
+            const lastDate = new Date(lastDataRow[0]);
+            lastDate.setDate(lastDate.getDate() + 1);
+            const predictDateStr = lastDate.toISOString().split('T')[0];
+
+            // 2. 將原始資料反轉 (實現降序)
+            const reversedRows = [...rows].reverse();
+
+            // 3. 建立表格
             let html = '<table><thead><tr><th>日期</th><th>開獎號碼</th><th class="predict-col">預測號碼</th></tr></thead><tbody>';
 
-            let lastDateStr = "";
+            // 第一列：最新預測 (CSV 最後一筆 + 1天)
+            html += `<tr class="predict-row">
+                <td>${predictDateStr}</td>
+                <td>待開獎</td>
+                <td class="predict-col">預測中...</td>
+            </tr>`;
 
             // 渲染既有資料
-            rows.forEach(columns => {
+            reversedRows.forEach(columns => {
                 const date = columns[0];
-                const numbers = columns.slice(1).join(', ');
-                lastDateStr = date;
+                const numbers = columns.slice(1).join(' '); // 僅顯示號碼，不顯示「獎號1...」
                 html += `<tr><td>${date}</td><td>${numbers}</td><td>-</td></tr>`;
             });
-
-            // 生成「最新資料」列 (最後一筆日期 + 1天)
-            const nextDate = new Date(lastDateStr);
-            nextDate.setDate(nextDate.getDate() + 1);
-            const nextDateStr = nextDate.toISOString().split('T')[0];
-
-            html += `<tr>
-                <td>${nextDateStr}</td>
-                <td>待開獎</td>
-                <td class="predict-col">計算中...</td>
-            </tr>`;
 
             html += '</tbody></table>';
             document.getElementById('tableContainer').innerHTML = html;
