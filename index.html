@@ -2,354 +2,155 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 539 精準狙擊系統 v4.0</title>
+    <title>539 智慧預測系統</title>
     <style>
-        :root {
-            --bg: #0a0a0f; --panel: #151522; --primary: #ffd60a; --success: #32d74b;
-            --border: #2a2a3a; --text: #ffffff; --sub: #8e8e9e; --hit: #ff375f;
-            --phase: #007aff; --trend: #9d4edd; --cost: #00b4d8; --efficient: #06d6a0;
-            --warning: #ffd166; --danger: #ef476f;
-        }
-        
-        body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            padding: 20px;
-            line-height: 1.6;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: linear-gradient(135deg, rgba(21, 21, 34, 0.9), rgba(42, 42, 58, 0.9));
-            border-radius: 16px;
-            border: 1px solid var(--primary);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--success));
-        }
-        
-        h1 {
-            color: var(--primary);
-            font-size: 24px;
-            margin-bottom: 8px;
-        }
-        
-        .subtitle {
-            color: var(--sub);
-            font-size: 14px;
-            margin-bottom: 16px;
-        }
-        
-        .cost-display {
-            display: inline-block;
-            background: var(--cost);
-            color: #000;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 14px;
-            margin-top: 10px;
-        }
-        
-        .strategy-panel {
-            background: var(--panel);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 1px solid var(--border);
-            transition: all 0.3s ease;
-        }
-        
-        .strategy-panel:hover {
-            border-color: var(--primary);
-            box-shadow: 0 0 20px rgba(255, 214, 10, 0.1);
-        }
-        
-        .panel-title {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid var(--border);
-        }
-        
-        .panel-title h3 {
-            color: var(--primary);
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .efficiency-badge {
-            background: var(--efficient);
-            color: #000;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        
-        .number-grid {
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            gap: 8px;
-            margin: 16px 0;
-        }
-        
-        @media (max-width: 768px) {
-            .number-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
-        }
-        
-        .number-ball {
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            font-weight: bold;
-            font-size: 16px;
-            border: 2px solid;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        
-        .number-ball.core {
-            background: linear-gradient(135deg, var(--primary), #ffb700);
-            color: #000;
-            border-color: var(--primary);
-            box-shadow: 0 0 10px rgba(255, 214, 10, 0.3);
-        }
-        
-        .number-ball.support {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text);
-            border-color: var(--border);
-        }
-        
-        .number-ball.hit {
-            background: var(--hit);
-            color: white;
-            border-color: var(--hit);
-            animation: pulse 1s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-        
-        .strategy-options {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 12px;
-            margin: 20px 0;
-        }
-        
-        .strategy-option {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            padding: 12px;
-            border: 1px solid var(--border);
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .strategy-option:hover {
-            border-color: var(--primary);
-            transform: translateY(-2px);
-        }
-        
-        .strategy-option.selected {
-            border-color: var(--primary);
-            background: rgba(255, 214, 10, 0.1);
-        }
-        
-        .option-title {
-            font-weight: bold;
-            margin-bottom: 8px;
-            color: var(--primary);
-        }
-        
-        .option-desc {
-            font-size: 12px;
-            color: var(--sub);
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin: 20px 0;
-        }
-        
-        .stat-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            padding: 12px;
-            text-align: center;
-        }
-        
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: var(--primary);
-            margin: 4px 0;
-        }
-        
-        .stat-label {
-            font-size: 12px;
-            color: var(--sub);
-        }
-        
-        .control-panel {
-            display: flex;
-            gap: 12px;
-            margin: 20px 0;
-            flex-wrap: wrap;
-        }
-        
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .btn-primary {
-            background: var(--primary);
-            color: #000;
-        }
-        
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text);
-            border: 1px solid var(--border);
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(255, 214, 10, 0.2);
-        }
-        
-        .file-upload {
-            width: 100%;
-            padding: 20px;
-            border: 2px dashed var(--border);
-            border-radius: 12px;
-            text-align: center;
-            margin-bottom: 20px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .file-upload:hover {
-            border-color: var(--primary);
-            background: rgba(255, 214, 10, 0.05);
-        }
-        
-        .cost-breakdown {
-            background: rgba(0, 180, 216, 0.1);
-            border-radius: 12px;
-            padding: 16px;
-            margin: 20px 0;
-            border: 1px solid var(--cost);
-        }
-        
-        .cost-item {
-            display: flex;
-            justify-content: space-between;
-            margin: 8px 0;
-            padding-bottom: 8px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .cost-total {
-            font-size: 20px;
-            font-weight: bold;
-            color: var(--primary);
-            text-align: center;
-            margin-top: 12px;
-        }
-        
-        .history-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            font-size: 12px;
-        }
-        
-        .history-table th {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 10px;
-            text-align: left;
-            color: var(--sub);
-        }
-        
-        .history-table td {
-            padding: 10px;
-            border-bottom: 1px solid var(--border);
-        }
-        
-        .hit-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        
-        .hit-2 { background: var(--success); color: #000; }
-        .hit-1 { background: var(--warning); color: #000; }
-        .hit-0 { background: var(--danger); color: white; }
+        :root { --primary: #2c3e50; --accent: #e74c3c; --bg: #f4f7f6; }
+        body { font-family: sans-serif; background: var(--bg); margin: 20px; color: var(--primary); }
+        .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .panel { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .full-width { grid-column: span 2; }
+        h3 { border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background: #eee; }
+        .hit { color: white; background: var(--accent); border-radius: 50%; display: inline-block; width: 20px; height: 20px; }
+        #chartCanvas { background: #fff; width: 100%; height: 300px; border: 1px solid #ccc; }
+        .prediction-box { font-size: 24px; font-weight: bold; color: #2980b9; letter-spacing: 5px; }
+        #logConsole { background: #333; color: #27ae60; padding: 10px; height: 100px; overflow-y: auto; font-family: monospace; font-size: 12px; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🎯 AI 539 精準狙擊系統 v4.0</h1>
-        <div class="subtitle">成本優化版 | 8碼以內 | 目標：10期內6次命中≥2個號碼</div>
-        <div class="cost-display" id="totalCost">每期成本: -- 元</div>
+
+<div class="container">
+    <div class="panel">
+        <h3>Panel 1: 資料上傳 (CSV)</h3>
+        <input type="file" id="csvFile" accept=".csv">
+        <p><small>格式：日期, 號1, 號2, 號3, 號4, 號5</small></p>
     </div>
 
-    <div class="file-upload" onclick="document.getElementById('csvFile').click()">
-        📁 點擊上傳歷史開獎CSV檔案
-        <input type="file" id="csvFile" accept=".csv" hidden>
+    <div class="panel">
+        <h3>Panel 3: 下期預測 (8碼)</h3>
+        <div id="nextPrediction" class="prediction-box">等待資料...</div>
     </div>
 
-    <div id="mainContent" style="display: none;">
-        <!-- 策略選擇 -->
-        <div class="strategy-panel">
-            <div class="panel-title">
-                <h3>🔧 選擇狙擊策略 (8碼以內)</h3>
-                <div class="efficiency-badge" id="efficiencyScore">效率: --%</div>
-            </div>
-            
-            <div class="strategy-options">
-                <div class="strategy-option selected" onclick="selectStrategy('balanced')">
-                    <div class="option-title">⚖️ 平衡型 (6碼)</div>
-                    <div class="option-desc">3核心+3支援，成本最低</div
+    <div class="panel full-width">
+        <h3>Panel 2: 近 10 期命中分析</h3>
+        <div id="historyTable">上傳後顯示...</div>
+    </div>
+
+    <div class="panel full-width">
+        <h3>Panel 4: 號碼連號分佈圖 (走勢)</h3>
+        <canvas id="chartCanvas"></canvas>
+    </div>
+
+    <div class="panel full-width">
+        <h3>Panel 5: 系統 Log</h3>
+        <div id="logConsole">系統就緒...</div>
+    </div>
+</div>
+
+<script>
+    let rawData = [];
+    const logBox = document.getElementById('logConsole');
+
+    function addLog(msg) {
+        const time = new Date().toLocaleTimeString();
+        logBox.innerHTML += `[${time}] ${msg}<br>`;
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    document.getElementById('csvFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = function(f) {
+            const lines = f.target.result.split('\n');
+            rawData = lines.map(line => line.split(',').map(s => s.trim())).filter(l => l.length >= 6);
+            addLog(`成功讀取 ${rawData.length} 筆資料`);
+            processSystem();
+        };
+        reader.readAsText(file);
+    });
+
+    function processSystem() {
+        const history = [];
+        // 取出數值部分
+        const data = rawData.map(row => ({
+            date: row[0],
+            nums: row.slice(1, 6).map(Number).sort((a,b)=>a-b)
+        }));
+
+        // 模擬預測邏輯 (權重演算法：基於過去 30 期頻率)
+        for(let i=0; i<Math.min(10, data.length-1); i++) {
+            const trainingData = data.slice(i+1, i+31); 
+            const pred = generatePrediction(trainingData);
+            const actual = data[i].nums;
+            const hits = actual.filter(n => pred.includes(n));
+            history.push({ date: data[i].date, actual, pred, hitCount: hits.length });
+        }
+
+        renderHistory(history);
+        renderNext(data.slice(0, 30));
+        drawChart(data.slice(0, 20));
+    }
+
+    function generatePrediction(pastData) {
+        // 簡易權重：統計頻率 + 隨機補償
+        const freq = {};
+        pastData.forEach(d => d.nums.forEach(n => freq[n] = (freq[n] || 0) + 1));
+        const sorted = Object.keys(freq).sort((a,b) => freq[b] - freq[a]);
+        // 取熱門 5 碼 + 冷門 3 碼平衡
+        let res = sorted.slice(0, 5).map(Number);
+        while(res.length < 8) {
+            let r = Math.floor(Math.random() * 39) + 1;
+            if(!res.includes(r)) res.push(r);
+        }
+        return res.sort((a,b)=>a-b);
+    }
+
+    function renderHistory(history) {
+        let html = `<table><tr><th>日期</th><th>開獎號</th><th>預測 8 碼</th><th>命中數</th></tr>`;
+        history.forEach(h => {
+            const hitStars = '★'.repeat(h.hitCount) + '☆'.repeat(Math.max(0, 3-h.hitCount));
+            html += `<tr><td>${h.date}</td><td>${h.actual.join(', ')}</td><td>${h.pred.join(', ')}</td>
+                     <td><span class="${h.hitCount>=3?'hit':''}">${h.hitCount}</span> ${hitStars}</td></tr>`;
+        });
+        document.getElementById('historyTable').innerHTML = html + `</table>`;
+    }
+
+    function renderNext(pastData) {
+        const next = generatePrediction(pastData);
+        document.getElementById('nextPrediction').innerText = next.join(' - ');
+        addLog(`下期預測計算完成：${next}`);
+    }
+
+    function drawChart(data) {
+        const canvas = document.getElementById('chartCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0,0, canvas.width, canvas.height);
+        
+        const cellW = canvas.width / 40;
+        const cellH = canvas.height / (data.length + 1);
+
+        // 畫坐標軸
+        ctx.font = "10px Arial";
+        for(let i=1; i<=39; i++) {
+            ctx.fillText(i, i * cellW, 15);
+        }
+
+        // 畫分布點
+        data.forEach((row, rowIndex) => {
+            const y = (rowIndex + 1) * cellH + 15;
+            ctx.fillText(row.date.slice(-5), 2, y);
+            row.nums.forEach(n => {
+                ctx.fillStyle = "red";
+                ctx.beginPath();
+                ctx.arc(n * cellW + 5, y - 3, 4, 0, Math.PI*2);
+                ctx.fill();
+            });
+        });
+        addLog("連號分佈圖更新完畢");
+    }
+</script>
+
+</body>
+</html>
