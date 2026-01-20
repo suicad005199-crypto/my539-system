@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539 精準分析 V.11</title>
+    <title>539 精準分析 V.12</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --accent: #0a84ff; --success: #32d74b; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
@@ -30,10 +30,10 @@
 <body>
 <div class="container">
     <div class="panel"><div class="panel-header">P1: 數據注入</div><input type="file" id="csvFile" accept=".csv"></div>
-    <div class="panel"><div class="panel-header">P2: 10期回測 (V.11 動態捕捉)</div><table class="bt-table"><tbody id="btBody"></tbody></table></div>
+    <div class="panel"><div class="panel-header">P2: 10期回測 (V.12 區間分佔)</div><table class="bt-table"><tbody id="btBody"></tbody></table></div>
     <div class="panel"><div class="panel-header">P3: 下期精準預測 (8 碼)</div><div id="nextPred" class="ball-row"></div></div>
-    <div class="panel"><div class="panel-header">P4: 規規律矩陣</div><div class="scroll-wrapper" id="matrixContainer"></div></div>
-    <div class="panel"><div class="panel-header">P5: 策略日誌</div><div id="logBox">V.11 球路辨識系統已就緒...</div></div>
+    <div class="panel"><div class="panel-header">P4: 規律矩陣</div><div class="scroll-wrapper" id="matrixContainer"></div></div>
+    <div class="panel"><div class="panel-header">P5: 策略日誌</div><div id="logBox">V.12 區間 3-3-2 佈防中...</div></div>
 </div>
 
 <script>
@@ -56,46 +56,42 @@
     });
 
     function getPrediction(history) {
-        if (history.length < 10) return [1,2,3,4,5,6,7,8];
+        if (history.length < 5) return [1,2,3,4,5,6,7,8];
         let scores = Array(40).fill(0);
         const last1 = history[history.length - 1].nums;
         const last3 = history.slice(-3);
-        
-        // 球路辨識：檢查是否有密集特性
         const tails = last3.flatMap(d => d.nums.map(n => n % 10));
-        const hasConcentration = tails.length !== new Set(tails).size;
 
         for (let i = 1; i <= 39; i++) {
             let gap = 0;
             for (let k = history.length - 1; k >= 0; k--) {
                 if (!history[k].nums.includes(i)) gap++; else break;
             }
-
-            // 1. 遺漏加權 (熱區 1-5 期)
+            // 基礎分：遺漏 1-5 期熱區
             if (gap <= 5) scores[i] += 150;
-            if (gap === 0) scores[i] += 80;
-
-            // 2. 鄰位權重
+            if (gap === 0) scores[i] += 70;
+            // 鄰位加權
             if (last1.some(ln => Math.abs(ln - i) === 1)) scores[i] += 100;
-
-            // 3. 動態尾數加權
-            const myTail = i % 10;
-            const tCount = tails.filter(t => t === myTail).length;
-            if (hasConcentration) {
-                scores[i] += tCount * 60; // 密集球路，重壓同尾
-            } else {
-                scores[i] += tCount * 20; // 發散球路，降低尾數依賴
-            }
-
-            // 4. 固定擾動確保結果穩定
-            scores[i] += (i * 0.1);
+            // 尾數微權重
+            const tCount = tails.filter(t => t === (i % 10)).length;
+            scores[i] += tCount * 40;
+            // 穩定係數
+            scores[i] += (i * 0.01);
         }
 
-        return scores.map((s, i) => ({ n: i, s }))
-            .sort((a, b) => b.s - a.s)
-            .slice(0, 8)
-            .map(v => v.n)
-            .sort((a, b) => a - b);
+        let candidates = scores.map((s, i) => ({ n: i, s })).sort((a, b) => b.s - a.s);
+        let final8 = [];
+        let low = [], mid = [], high = [];
+        
+        candidates.forEach(c => {
+            if (c.n <= 13) low.push(c.n);
+            else if (c.n <= 26) mid.push(c.n);
+            else high.push(c.n);
+        });
+
+        // 強制分佔 3-3-2 比例
+        final8 = [...low.slice(0,3), ...mid.slice(0,3), ...high.slice(0,2)];
+        return final8.sort((a, b) => a - b);
     }
 
     function render() {
@@ -109,7 +105,7 @@
             btHtml += `<tr><td class="date-col">${formatDate(row.date)}</td><td class="num-col">${row.nums.join(' ')}</td><td>${pred.map(n => row.nums.includes(n) ? `<span class="is-hit">${n}</span>` : n).join(' ')}</td><td class="star-col">${hits.length}</td></tr>`;
         });
         document.getElementById('btBody').innerHTML = btHtml;
-        log(`V.11 回測：2星率 ${s2 * 10}% / 3星率 ${s3 * 10}%`);
+        log(`V.12 回測：2星率 ${s2 * 10}% / 3星率 ${s3 * 10}%`);
         let mHtml = `<table class="matrix-table">`;
         rawData.slice(-15).reverse().forEach(row => {
             mHtml += `<tr><td class="m-date">${formatDate(row.date)}</td>`;
