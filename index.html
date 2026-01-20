@@ -2,75 +2,18 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>CSV 預測分析系統</title>
+    <title>CSV 預測分析系統 (日期修正版)</title>
     
     <style>
-        body {
-            font-family: "Microsoft JhengHei", sans-serif;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            max-width: 950px;
-            margin: auto;
-            background-color: #f9f9f9;
-        }
-
-        .panel {
-            border: 1px solid #ccc;
-            padding: 20px;
-            border-radius: 10px;
-            background-color: #fff;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-
-        .panel-title {
-            font-weight: bold;
-            font-size: 1.1em;
-            margin-bottom: 15px;
-            display: block;
-            border-left: 5px solid #333;
-            padding-left: 10px;
-        }
-
-        /* 表格樣式 */
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            margin-top: 10px;
-        }
-
-        th, td {
-            border: 1px solid #e0e0e0;
-            padding: 12px;
-            text-align: center;
-        }
-
-        th {
-            background-color: #f1f1f1;
-            color: #333;
-        }
-
-        /* 預測資料列突顯樣式 */
-        .predict-row {
-            background-color: #fff9e6; /* 淡淡的黃色背景 */
-            font-weight: bold;
-        }
-
-        .predict-num-text {
-            color: #d9534f; /* 預測號碼使用紅色 */
-            font-size: 1.1em;
-        }
-
-        /* Panel 2 特大號碼顯示 */
-        #bestNumbers {
-            font-size: 28px;
-            color: #d9534f;
-            font-weight: bold;
-            text-align: center;
-            letter-spacing: 3px;
-            padding: 15px;
-        }
+        body { font-family: "Microsoft JhengHei", sans-serif; padding: 20px; display: flex; flex-direction: column; gap: 20px; max-width: 950px; margin: auto; background-color: #f9f9f9; }
+        .panel { border: 1px solid #ccc; padding: 20px; border-radius: 10px; background-color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .panel-title { font-weight: bold; font-size: 1.1em; margin-bottom: 15px; display: block; border-left: 5px solid #333; padding-left: 10px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+        th, td { border: 1px solid #e0e0e0; padding: 12px; text-align: center; }
+        th { background-color: #f1f1f1; }
+        .predict-row { background-color: #fff9e6; font-weight: bold; }
+        .predict-num-text { color: #d9534f; font-size: 1.1em; }
+        #bestNumbers { font-size: 28px; color: #d9534f; font-weight: bold; text-align: center; letter-spacing: 3px; padding: 15px; }
     </style>
 </head>
 <body>
@@ -82,7 +25,7 @@
 
     <div class="panel">
         <span class="panel-title">Panel 2: 下期精準預期號碼</span>
-        <div id="bestNumbers">等待上傳資料進行分析...</div>
+        <div id="bestNumbers">等待上傳資料...</div>
     </div>
 
     <div class="panel">
@@ -98,41 +41,34 @@
                     </tr>
                 </thead>
                 <tbody id="dataTableBody">
-                    <tr><td colspan="4" style="color: #999;">請先於上方 Panel 1 選擇 CSV 檔案</td></tr>
+                    <tr><td colspan="4">請上傳 CSV 檔案以利運算</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 
     <script>
-        // 監聽檔案上傳按鈕
         document.getElementById('csvFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = (event) => processCSVData(event.target.result);
             reader.readAsText(file);
         });
 
-        /**
-         * 模擬產生 8 碼預測號碼
-         */
+        // 隨機產生 8 碼 (示範用)
         function generatePrediction8() {
             let nums = [];
             while(nums.length < 8) {
-                let r = Math.floor(Math.random() * 49) + 1; // 假設範圍 1-49
-                let formattedNum = r.toString().padStart(2, '0');
-                if(!nums.includes(formattedNum)) nums.push(formattedNum);
+                let r = Math.floor(Math.random() * 49) + 1;
+                let s = r.toString().padStart(2, '0');
+                if(!nums.includes(s)) nums.push(s);
             }
             return nums.sort().join(' ');
         }
 
-        /**
-         * 主要資料處理邏輯
-         */
         function processCSVData(csvText) {
-            // 1. 解析 CSV 並過濾非日期格式的標題列
+            // 1. 基礎解析與過濾標題列
             let rows = csvText.trim().split('\n')
                 .map(row => row.split(',').map(cell => cell.trim()))
                 .filter(columns => {
@@ -140,55 +76,51 @@
                     return isDate && !columns[0].includes("日期");
                 });
 
-            if (rows.length === 0) {
-                alert("無法解析資料，請確認 CSV 格式是否正確。");
-                return;
-            }
+            if (rows.length === 0) return;
 
-            // 2. 核心日期邏輯：找出全檔案最新的日期
+            // 2. 找出歷史最大日期 (例如 1/19)
             const allDates = rows.map(r => new Date(r[0]));
-            const newestDate = new Date(Math.max.apply(null, allDates));
+            const maxDate = new Date(Math.max.apply(null, allDates));
             
-            // 計算最新日期 + 1 天
-            newestDate.setDate(newestDate.getDate() + 1);
-            const nextDateStr = newestDate.toISOString().split('T')[0];
+            // 3. 計算預測日 (例如 1/19 + 1 = 1/20)
+            let nextDate = new Date(maxDate);
+            nextDate.setDate(nextDate.getDate() + 1);
+            const nextDateStr = nextDate.toISOString().split('T')[0];
 
-            // 3. 產生 8 碼預測並同步更新 Panel 2
-            const finalPrediction = generatePrediction8();
-            document.getElementById('bestNumbers').innerText = finalPrediction;
+            // 4. 生成 8 碼並更新 Panel 2
+            const predictionStr = generatePrediction8();
+            document.getElementById('bestNumbers').innerText = predictionStr;
 
-            // 4. 將歷史資料進行降序排列 (最新日期在最前面)
+            // 5. 排序歷史資料 (降序：1/19, 1/18...)
             const sortedHistory = rows.sort((a, b) => new Date(b[0]) - new Date(a[0]));
 
-            // 5. 渲染 Panel 3 表格內容
+            // 6. 渲染表格
             const tbody = document.getElementById('dataTableBody');
-            let htmlContent = "";
+            let html = "";
 
-            // --- 建立表格首列：下期預測資訊 ---
-            htmlContent += `
+            // --- 第一列：專屬預測列 (由程式計算出的 +1 天) ---
+            html += `
                 <tr class="predict-row">
                     <td>${nextDateStr}</td>
                     <td>待開獎</td>
-                    <td class="predict-num-text">${finalPrediction}</td>
+                    <td class="predict-num-text">${predictionStr}</td>
                     <td>-</td>
                 </tr>
             `;
 
-            // --- 建立其餘歷史資料列 ---
+            // --- 後續列：純歷史資料 ---
             sortedHistory.forEach(columns => {
-                const date = columns[0];
-                const numbers = columns.slice(1).join(' '); // 獎號 1~5 彙整
-                htmlContent += `
+                html += `
                     <tr>
-                        <td>${date}</td>
-                        <td>${numbers}</td>
+                        <td>${columns[0]}</td>
+                        <td>${columns.slice(1).join(' ')}</td>
                         <td>-</td>
                         <td>-</td>
                     </tr>
                 `;
             });
 
-            tbody.innerHTML = htmlContent;
+            tbody.innerHTML = html;
         }
     </script>
 
