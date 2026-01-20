@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539 精準分析 V.54</title>
+    <title>539 精準分析 V.55</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --accent: #0a84ff; --success: #32d74b; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
@@ -29,9 +29,9 @@
 </head>
 <body>
 <div class="container">
-    <div class="panel"><div class="panel-header">P1: 數據注入 (V.54 重力塌縮)</div><input type="file" id="csvFile" accept=".csv"></div>
-    <div class="panel"><div class="panel-header">P2: 深度回測看板</div><div id="btBody"></div></div>
-    <div class="panel"><div class="panel-header">P3: 3-3-2 核心預測 (8 碼)</div><div id="nextPred" class="ball-row"></div></div>
+    <div class="panel"><div class="panel-header">P1: 數據注入 (V.55 熱核擴張)</div><input type="file" id="csvFile" accept=".csv"></div>
+    <div class="panel"><div class="panel-header">P2: 深度回測</div><div id="btBody"></div></div>
+    <div class="panel"><div class="panel-header">P3: 擴張組預測 (8 碼)</div><div id="nextPred" class="ball-row"></div></div>
     <div class="panel"><div class="panel-header">P4: 分布矩陣</div><div class="matrix-scroll" id="matrixCont"></div></div>
     <div class="panel"><div id="logBox">等待 CSV...</div></div>
 </div>
@@ -42,61 +42,60 @@
     const pad = (n) => n.toString().padStart(2, '0');
     const formatDate = (s) => { const p = s.split(/[-/]/); return p.length >= 3 ? `${p[1]}/${p[2]}` : s; };
 
-    function getV54Prediction(hist) {
+    function getV55Prediction(hist) {
         if(hist.length < 20) return [1,2,3,4,5,6,7,8];
         let stats = Array(40).fill(0).map((_, i) => ({ n: i, score: 0 }));
         const lastRow = hist[hist.length-1].nums;
         
-        // 1. 基礎權重
         for(let i=1; i<=39; i++) {
             let gap = 0;
             for(let k=hist.length-1; k>=0; k--) {
                 if(!hist[k].nums.includes(i)) gap++; else break;
             }
-            stats[i].score += (gap <= 10) ? (gap * 5.5) : Math.max(0, 50 - gap); 
+            stats[i].score += (gap <= 10) ? (gap * 6) : Math.max(0, 50 - gap); 
         }
 
-        // 2. 尾數加權 (強化)
         let tailMap = Array(10).fill(0);
         hist.slice(-15).forEach(d => d.nums.forEach(n => tailMap[n%10]++));
-        for(let i=1; i<=39; i++) stats[i].score += (tailMap[i%10] * 10);
+        for(let i=1; i<=39; i++) stats[i].score += (tailMap[i%10] * 12);
 
-        // 3. 連莊/鄰位加權
         lastRow.forEach(ln => {
-            stats[ln].score += 30;
-            if(ln > 1) stats[ln-1].score += 45;
-            if(ln < 39) stats[ln+1].score += 45;
+            stats[ln].score += 35; 
+            if(ln > 1) stats[ln-1].score += 50; 
+            if(ln < 39) stats[ln+1].score += 50; 
+            if(ln > 2) stats[ln-2].score += 25; // 擴張加權
+            if(ln < 38) stats[ln+2].score += 25; 
         });
 
         let sorted = stats.filter(x => x.n > 0).sort((a,b) => b.score - a.score);
         let final = [];
         let used = new Set();
 
-        // 建立 3-3-2 結構
-        for(let size of [3, 3, 2]) {
+        // 4+4 滲透佈陣邏輯
+        for(let g=0; g<2; g++) {
             for(let i=0; i<sorted.length; i++) {
                 let core = sorted[i].n;
                 if(used.has(core)) continue;
-
-                let block = [core];
+                
+                let group = [core];
                 used.add(core);
 
-                // 為區塊尋找最強鄰位
-                let nbs = [];
-                if(core > 1) nbs.push(stats[core-1]);
-                if(core < 39) nbs.push(stats[core+1]);
-                if(core > 2) nbs.push(stats[core-2]);
-                if(core < 38) nbs.push(stats[core+2]);
+                // 1. 連號滲透
+                let n1 = core + 1 <= 39 ? core + 1 : core - 1;
+                if(!used.has(n1)) { group.push(n1); used.add(n1); }
                 
-                nbs.sort((a,b) => b.score - a.score);
-                for(let nb of nbs) {
-                    if(block.length < size && !used.has(nb.n)) {
-                        block.push(nb.n);
-                        used.add(nb.n);
+                // 2. 跳號滲透
+                let n2 = core + 2 <= 39 ? core + 2 : core - 2;
+                if(!used.has(n2) && group.length < 4) { group.push(n2); used.add(n2); }
+
+                // 3. 同尾滲透
+                for(let j=1; j<=39; j++) {
+                    if(j!==core && j%10 === core%10 && !used.has(j) && group.length < 4) {
+                        group.push(j); used.add(j);
                     }
                 }
 
-                block.forEach(n => { if(final.length < 8) final.push(n); });
+                group.forEach(n => { if(final.length < 8) final.push(n); });
                 break;
             }
         }
@@ -111,24 +110,23 @@
                 return { date: c[0].trim(), nums: c.slice(1, 6).map(x => parseInt(x.trim())).filter(x => !isNaN(x)).sort((a,b)=>a-b) };
             }).filter(r => r.nums.length === 5);
             document.getElementById('logBox').innerHTML = "";
-            runV54();
+            runV55();
         };
         reader.readAsText(e.target.files[0]);
     });
 
-    function runV54() {
+    function runV55() {
         let btHtml = "";
         let counts = { 0:0, 1:0, 2:0, 3:0, 4:0 };
         rawData.slice(-10).reverse().forEach(row => {
-            const p = getV54Prediction(rawData.slice(0, rawData.indexOf(row)));
+            const p = getV55Prediction(rawData.slice(0, rawData.indexOf(row)));
             const hits = row.nums.filter(n => p.includes(n));
             counts[Math.min(hits.length, 4)]++;
             btHtml += `<div class="bt-row"><div class="bt-meta"><span>📅 ${formatDate(row.date)}</span> <span class="star-tag">${hits.length} ★</span></div>
-                <div class="num-group"><span style="width:30px;color:#888">開</span>${row.nums.map(n => `<div class="n-box ${p.includes(n)?'hit':''}">${pad(n)}</div>`).join('')}</div>
-                <div class="num-group"><span style="width:30px;color:#888">預</span>${p.map(n => `<div class="n-box" style="color:${row.nums.includes(n)?'var(--primary)':'#888'}">${pad(n)}</div>`).join('')}</div></div>`;
+                <div class="num-group">${row.nums.map(n => `<div class="n-box ${p.includes(n)?'hit':''}">${pad(n)}</div>`).join('')}</div></div>`;
         });
         document.getElementById('btBody').innerHTML = btHtml;
-        const next = getV54Prediction(rawData);
+        const next = getV55Prediction(rawData);
         document.getElementById('nextPred').innerHTML = next.map(n => `<div class="ball">${pad(n)}</div>`).join('');
         
         let mHtml = `<table class="m-table"><thead><tr><th class="m-date">日</th>`;
@@ -140,8 +138,8 @@
             mHtml += `</tr>`;
         });
         document.getElementById('matrixCont').innerHTML = mHtml + `</tbody></table>`;
-        log(`回測：2星:${counts[2]}期, 3星:${counts[3]}期, 4星:${counts[4]}期`);
-        log(`V.54 重力塌縮部署：3-3-2 結構化重組。`);
+        log(`命中：2星:${counts[2]}期, 3星:${counts[3]}期, 4星:${counts[4]}期`);
+        log(`V.55 啟動：4+4 滲透網格，目標消除 80% 的 1 星。`);
     }
 </script>
 </body>
