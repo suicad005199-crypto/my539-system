@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539/A.01-MS7 矩陣純化版</title>
+    <title>539/A.01-MS9 歸一化統計版</title>
     <style>
         :root { --bg: #0b0b0c; --panel: #1c1c1e; --primary: #ffd60a; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --accent: #0a84ff; --success: #32d74b; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 8px; font-size: 13px; }
@@ -12,77 +12,78 @@
         .panel-header { color: var(--primary); font-weight: bold; margin-bottom: 10px; border-left: 3px solid var(--primary); padding-left: 8px; font-size: 14px; }
         .bt-row { border-bottom: 1px solid var(--border); padding: 10px 0; }
         .num-group { display: flex; gap: 6px; margin-top: 6px; }
-        .n-box { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 13px; font-weight: bold; background: #2c2c2e; color: var(--sub); }
+        .n-box { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 12px; font-weight: bold; background: #2c2c2e; color: var(--sub); }
         .n-box.is-hit { background: var(--primary); color: #000; box-shadow: 0 0 8px var(--primary); }
-        .pred-list { font-size: 10px; color: var(--accent); margin-top: 5px; opacity: 0.9; }
+        .pred-list { font-size: 10px; color: var(--accent); margin-top: 5px; }
         .ball-row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; padding: 15px 0; background: rgba(10,132,255,0.08); border-radius: 8px; }
-        .ball { width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; background: #000; border-radius: 50%; font-weight: 900; border: 3px solid var(--accent); color: var(--accent); font-size: 22px; box-shadow: 0 0 15px rgba(10,132,255,0.4); }
+        .ball { width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; background: #000; border-radius: 50%; font-weight: 900; border: 3px solid var(--accent); color: var(--accent); font-size: 22px; }
         .matrix-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
         .m-table { border-collapse: collapse; white-space: nowrap; width: 100%; }
         .m-table td, .m-table th { border: 1px solid #333; width: 16px; height: 16px; text-align: center; font-size: 9px; }
-        .m-date { background: #2c2c2e; color: var(--sub); position: sticky; left: 0; min-width: 38px; padding-left: 4px; z-index: 5; }
+        .m-date { background: #2c2c2e; color: var(--sub); position: sticky; left: 0; min-width: 38px; padding-left: 4px; }
         .m-ball { background: var(--hit); border-radius: 50%; width: 10px; height: 10px; display: inline-block; }
-        #logBox { background: #000; color: var(--success); padding: 8px; height: 60px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 8px; margin-top: 5px; }
+        #logBox { background: #000; color: var(--success); padding: 8px; height: 50px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 8px; margin-top: 5px; }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="panel">
-        <div class="panel-header">P1: 數據注入 <span style="float:right; font-size:10px; color:var(--accent)">MS7-PURIFIED</span></div>
+        <div class="panel-header">P1: 數據注入 <span style="float:right; font-size:10px; color:var(--accent)">MS9-NORMALIZED</span></div>
         <input type="file" id="csvFile" accept=".csv" style="width: 100%;">
     </div>
     <div class="panel">
-        <div class="panel-header">P2: 深度回測看板 (近 10 期)</div>
+        <div class="panel-header">P2: 深度回測 (近 10 期)</div>
         <div id="btBody"></div>
     </div>
     <div class="panel">
-        <div class="panel-header" style="color:var(--accent)">P3: MS7 純化預測 (透明權重)</div>
+        <div class="panel-header" style="color:var(--accent)">P3: MS9 歸一化預測 (5 碼)</div>
         <div id="nextPred" class="ball-row"></div>
     </div>
     <div class="panel">
         <div class="panel-header">P4: 分布矩陣</div>
         <div class="matrix-scroll" id="matrixCont"></div>
     </div>
-    <div id="logBox">MS7 就緒。移除過度擬合參數，回歸純粹統計。</div>
+    <div id="logBox">MS9 已佈署。Z-Score 正規化引擎啟動。</div>
 </div>
 
 <script>
     let rawData = [];
     const log = (m) => { const lb = document.getElementById('logBox'); lb.innerHTML += `> ${m}<br>`; lb.scrollTop = lb.scrollHeight; };
     const pad = (n) => n.toString().padStart(2, '0');
-    const fmtDate = (dStr) => { const p = dStr.split(/[-/]/); return p.length >= 3 ? `${parseInt(p[1])}/${parseInt(p[2])}` : dStr; };
 
-    function getMS7Logic(hist) {
+    // 計算平均值與標準差
+    const getZScore = (val, mean, std) => std === 0 ? 0 : (val - mean) / std;
+
+    function getMS9Logic(hist) {
         if(hist.length < 10) return [1,2,3,4,5].map(n=>({n, s:0}));
-        let stats = Array.from({length:40}, (_, i) => ({ n: i, gap: 0, s: 0 }));
-        const lastRow = hist[hist.length-1].nums;
-        const tailMap = new Array(10).fill(0);
         
-        // 1. 緩存統計數據 (單次遍歷)
-        hist.slice(-12).forEach(d => d.nums.forEach(n => tailMap[n%10]++));
-
-        for(let i=1; i<=39; i++) {
+        let pool = Array.from({length:39}, (_, i) => {
+            const n = i + 1;
             let gap = 0;
-            for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
-            stats[i].gap = gap;
+            for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(n)) gap++; else break; }
+            return { n, gap, s: 0, tails: 0 };
+        });
 
-            // 策略 A: 熱度權衡 (線性縮放)
-            if(gap === 0) stats[i].s += 100; // 連莊
-            else if(gap === 1) stats[i].s += 80;
-            else if(gap <= 8) stats[i].s += 60;
-            
-            // 策略 B: 鄰號連動
-            if(lastRow.some(n => Math.abs(n - i) === 1)) stats[i].s += 40;
-            
-            // 策略 C: 尾數趨勢
-            stats[i].s += tailMap[i%10] * 3;
+        // 1. 數據收集：遺漏值與尾數頻率 (近 15 期)
+        const gaps = pool.map(p => p.gap);
+        const meanGap = gaps.reduce((a,b)=>a+b)/39;
+        const stdGap = Math.sqrt(gaps.reduce((a,b)=>a+(b-meanGap)**2,0)/39);
 
-            // 策略 D: 均值回歸補償 (對數平滑，無硬性閾值)
-            stats[i].s += Math.log1p(gap) * 10;
-        }
+        const tailFreq = new Array(10).fill(0);
+        hist.slice(-15).forEach(d => d.nums.forEach(n => tailFreq[n%10]++));
 
-        // 2. 確定性排序 (解決排序穩定性)
-        return stats.slice(1).sort((a,b) => (b.s - a.s) || (a.n - b.n)).slice(0, 5);
+        // 2. 歸一化評分 (Z-Score)
+        pool.forEach(p => {
+            const zGap = getZScore(p.gap, meanGap, stdGap);
+            // 熱碼權重 (負 Z-Score 代表熱) + 冷碼權重 (正 Z-Score) 的平衡曲線
+            p.s = (Math.abs(zGap) * 20) + (p.gap === 0 ? 30 : 0); // 顯著性加成
+            p.s += (tailFreq[p.n % 10] * 2); // 尾數線性權重
+        });
+
+        // 3. 穩定雜湊排序 (避免號碼偏誤)
+        const hash = (n) => Number((BigInt(n) * 15926535897932384626n) % 1000n);
+        
+        return pool.sort((a,b) => (b.s - a.s) || (hash(a.n) - hash(b.n))).slice(0, 5);
     }
 
     document.getElementById('csvFile').addEventListener('change', e => {
@@ -102,7 +103,7 @@
         const btData = rawData.slice(-10).reverse();
         btData.forEach(row => {
             const idx = rawData.findIndex(r => r.date === row.date);
-            const predObjs = getMS7Logic(rawData.slice(0, idx));
+            const predObjs = getMS9Logic(rawData.slice(0, idx));
             const predNums = predObjs.map(o => o.n);
             const hits = row.nums.filter(n => predNums.includes(n));
             totalHits += hits.length;
@@ -111,19 +112,19 @@
                 <div class="pred-list">方案：${predObjs.map(o => `${pad(o.n)}(${Math.round(o.s)})`).join(' ')}</div></div>`;
         });
         document.getElementById('btBody').innerHTML = btHtml;
-        const next = getMS7Logic(rawData);
+        const next = getMS9Logic(rawData);
         document.getElementById('nextPred').innerHTML = next.map(o => `<div class="ball">${pad(o.n)}</div>`).join('');
+        
         let mHtml = `<table class="m-table"><thead><tr><th class="m-date">日</th>`;
         for(let i=1; i<=39; i++) mHtml += `<th>${pad(i)}</th>`;
         mHtml += `</tr></thead><tbody>`;
         rawData.slice(-15).reverse().forEach(row => {
-            mHtml += `<tr><td class="m-date">${fmtDate(row.date)}</td>`;
+            mHtml += `<tr><td class="m-date">${row.date.split('-').slice(1).join('/')}</td>`;
             for(let i=1; i<=39; i++) mHtml += `<td>${row.nums.includes(i) ? '<span class="m-ball"></span>' : ''}</td>`;
             mHtml += `</tr>`;
         });
         document.getElementById('matrixCont').innerHTML = mHtml + `</tbody></table>`;
-        log(`MS7 佈署完成 | 期望值: ${(totalHits/10).toFixed(1)}`);
-        log(`透明化：已列出候選碼權重分數`);
+        log(`MS9 期望值: ${(totalHits/10).toFixed(1)} | 引擎: Z-Score 正規化`);
     }
 </script>
 </body>
