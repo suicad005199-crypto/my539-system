@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539 精準分析 V.42.6</title>
+    <title>539 精準分析 V.42.7</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --accent: #0a84ff; --success: #32d74b; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
@@ -30,11 +30,11 @@
 </head>
 <body>
 <div class="container">
-    <div class="panel"><div class="panel-header">P1: 數據注入 (V.42.6 蜂巢網格)</div><input type="file" id="csvFile" accept=".csv"></div>
-    <div class="panel"><div class="panel-header">P2: 深度回測</div><div id="btBody"></div></div>
-    <div class="panel"><div class="panel-header">P3: 蜂巢預測 (2星強化)</div><div id="nextPred" class="ball-row"></div></div>
+    <div class="panel"><div class="panel-header">P1: 數據注入 (V.42.7 二重引力)</div><input type="file" id="csvFile" accept=".csv"></div>
+    <div class="panel"><div class="panel-header">P2: 深度回測看板</div><div id="btBody"></div></div>
+    <div class="panel"><div class="panel-header">P3: 聯動預測 (掛1轉2優化)</div><div id="nextPred" class="ball-row"></div></div>
     <div class="panel"><div class="panel-header">P4: 分布矩陣</div><div class="matrix-scroll" id="matrixCont"></div></div>
-    <div class="panel"><div id="logBox">等待 CSV...</div></div>
+    <div class="panel"><div id="logBox">等待 CSV 檔案匯入...</div></div>
 </div>
 
 <script>
@@ -43,7 +43,7 @@
     const pad = (n) => n.toString().padStart(2, '0');
     const formatDate = (s) => { const p = s.split(/[-/]/); return p.length >= 3 ? `${p[1]}/${p[2]}` : s; };
 
-    function getV426Prediction(hist) {
+    function getV427Prediction(hist) {
         if(hist.length < 20) return [1,2,3,4,5,6,7,8];
         let stats = Array(40).fill(0).map((_, i) => ({ n: i, score: 0 }));
         const lastRow = hist[hist.length-1].nums;
@@ -53,35 +53,54 @@
             for(let k=hist.length-1; k>=0; k--) {
                 if(!hist[k].nums.includes(i)) gap++; else break;
             }
-            stats[i].score += (gap <= 10) ? (gap * 4.2) : Math.max(0, 45 - gap); 
+            stats[i].score += (gap <= 10) ? (gap * 4.5) : Math.max(0, 48 - gap); 
         }
         let tailMap = Array(10).fill(0);
         hist.slice(-15).forEach(d => d.nums.forEach(n => tailMap[n%10]++));
-        for(let i=1; i<=39; i++) stats[i].score += (tailMap[i%10] * 3.8);
+        for(let i=1; i<=39; i++) stats[i].score += (tailMap[i%10] * 4.0);
         lastRow.forEach(ln => {
-            if(ln > 1) stats[ln-1].score += 30;
-            if(ln < 39) stats[ln+1].score += 30;
+            if(ln > 1) stats[ln-1].score += 35;
+            if(ln < 39) stats[ln+1].score += 35;
             stats[ln].score += 25; 
         });
 
-        // 蜂巢邏輯：選取 4 個核心，各帶 1 個防禦位
         let sorted = stats.filter(x => x.n > 0).sort((a,b) => b.score - a.score);
         let final = [];
         let used = new Set();
 
-        for(let i=0; i<sorted.length && final.length < 8; i++) {
+        // 1. 選出 4 個最強「核心對子」
+        for(let i=0; i<sorted.length && final.length < 4; i++) {
             let core = sorted[i].n;
             if(used.has(core)) continue;
-            final.push(core);
-            used.add(core);
-
-            // 尋找鄰近蜂巢碼 (連號優先)
-            let nb = (core < 39 && !used.has(core+1)) ? core+1 : (core > 1 && !used.has(core-1) ? core-1 : null);
-            if(nb && final.length < 8) {
-                final.push(nb);
-                used.add(nb);
+            
+            // 尋找鄰號或高分號強行配對
+            let partner = (core < 39 && !used.has(core+1)) ? core+1 : (core > 1 && !used.has(core-1) ? core-1 : null);
+            if(nb = partner) {
+                final.push(core, nb);
+                used.add(core); used.add(nb);
             }
         }
+
+        // 2. 剩餘 4 碼：選取與 final 中已有號碼具備「同尾關係」的高分號
+        for(let i=0; i<sorted.length && final.length < 8; i++) {
+            let n = sorted[i].n;
+            if(used.has(n)) continue;
+            
+            let hasTailMatch = final.some(fn => fn % 10 === n % 10);
+            if(hasTailMatch) {
+                final.push(n);
+                used.add(n);
+            }
+        }
+
+        // 3. 補位：若還不足 8 碼，按分數補齊
+        for(let i=0; i<sorted.length && final.length < 8; i++) {
+            if(!used.has(sorted[i].n)) {
+                final.push(sorted[i].n);
+                used.add(sorted[i].n);
+            }
+        }
+
         return final.sort((a,b)=>a-b);
     }
 
@@ -93,17 +112,17 @@
                 return { date: c[0].trim(), nums: c.slice(1, 6).map(x => parseInt(x.trim())).filter(x => !isNaN(x)).sort((a,b)=>a-b) };
             }).filter(r => r.nums.length === 5);
             document.getElementById('logBox').innerHTML = "";
-            runV426();
+            runV427();
         };
         reader.readAsText(e.target.files[0]);
     });
 
-    function runV426() {
+    function runV427() {
         let btHtml = "";
         let counts = { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0 };
         rawData.slice(-10).reverse().forEach(row => {
             const histSlice = rawData.slice(0, rawData.indexOf(row));
-            const pred = getV426Prediction(histSlice);
+            const pred = getV427Prediction(histSlice);
             const hits = row.nums.filter(n => pred.includes(n));
             counts[Math.min(hits.length, 5)]++;
             btHtml += `<div class="bt-row">
@@ -113,7 +132,7 @@
             </div>`;
         });
         document.getElementById('btBody').innerHTML = btHtml;
-        const next = getV426Prediction(rawData);
+        const next = getV427Prediction(rawData);
         document.getElementById('nextPred').innerHTML = next.map(n => `<div class="ball">${pad(n)}</div>`).join('');
         
         let mHtml = `<table class="m-table"><thead><tr><th class="m-date">日</th>`;
@@ -127,7 +146,8 @@
         document.getElementById('matrixCont').innerHTML = mHtml + `</tbody></table>`;
         
         let hit2Plus = ((counts[2]+counts[3]+counts[4]+counts[5])/10*100).toFixed(0);
-        log(`V.42.6 蜂巢部署：修復掛0風險 | 二星含以上佔比目標：90%`);
+        log(`V.42.7 二重引力啟動：鎖定掛 1 星轉化為 2 星。`);
+        log(`回測結果：2星(含以上)佔比：${hit2Plus}%`);
     }
 </script>
 </body>
