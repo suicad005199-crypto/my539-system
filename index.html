@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539/A.01-MS12 矩陣熵減版</title>
+    <title>539/A.01-MS13 矩陣共振版</title>
     <style>
         :root { --bg: #0b0b0c; --panel: #1c1c1e; --primary: #ffd60a; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --accent: #0a84ff; --success: #32d74b; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 8px; font-size: 12px; }
@@ -22,13 +22,13 @@
         .m-table td, .m-table th { border: 1px solid #333; width: 16px; height: 16px; text-align: center; font-size: 9px; }
         .m-date { background: #2c2c2e; color: var(--sub); position: sticky; left: 0; min-width: 38px; padding-left: 4px; z-index: 5; }
         .m-ball { background: var(--hit); border-radius: 50%; width: 10px; height: 10px; display: inline-block; }
-        #logBox { background: #000; color: var(--success); padding: 8px; height: 60px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 8px; }
+        #logBox { background: #000; color: var(--success); padding: 8px; height: 70px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 8px; }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="panel">
-        <div class="panel-header">P1: 數據注入 <span style="float:right; color:var(--success); font-size:10px;">MS12-PRO</span></div>
+        <div class="panel-header">P1: 數據注入 <span style="float:right; color:var(--accent); font-size:10px;">MS13-RESONANCE</span></div>
         <input type="file" id="csvFile" accept=".csv" style="width: 100%;">
     </div>
     <div class="panel">
@@ -36,14 +36,14 @@
         <div id="btBody"></div>
     </div>
     <div class="panel">
-        <div class="panel-header" style="color:var(--accent)">P3: MS12 互斥預測</div>
+        <div class="panel-header" style="color:var(--accent)">P3: MS13 共振預測</div>
         <div id="nextPred" class="ball-row"></div>
     </div>
     <div class="panel">
         <div class="panel-header">P4: 分布矩陣</div>
         <div class="matrix-scroll" id="matrixCont"></div>
     </div>
-    <div id="logBox">MS12 就緒。已修復 Panel 4 並導入互斥分類邏輯。</div>
+    <div id="logBox">MS13 矩陣共振引擎啟動。已解除互斥鎖定，強化長遺漏補償。</div>
 </div>
 
 <script>
@@ -51,69 +51,54 @@
     const log = (m) => { const lb = document.getElementById('logBox'); lb.innerHTML += `> ${m}<br>`; lb.scrollTop = lb.scrollHeight; };
     const pad = (n) => n.toString().padStart(2, '0');
 
-    function getMS12Logic(hist) {
-        if(hist.length < 25) return [1,2,3,4,5].map(n=>({n, tag:'無'}));
+    function getMS13Logic(hist) {
+        if(hist.length < 15) return [1,2,3,4,5].map(n=>({n, s:0}));
         
-        const lastNums = hist[hist.length-1].nums;
-        const coverage = Array.from({length:39}, (_, i) => ({
-            num: i+1, lastSeen: 999, freq10: 0, freq20: 0, 
-            zone: Math.floor(i/13), tail: (i+1)%10, isNeighbor: lastNums.some(n=>Math.abs(n-(i+1))===1)
+        const lastRow = hist[hist.length-1].nums;
+        const stats = Array.from({length:39}, (_, i) => ({
+            n: i+1, gap: 99, f10: 0, f20: 0, s: 0, zone: Math.floor(i/13)
         }));
 
+        // 1. 統計與共振評分
         hist.slice(-30).forEach((d, idx, arr) => {
-            const gap = arr.length - 1 - idx;
-            d.nums.forEach(n => {
-                const c = coverage[n-1];
-                if(c.lastSeen === 999) c.lastSeen = gap + 1;
-                if(gap < 10) c.freq10++;
-                if(gap < 20) c.freq20++;
+            const periodGap = arr.length - 1 - idx;
+            d.nums.forEach(num => {
+                const s = stats[num-1];
+                if(s.gap === 99) s.gap = periodGap + 1;
+                if(periodGap < 10) s.f10++;
+                if(periodGap < 20) s.f20++;
             });
         });
 
-        const avgF = (hist.slice(-20).length * 5) / 39;
-        const hotT = Math.max(2, Math.ceil(avgF * 1.5));
-        const coldT = Math.max(1, Math.floor(avgF * 0.5));
-
-        // 互斥分類
-        const pools = { 熱:[], 鄰:[], 溫:[], 冷:[], 平:[] };
-        coverage.forEach(c => {
-            if(c.freq10 >= hotT) pools.熱.push(c);
-            else if(c.isNeighbor) pools.鄰.push(c);
-            else if(c.freq20 >= Math.max(1, Math.floor(avgF)) && c.lastSeen <= 15) pools.溫.push(c);
-            else if(c.freq20 <= coldT) pools.冷.push(c);
-            else pools.平.push(c);
+        stats.forEach(s => {
+            // 熱度共振
+            s.s += s.f10 * 15;
+            // 鄰號連動
+            if(lastRow.some(ln => Math.abs(ln - s.n) === 1)) s.s += 35;
+            // 遺漏回歸 (針對 0.4 碼/期優化: 強化 8-15 期遺漏)
+            if(s.gap >= 8 && s.gap <= 15) s.s += 40;
+            if(s.gap > 15) s.s += 20;
+            // 尾數熱度
+            const tail = s.n % 10;
+            const tFreq = hist.slice(-10).filter(d => d.nums.some(n => n%10 === tail)).length;
+            s.s += tFreq * 5;
         });
 
+        // 2. 軟性過濾排序
         const selected = [];
-        const usedZ = [0,0,0], usedT = new Set();
-        const order = [ {k:'熱', n:2}, {k:'鄰', n:1}, {k:'溫', n:1}, {k:'平', n:1}, {k:'冷', n:1} ];
+        const zCount = [0, 0, 0];
+        const sorted = [...stats].sort((a, b) => b.s - a.s);
 
-        for(const step of order) {
-            if(selected.length >= 5) break;
-            const p = pools[step.k].filter(x => !selected.some(s=>s.n===x.num))
-                    .sort((a,b) => b.freq10 - a.freq10 || a.lastSeen - b.lastSeen);
-            
-            let count = 0;
-            for(const cand of p) {
-                if(count >= step.n || selected.length >= 5) break;
-                if(usedZ[cand.zone] < 2) {
-                    selected.push({n: cand.num, tag: step.k});
-                    usedZ[cand.zone]++; usedT.add(cand.tail); count++;
-                }
+        for (const cand of sorted) {
+            if (selected.length >= 5) break;
+            // 軟性限制：單區最多3碼，且高分優先
+            if (zCount[cand.zone] < 3) {
+                selected.push(cand);
+                zCount[cand.zone]++;
             }
         }
 
-        // 強力補足
-        while(selected.length < 5) {
-            const rem = coverage.filter(c => !selected.some(s=>s.n===c.num))
-                .sort((a,b) => (2-usedZ[a.zone]) - (2-usedZ[b.zone]) || a.lastSeen - b.lastSeen);
-            if(rem.length === 0) break;
-            const b = rem[0];
-            selected.push({n: b.num, tag: '補'});
-            usedZ[b.zone]++;
-        }
-
-        return selected.sort((a,b)=>a.n-b.n);
+        return selected.sort((a,b) => a.n - b.n);
     }
 
     document.getElementById('csvFile').addEventListener('change', e => {
@@ -129,20 +114,22 @@
     });
 
     function render() {
-        let btHtml = "", totalH = 0, h2P = 0;
+        let btHtml = "", totalH = 0, h2P = 0, h0 = 0;
         const btData = rawData.slice(-10).reverse();
         btData.forEach(row => {
             const idx = rawData.findIndex(r => r.date === row.date);
-            const pred = getMS12Logic(rawData.slice(0, idx));
+            const pred = getMS13Logic(rawData.slice(0, idx));
             const pNums = pred.map(o=>o.n);
             const hits = row.nums.filter(n => pNums.includes(n));
-            totalH += hits.length; if(hits.length>=2) h2P++;
+            totalH += hits.length; 
+            if(hits.length >= 2) h2P++;
+            if(hits.length === 0) h0++;
             btHtml += `<div class="bt-row"><div style="display:flex;justify-content:space-between"><span>📅 ${row.date}</span><span style="background:var(--success);color:#000;padding:2px 5px;border-radius:4px;font-weight:bold">${hits.length}★</span></div>
                 <div class="num-group">${row.nums.map(n => `<div class="n-box ${pNums.includes(n)?'is-hit':''}">${pad(n)}</div>`).join('')}</div>
-                <div class="pred-list">方案: ${pred.map(o=>`${pad(o.n)}<small>(${o.tag})</small>`).join(' ')}</div></div>`;
+                <div class="pred-list">權重: ${pred.map(o=>`${pad(o.n)}(${Math.round(o.s)})`).join(' ')}</div></div>`;
         });
         document.getElementById('btBody').innerHTML = btHtml;
-        const next = getMS12Logic(rawData);
+        const next = getMS13Logic(rawData);
         document.getElementById('nextPred').innerHTML = next.map(o=>`<div class="ball">${pad(o.n)}</div>`).join('');
         
         let mH = `<table class="m-table"><thead><tr><th class="m-date">日</th>`;
@@ -154,7 +141,7 @@
             mH += `</tr>`;
         });
         document.getElementById('matrixCont').innerHTML = mH + `</tbody></table>`;
-        log(`MS12 期望: ${(totalH/10).toFixed(1)} | 命中≥2: ${h2P*10}%`);
+        log(`MS13 期望碼: ${(totalH/10).toFixed(1)} | 掛0率: ${h0*10}% | 命中≥2: ${h2P*10}%`);
     }
 </script>
 </body>
