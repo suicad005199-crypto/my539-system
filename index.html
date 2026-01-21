@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>天天樂 Oracle V.16.2-DA</title>
+    <title>天天樂 Oracle V.16.5-CF</title>
     <style>
         :root { 
             --bg: #02040a; --panel: #0d1117; --primary: #58a6ff; 
@@ -12,7 +12,7 @@
         }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
         .container { display: flex; flex-direction: column; gap: 12px; max-width: 600px; margin: auto; }
-        .panel { background: var(--panel); border-radius: 12px; padding: 12px; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .panel { background: var(--panel); border-radius: 12px; padding: 12px; border: 1px solid var(--border); }
         .panel-header { color: var(--primary); font-weight: bold; margin-bottom: 10px; border-left: 3px solid var(--primary); padding-left: 8px; font-size: 14px; }
         
         .bt-row { border-bottom: 1px solid var(--border); padding: 10px 0; display: flex; flex-direction: column; gap: 6px; }
@@ -30,39 +30,19 @@
         .m-date { background: #161b22; color: var(--sub); position: sticky; left: 0; width: 50px; z-index: 5; }
         .m-ball { background: var(--hit); border-radius: 50%; width: 12px; height: 12px; display: inline-block; }
         
-        #logBox { background: #010409; color: var(--primary); padding: 10px; height: 110px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 6px; line-height: 1.5; }
-        
-        /* P3 特殊排版：分兩排，每排四碼，靠左 */
+        #logBox { background: #010409; color: var(--primary); padding: 10px; height: 110px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 6px; line-height: 1.5; }
         .ball-container { display: flex; flex-direction: column; gap: 10px; padding: 5px 0; }
         .ball-row { display: flex; gap: 12px; justify-content: flex-start; }
-        .ball { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #0d1117; border-radius: 50%; font-weight: bold; border: 2px solid var(--primary); color: var(--primary); font-size: 18px; box-shadow: 0 0 8px rgba(88,166,255,0.2); }
+        .ball { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #0d1117; border-radius: 50%; font-weight: bold; border: 2px solid var(--primary); color: var(--primary); font-size: 18px; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="panel">
-        <div class="panel-header">P1: 數據注入 (V.16.2 Dual-Axe)</div>
-        <input type="file" id="csvFile" accept=".csv">
-    </div>
-    
-    <div class="panel">
-        <div class="panel-header">P2: 實時命中分佈走勢</div>
-        <div id="btBody"></div>
-    </div>
-
-    <div class="panel">
-        <div class="panel-header">P3: 核心預測 (戰術分組)</div>
-        <div id="nextPred" class="ball-container"></div>
-    </div>
-
-    <div class="panel">
-        <div class="panel-header">P4: 規律奇點矩陣</div>
-        <div class="matrix-scroll" id="matrixCont"></div>
-    </div>
-
-    <div class="panel">
-        <div id="logBox">系統已優化至 V.16.2。等待全數據模擬...<br>目標：將 40% 的二星命中轉化為三星。</div>
-    </div>
+    <div class="panel"><div class="panel-header">P1: 數據注入 (V.16.5-CF)</div><input type="file" id="csvFile" accept=".csv"></div>
+    <div class="panel"><div class="panel-header">P2: 實時命中分佈走勢</div><div id="btBody"></div></div>
+    <div class="panel"><div class="panel-header">P3: 核心預測 (極致聚合 4+4)</div><div id="nextPred" class="ball-container"></div></div>
+    <div class="panel"><div class="panel-header">P4: 規律奇點矩陣</div><div class="matrix-scroll" id="matrixCont"></div></div>
+    <div class="panel"><div id="logBox">正在執行極致聚合策略...<br>目標：將 40% 的二星率轉化為 50% 以上的三星命中。</div></div>
 </div>
 
 <script>
@@ -72,28 +52,28 @@
     const formatDate = (s) => { const p = s.split(/[-/]/); return p.length >= 3 ? `${p[1]}/${p[2]}` : s; };
 
     function getPrediction(hist) {
-        if(hist.length < 20) return [1,2,3,4,11,12,13,14];
+        if(hist.length < 20) return [19,27,28,29,31,37,38,39];
         let stats = Array(40).fill(0).map((_, i) => ({ n: i, score: 0 }));
         const lastRow = hist[hist.length-1].nums;
         
+        // 極致聚合邏輯：加大鄰號與熱尾權重，縮小選號範圍
         for(let i=1; i<=39; i++) {
             let gap = 0;
-            for(let k=hist.length-1; k>=0; k--) {
-                if(!hist[k].nums.includes(i)) gap++; else break;
-            }
-            stats[i].score += (gap >= 10) ? (gap * 20.0) : (gap * 5.0); 
+            for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
+            stats[i].score += (gap >= 5 && gap <= 12) ? (gap * 25.0) : (gap * 2.0); 
         }
         
         let tailMap = Array(10).fill(0);
-        hist.slice(-15).forEach(d => d.nums.forEach(n => tailMap[n%10]++));
-        for(let i=1; i<=39; i++) stats[i].score += (tailMap[i%10] * 10.0);
+        hist.slice(-10).forEach(d => d.nums.forEach(n => tailMap[n%10]++));
+        for(let i=1; i<=39; i++) stats[i].score += (tailMap[i%10] * 15.0); // 尾數權重翻倍
         
         lastRow.forEach(ln => {
-            if(ln > 1) stats[ln-1].score += 90; 
-            if(ln < 39) stats[ln+1].score += 90;
-            stats[ln].score += 45; 
+            if(ln > 1) stats[ln-1].score += 120; // 鄰號暴力加權，強行聚合
+            if(ln < 39) stats[ln+1].score += 120;
+            stats[ln].score += 60; 
         });
 
+        // 排序後選取前 8 碼
         return stats.sort((a,b)=>b.score - a.score).slice(0, 8).map(x=>x.n).sort((a,b)=>a-b);
     }
 
@@ -111,42 +91,25 @@
     });
 
     function runSim() {
-        let btHtml = "";
-        let star = { 0:0, 1:0, 2:0, 3:0, 4:0 };
+        let btHtml = ""; let star = { 0:0, 1:0, 2:0, 3:0, 4:0 };
         const displayData = rawData.slice(-10).reverse();
-        
         displayData.forEach(row => {
             const histSlice = rawData.slice(0, rawData.indexOf(row));
             const pred = getPrediction(histSlice);
             const hits = row.nums.filter(n => pred.includes(n));
             star[Math.min(hits.length, 4)]++;
-            
-            btHtml += `<div class="bt-row">
-                <div class="bt-meta"><span>📅 ${formatDate(row.date)}</span> <span class="star-tag">${hits.length} ★</span></div>
-                <div class="num-group">
-                    <span class="num-label">開獎</span>
-                    ${row.nums.map(n => `<div class="n-box ${pred.includes(n)?'hit':''}">${pad(n)}</div>`).join('')}
-                </div>
-                <div class="num-group">
-                    <span class="num-label">預測</span>
-                    ${pred.map(n => `<div class="n-box" style="color:${row.nums.includes(n)?'var(--primary)':'var(--sub)'}">${pad(n)}</div>`).join('')}
-                </div>
-            </div>`;
+            btHtml += `<div class="bt-row"><div class="bt-meta"><span>📅 ${formatDate(row.date)}</span> <span class="star-tag">${hits.length} ★</span></div><div class="num-group"><span class="num-label">開獎</span>${row.nums.map(n => `<div class="n-box ${pred.includes(n)?'hit':''}">${pad(n)}</div>`).join('')}</div><div class="num-group"><span class="num-label">預測</span>${pred.map(n => `<div class="n-box" style="color:${row.nums.includes(n)?'var(--primary)':'var(--sub)'}">${pad(n)}</div>`).join('')}</div></div>`;
         });
         document.getElementById('btBody').innerHTML = btHtml;
-        
         const next = getPrediction(rawData);
-        // UI 修改：分兩排一排四碼靠左
         let predHtml = `<div class="ball-row">`;
         next.slice(0, 4).forEach(n => predHtml += `<div class="ball">${pad(n)}</div>`);
         predHtml += `</div><div class="ball-row">`;
         next.slice(4, 8).forEach(n => predHtml += `<div class="ball">${pad(n)}</div>`);
         predHtml += `</div>`;
         document.getElementById('nextPred').innerHTML = predHtml;
-        
-        log(`命中統計：[0★]: ${(star[0]/10*100).toFixed(0)}% | [1★]: ${(star[1]/10*100).toFixed(0)}% | [2★]: ${(star[2]/10*100).toFixed(0)}% | [3★]: ${(star[3]/10*100).toFixed(0)}%`);
-        log(`分析：二星率穩定回升，系統正在壓榨第三顆共振碼...`);
-        
+        log(`命中率：[0★]: ${(star[0]/10*100).toFixed(0)}% | [1★]: ${(star[1]/10*100).toFixed(0)}% | [2★]: ${(star[2]/10*100).toFixed(0)}% | [3★]: ${(star[3]/10*100).toFixed(0)}%`);
+        log(`策略：已強行聚合號碼間距。若掛2機率仍高，建議手動將這8碼進行連碰組對。`);
         let mHtml = `<table class="m-table"><thead><tr><th class="m-date">日</th>`;
         for(let i=1; i<=39; i++) mHtml += `<th class="m-head">${pad(i)}</th>`;
         mHtml += `</tr></thead><tbody>`;
