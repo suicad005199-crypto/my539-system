@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539/A.01-MS6 精準權衡版</title>
+    <title>539/A.01-MS7 矩陣純化版</title>
     <style>
         :root { --bg: #0b0b0c; --panel: #1c1c1e; --primary: #ffd60a; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --accent: #0a84ff; --success: #32d74b; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 8px; font-size: 13px; }
@@ -28,7 +28,7 @@
 <body>
 <div class="container">
     <div class="panel">
-        <div class="panel-header">P1: 數據注入 <span style="float:right; font-size:10px; color:var(--accent)">MS6-PRO</span></div>
+        <div class="panel-header">P1: 數據注入 <span style="float:right; font-size:10px; color:var(--accent)">MS7-PURIFIED</span></div>
         <input type="file" id="csvFile" accept=".csv" style="width: 100%;">
     </div>
     <div class="panel">
@@ -36,14 +36,14 @@
         <div id="btBody"></div>
     </div>
     <div class="panel">
-        <div class="panel-header" style="color:var(--accent)">P3: MS6 精準預測 (置信度分級)</div>
+        <div class="panel-header" style="color:var(--accent)">P3: MS7 純化預測 (透明權重)</div>
         <div id="nextPred" class="ball-row"></div>
     </div>
     <div class="panel">
         <div class="panel-header">P4: 分布矩陣</div>
         <div class="matrix-scroll" id="matrixCont"></div>
     </div>
-    <div id="logBox">MS6 系統就緒。已優化冷號對數機制與權重區隔。</div>
+    <div id="logBox">MS7 就緒。移除過度擬合參數，回歸純粹統計。</div>
 </div>
 
 <script>
@@ -52,53 +52,37 @@
     const pad = (n) => n.toString().padStart(2, '0');
     const fmtDate = (dStr) => { const p = dStr.split(/[-/]/); return p.length >= 3 ? `${parseInt(p[1])}/${parseInt(p[2])}` : dStr; };
 
-    function getMS6Logic(hist) {
-        if(hist.length < 10) return [1,2,3,4,5];
-        let scores = Array(40).fill(0);
+    function getMS7Logic(hist) {
+        if(hist.length < 10) return [1,2,3,4,5].map(n=>({n, s:0}));
+        let stats = Array.from({length:40}, (_, i) => ({ n: i, gap: 0, s: 0 }));
         const lastRow = hist[hist.length-1].nums;
+        const tailMap = new Array(10).fill(0);
         
+        // 1. 緩存統計數據 (單次遍歷)
+        hist.slice(-12).forEach(d => d.nums.forEach(n => tailMap[n%10]++));
+
         for(let i=1; i<=39; i++) {
             let gap = 0;
             for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
-            
-            // 1. 強勢熱碼 (權重拉開)
-            if(gap === 0) scores[i] += 90; // 連莊信心高
-            else if(gap === 1) scores[i] += 75;
-            else if(gap >= 2 && gap <= 8) scores[i] += 60; // 核心溫碼
-            
-            // 2. 對數冷號補償 (避免線性過度擬合)
-            // 使用 Math.log 將長遺漏轉化為平滑增量
-            if(gap > 15) scores[i] += Math.log2(gap) * 12;
+            stats[i].gap = gap;
 
-            // 3. 鄰號與尾數連動
-            if(lastRow.some(n => Math.abs(n - i) === 1)) scores[i] += 50;
-            let tail = i % 10;
-            hist.slice(-10).forEach(d => d.nums.forEach(n => { if(n%10 === tail) scores[i] += 5; }));
+            // 策略 A: 熱度權衡 (線性縮放)
+            if(gap === 0) stats[i].s += 100; // 連莊
+            else if(gap === 1) stats[i].s += 80;
+            else if(gap <= 8) stats[i].s += 60;
+            
+            // 策略 B: 鄰號連動
+            if(lastRow.some(n => Math.abs(n - i) === 1)) stats[i].s += 40;
+            
+            // 策略 C: 尾數趨勢
+            stats[i].s += tailMap[i%10] * 3;
+
+            // 策略 D: 均值回歸補償 (對數平滑，無硬性閾值)
+            stats[i].s += Math.log1p(gap) * 10;
         }
 
-        // 候選排序
-        let candidates = scores.map((s, i) => ({n: i, s: Math.round(s)}))
-                        .slice(1)
-                        .sort((a,b) => b.s - a.s || a.n - b.n);
-
-        // 軟性分布過濾：不硬性排除，但對過度集中的號碼進行分數衰減
-        let final = [];
-        let tailCounts = {};
-        let zoneCounts = {};
-
-        for(let cand of candidates) {
-            let t = cand.n % 10;
-            let z = Math.floor((cand.n-1)/13);
-            let penalty = 0;
-
-            if((tailCounts[t] || 0) >= 1) penalty += 15; // 尾數重複時衰減
-            if((zoneCounts[z] || 0) >= 2) penalty += 20; // 區域過度集中時衰減
-
-            cand.s -= penalty;
-        }
-
-        // 重新排序並取前 5
-        return candidates.sort((a,b) => b.s - a.s).slice(0, 5).map(x => x.n).sort((a,b) => a-b);
+        // 2. 確定性排序 (解決排序穩定性)
+        return stats.slice(1).sort((a,b) => (b.s - a.s) || (a.n - b.n)).slice(0, 5);
     }
 
     document.getElementById('csvFile').addEventListener('change', e => {
@@ -118,16 +102,17 @@
         const btData = rawData.slice(-10).reverse();
         btData.forEach(row => {
             const idx = rawData.findIndex(r => r.date === row.date);
-            const pred = getMS6Logic(rawData.slice(0, idx));
-            const hits = row.nums.filter(n => pred.includes(n));
+            const predObjs = getMS7Logic(rawData.slice(0, idx));
+            const predNums = predObjs.map(o => o.n);
+            const hits = row.nums.filter(n => predNums.includes(n));
             totalHits += hits.length;
             btHtml += `<div class="bt-row"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--sub)"><span>📅 ${row.date}</span><span style="background:var(--success);color:#000;padding:2px 6px;border-radius:4px;font-weight:900">${hits.length} ★</span></div>
-                <div class="num-group">${row.nums.map(n => `<div class="n-box ${pred.includes(n)?'is-hit':''}">${pad(n)}</div>`).join('')}</div>
-                <div class="pred-list">MS6 預測：${pred.map(p => pad(p)).join(' ')}</div></div>`;
+                <div class="num-group">${row.nums.map(n => `<div class="n-box ${predNums.includes(n)?'is-hit':''}">${pad(n)}</div>`).join('')}</div>
+                <div class="pred-list">方案：${predObjs.map(o => `${pad(o.n)}(${Math.round(o.s)})`).join(' ')}</div></div>`;
         });
         document.getElementById('btBody').innerHTML = btHtml;
-        const next = getMS6Logic(rawData);
-        document.getElementById('nextPred').innerHTML = next.map(n => `<div class="ball">${pad(n)}</div>`).join('');
+        const next = getMS7Logic(rawData);
+        document.getElementById('nextPred').innerHTML = next.map(o => `<div class="ball">${pad(o.n)}</div>`).join('');
         let mHtml = `<table class="m-table"><thead><tr><th class="m-date">日</th>`;
         for(let i=1; i<=39; i++) mHtml += `<th>${pad(i)}</th>`;
         mHtml += `</tr></thead><tbody>`;
@@ -137,8 +122,8 @@
             mHtml += `</tr>`;
         });
         document.getElementById('matrixCont').innerHTML = mHtml + `</tbody></table>`;
-        log(`MS6 佈署完畢 | 期望值: ${(totalHits/10).toFixed(1)}`);
-        log(`核心變動：對數冷號增益 + 軟性分布衰減`);
+        log(`MS7 佈署完成 | 期望值: ${(totalHits/10).toFixed(1)}`);
+        log(`透明化：已列出候選碼權重分數`);
     }
 </script>
 </body>
