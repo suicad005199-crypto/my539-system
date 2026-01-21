@@ -3,92 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539/A.01-MS15 基石穩定版</title>
+    <title>539/A.01-MS17 基石平衡版</title>
     <style>
-        :root { --bg: #0b0b0c; --panel: #1c1c1e; --primary: #ffd60a; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --accent: #0a84ff; --success: #32d74b; }
-        body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 8px; font-size: 12px; }
-        .container { display: flex; flex-direction: column; gap: 8px; max-width: 500px; margin: 0 auto; }
+        :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --border: #38383a; --text: #fff; --sub: #8e8e93; --hit: #ff375f; --accent: #0a84ff; --success: #32d74b; }
+        body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
+        .container { display: flex; flex-direction: column; gap: 12px; }
         .panel { background: var(--panel); border-radius: 12px; padding: 12px; border: 1px solid var(--border); }
-        .panel-header { color: var(--primary); font-weight: bold; margin-bottom: 8px; border-left: 3px solid var(--primary); padding-left: 8px; }
-        .bt-row { border-bottom: 1px solid var(--border); padding: 8px 0; }
-        .num-group { display: flex; gap: 4px; margin-top: 5px; }
-        .n-box { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-weight: bold; background: #2c2c2e; color: var(--sub); }
-        .n-box.is-hit { background: var(--primary); color: #000; box-shadow: 0 0 8px var(--primary); }
-        .ball-row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; padding: 12px 0; background: rgba(50,215,75,0.1); border-radius: 8px; }
-        .ball { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; background: #000; border-radius: 50%; font-weight: 900; border: 3px solid var(--success); color: var(--success); font-size: 20px; }
+        .panel-header { color: var(--primary); font-weight: bold; margin-bottom: 10px; border-left: 3px solid var(--primary); padding-left: 8px; font-size: 14px; }
+        
+        .bt-row { border-bottom: 1px solid var(--border); padding: 10px 0; display: flex; flex-direction: column; gap: 6px; }
+        .bt-meta { display: flex; justify-content: space-between; color: var(--sub); font-size: 11px; }
+        .num-group { display: flex; gap: 4px; align-items: center; }
+        .num-label { font-size: 10px; color: var(--sub); width: 30px; flex-shrink: 0; }
+        .n-box { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: #2c2c2e; font-size: 11px; font-weight: bold; }
+        .n-box.hit { background: var(--primary); color: #000; box-shadow: 0 0 5px var(--primary); }
+        .star-tag { background: var(--success); color: #000; padding: 2px 8px; border-radius: 4px; font-weight: 900; }
+
         .matrix-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
         .m-table { border-collapse: collapse; white-space: nowrap; width: 100%; }
-        .m-table td, .m-table th { border: 1px solid #333; width: 16px; height: 16px; text-align: center; font-size: 9px; }
-        .m-date { background: #2c2c2e; color: var(--sub); position: sticky; left: 0; min-width: 38px; z-index: 5; }
-        .m-ball { background: var(--hit); border-radius: 50%; width: 10px; height: 10px; display: inline-block; }
-        #logBox { background: #000; color: var(--success); padding: 8px; height: 60px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 8px; }
+        .m-table td, .m-table th { border: 1px solid #333; width: 18px; height: 18px; text-align: center; font-size: 9px; }
+        .m-head { background: #2c2c2e; color: var(--primary); position: sticky; top: 0; }
+        .m-date { background: #2c2c2e; color: var(--sub); position: sticky; left: 0; width: 50px; z-index: 5; }
+        .m-ball { background: var(--hit); border-radius: 50%; width: 12px; height: 12px; display: inline-block; }
+        
+        #logBox { background: #000; color: var(--success); padding: 10px; height: 80px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); }
+        .ball-row { display: flex; flex-wrap: wrap; gap: 6px; }
+        .ball { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; background: #2c2c2e; border-radius: 50%; font-weight: bold; border: 2px solid var(--accent); color: var(--accent); font-size: 16px; }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="panel">
-        <div class="panel-header">P1: 數據注入 <span style="float:right; color:var(--success); font-size:10px;">MS15-STABLE</span></div>
-        <input type="file" id="csvFile" accept=".csv" style="width: 100%;">
+        <div class="panel-header">P1: 數據注入 (MS17 基石版)</div>
+        <input type="file" id="csvFile" accept=".csv">
     </div>
     <div class="panel">
-        <div class="panel-header">P2: 穩定度回測</div>
+        <div class="panel-header">P2: 深度回測看板 (雙行對照)</div>
         <div id="btBody"></div>
     </div>
     <div class="panel">
-        <div class="panel-header" style="color:var(--success)">P3: MS15 穩定預測 (5碼)</div>
+        <div class="panel-header" style="color:var(--accent)">P3: 下期平衡預測 (8 碼)</div>
         <div id="nextPred" class="ball-row"></div>
     </div>
     <div class="panel">
         <div class="panel-header">P4: 分布矩陣</div>
         <div class="matrix-scroll" id="matrixCont"></div>
     </div>
-    <div id="logBox">MS15 啟動。採用固定權重與區域防禦邏輯。</div>
+    <div class="panel"><div id="logBox">等待 CSV 匯入...</div></div>
 </div>
 
 <script>
     let rawData = [];
-    const log = (m) => { const lb = document.getElementById('logBox'); lb.innerHTML += `> ${m}<br>`; lb.scrollTop = lb.scrollHeight; };
+    const log = (m) => { const b = document.getElementById('logBox'); b.innerHTML += `> ${m}<br>`; b.scrollTop = b.scrollHeight; };
     const pad = (n) => n.toString().padStart(2, '0');
+    const formatDate = (s) => { const p = s.split(/[-/]/); return p.length >= 3 ? `${p[1]}/${p[2]}` : s; };
 
-    function getMS15Logic(hist) {
-        if(hist.length < 10) return [1,2,3,4,5].map(n=>({n, s:0}));
-        
+    function getMS17Prediction(hist) {
+        if(hist.length < 15) return [1,2,3,4,5,6,7,8];
+        let stats = Array(40).fill(0).map((_, i) => ({ n: i, score: 0, zone: Math.min(Math.floor((i-1)/13), 2) }));
         const lastRow = hist[hist.length-1].nums;
-        const stats = Array.from({length:39}, (_, i) => {
-            const n = i + 1;
+        
+        // 1. 遺漏權重與回溫 (MS系列核心)
+        for(let i=1; i<=39; i++) {
             let gap = 0;
-            for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(n)) gap++; else break; }
-            const f10 = hist.slice(-10).filter(d => d.nums.includes(n)).length;
-            const isN = lastRow.some(ln => Math.abs(ln - n) === 1);
-            
-            // 固定權重系統
-            let s = 0;
-            if (f10 >= 2) s += 30; // 熱碼固定分
-            if (isN) s += 35;      // 鄰號固定分
-            if (gap >= 4 && gap <= 10) s += 25; // 黃金遺漏分
-            if (gap > 20) s -= 15; // 排除極冷碼
-            
-            return { n, s, zone: Math.floor(i/13) };
-        });
-
-        const selected = [];
-        const zCount = [0, 0, 0];
-        const sorted = stats.sort((a, b) => b.s - a.s);
-
-        // 策略：優先保證每區至少1碼，再補強分最高者
-        [0, 1, 2].forEach(z => {
-            const bestInZone = sorted.find(c => c.zone === z);
-            if(bestInZone) { selected.push(bestInZone); zCount[z]++; }
-        });
-
-        for (const cand of sorted) {
-            if (selected.length >= 5) break;
-            if (!selected.some(s => s.n === cand.n) && zCount[cand.zone] < 2) {
-                selected.push(cand);
-                zCount[cand.zone]++;
-            }
+            for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
+            // 黃金區間加碼，極冷區間減分
+            if (gap >= 4 && gap <= 12) stats[i].score += 45;
+            else if (gap > 22) stats[i].score -= 20;
+            else stats[i].score += Math.max(0, 20 - gap);
         }
-        return selected.sort((a,b) => a.n - b.n);
+        
+        // 2. 尾數熱度 (V422 核心)
+        let tailMap = Array(10).fill(0);
+        hist.slice(-15).forEach(d => d.nums.forEach(n => tailMap[n%10]++));
+        for(let i=1; i<=39; i++) stats[i].score += (tailMap[i%10] * 4);
+        
+        // 3. 鄰號與連莊
+        lastRow.forEach(ln => {
+            if(ln > 1) stats[ln-1].score += 35; // 鄰號優先
+            if(ln < 39) stats[ln+1].score += 35;
+            stats[ln].score += 10; // 連莊保險
+        });
+
+        // 4. 強制區域平衡分配 (3-3-2 結構)
+        let zPools = [[],[],[]];
+        for(let i=1; i<=39; i++) zPools[stats[i].zone].push(stats[i]);
+        
+        let finalPool = [];
+        finalPool.push(...zPools[0].sort((a,b)=>b.score-a.score).slice(0, 3));
+        finalPool.push(...zPools[1].sort((a,b)=>b.score-a.score).slice(0, 3));
+        finalPool.push(...zPools[2].sort((a,b)=>b.score-a.score).slice(0, 2));
+
+        return finalPool.sort((a,b)=>a.n-b.n).map(x=>x.n);
     }
 
     document.getElementById('csvFile').addEventListener('change', e => {
@@ -98,37 +104,50 @@
                 const c = l.split(',');
                 return { date: c[0].trim(), nums: c.slice(1, 6).map(x => parseInt(x.trim())).filter(x => !isNaN(x)).sort((a,b)=>a-b) };
             }).filter(r => r.nums.length === 5);
-            if(rawData.length > 0) render();
+            document.getElementById('logBox').innerHTML = "";
+            runMS17();
         };
         reader.readAsText(e.target.files[0]);
     });
 
-    function render() {
-        let btHtml = "", totalH = 0, h0 = 0;
-        const btData = rawData.slice(-10).reverse();
-        btData.forEach(row => {
-            const idx = rawData.findIndex(r => r.date === row.date);
-            const pred = getMS15Logic(rawData.slice(0, idx));
-            const pNums = pred.map(o=>o.n);
-            const hits = row.nums.filter(n => pNums.includes(n));
-            totalH += hits.length; if(hits.length === 0) h0++;
-            btHtml += `<div class="bt-row"><span>📅 ${row.date}</span> [${hits.length}★]
-                <div class="num-group">${row.nums.map(n => `<div class="n-box ${pNums.includes(n)?'is-hit':''}">${pad(n)}</div>`).join('')}</div></div>`;
+    function runMS17() {
+        let btHtml = "";
+        let totalHits = 0, zeroHitCount = 0;
+        const displayData = rawData.slice(-10).reverse();
+        
+        displayData.forEach(row => {
+            const histSlice = rawData.slice(0, rawData.indexOf(row));
+            const pred = getMS17Prediction(histSlice);
+            const hits = row.nums.filter(n => pred.includes(n));
+            totalHits += hits.length;
+            if(hits.length === 0) zeroHitCount++;
+            
+            btHtml += `<div class="bt-row">
+                <div class="bt-meta"><span>📅 ${formatDate(row.date)}</span> <span class="star-tag">${hits.length} ★</span></div>
+                <div class="num-group">
+                    <span class="num-label">開獎</span>
+                    ${row.nums.map(n => `<div class="n-box ${pred.includes(n)?'hit':''}">${pad(n)}</div>`).join('')}
+                </div>
+                <div class="num-group">
+                    <span class="num-label">預測</span>
+                    ${pred.map(n => `<div class="n-box" style="color:${row.nums.includes(n)?'var(--primary)':'#888'}">${pad(n)}</div>`).join('')}
+                </div>
+            </div>`;
         });
         document.getElementById('btBody').innerHTML = btHtml;
-        const next = getMS15Logic(rawData);
-        document.getElementById('nextPred').innerHTML = next.map(o=>`<div class="ball">${pad(o.n)}</div>`).join('');
+        const next = getMS17Prediction(rawData);
+        document.getElementById('nextPred').innerHTML = next.map(n => `<div class="ball">${pad(n)}</div>`).join('');
         
-        let mH = `<table class="m-table"><thead><tr><th class="m-date">日</th>`;
-        for(let i=1; i<=39; i++) mH += `<th>${pad(i)}</th>`;
-        mH += `</tr></thead><tbody>`;
-        rawData.slice(-15).reverse().forEach(r => {
-            mH += `<tr><td class="m-date">${r.date.substring(5)}</td>`;
-            for(let i=1; i<=39; i++) mH += `<td>${r.nums.includes(i)?'<span class="m-ball"></span>':''}</td>`;
-            mH += `</tr>`;
+        let mHtml = `<table class="m-table"><thead><tr><th class="m-date">日</th>`;
+        for(let i=1; i<=39; i++) mHtml += `<th class="m-head">${pad(i)}</th>`;
+        mHtml += `</tr></thead><tbody>`;
+        rawData.slice(-15).reverse().forEach(row => {
+            mHtml += `<tr><td class="m-date">${formatDate(row.date)}</td>`;
+            for(let i=1; i<=39; i++) mHtml += `<td>${row.nums.includes(i) ? '<span class="m-ball"></span>' : ''}</td>`;
+            mHtml += `</tr>`;
         });
-        document.getElementById('matrixCont').innerHTML = mH + `</tbody></table>`;
-        log(`期望命中: ${(totalH/10).toFixed(1)} | 掛0次數: ${h0}`);
+        document.getElementById('matrixCont').innerHTML = mHtml + `</tbody></table>`;
+        log(`MS17 啟動成功 | 期望: ${(totalHits/10).toFixed(1)} | 掛0次數: ${zeroHitCount}`);
     }
 </script>
 </body>
