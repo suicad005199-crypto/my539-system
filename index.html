@@ -3,30 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>天天樂 Oracle V.24-RA</title>
+    <title>天天樂 Oracle V.25-VF</title>
     <style>
-        :root { --bg: #010204; --panel: #0b0e14; --primary: #79c0ff; --border: #30363d; --text: #adbac7; --hit: #f47067; --success: #57ab5a; }
+        :root { --bg: #030303; --panel: #0a0a0a; --primary: #00d4ff; --border: #1a1a1a; --text: #e0e0e0; --hit: #ff0055; --success: #00d4ff; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
         .container { display: flex; flex-direction: column; gap: 10px; max-width: 600px; margin: auto; }
         .panel { background: var(--panel); border-radius: 10px; padding: 12px; border: 1px solid var(--border); }
         .panel-header { color: var(--primary); font-weight: bold; margin-bottom: 10px; border-left: 3px solid var(--primary); padding-left: 8px; font-size: 14px; }
         .bt-row { border-bottom: 1px solid var(--border); padding: 8px 0; }
-        .bt-meta { display: flex; justify-content: space-between; color: #768390; font-size: 11px; margin-bottom: 4px; }
+        .bt-meta { display: flex; justify-content: space-between; color: #666; font-size: 11px; margin-bottom: 4px; }
         .num-group { display: flex; gap: 4px; align-items: center; }
-        .n-box { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: #1c2128; font-size: 11px; font-weight: bold; border: 1px solid #444c56; }
-        .n-box.hit { background: var(--success); color: #000; border: none; box-shadow: 0 0 10px var(--success); }
+        .n-box { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: #111; font-size: 11px; font-weight: bold; border: 1px solid #222; }
+        .n-box.hit { background: var(--primary); color: #000; box-shadow: 0 0 8px var(--primary); border: none; }
         .ball-container { display: flex; flex-direction: column; gap: 10px; padding: 5px 0; }
         .ball-row { display: flex; gap: 12px; justify-content: flex-start; }
-        .ball { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #010204; border-radius: 50%; font-weight: bold; border: 2px solid var(--primary); color: var(--primary); font-size: 18px; }
+        .ball { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #000; border-radius: 50%; font-weight: bold; border: 2px solid var(--primary); color: var(--primary); font-size: 18px; }
         #logBox { background: #000; color: var(--primary); padding: 10px; height: 100px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 6px; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="panel"><div class="panel-header">P1: 共振數據注入 (V.24 RA)</div><input type="file" id="csvFile" accept=".csv"></div>
-    <div class="panel"><div class="panel-header">P2: 二轉三轉化回測</div><div id="btBody"></div></div>
-    <div class="panel"><div class="panel-header">P3: 核心預測 (4+4 共振放大)</div><div id="nextPred" class="ball-container"></div></div>
-    <div class="panel"><div id="logBox">共振放大協議啟動。目標：將 40% 二星轉化為三星命中...</div></div>
+    <div class="panel"><div class="panel-header">P1: 虛空數據注入 (V.25.0 VF)</div><input type="file" id="csvFile" accept=".csv"></div>
+    <div class="panel"><div class="panel-header">P2: 強化虛空回測</div><div id="btBody"></div></div>
+    <div class="panel"><div class="panel-header">P3: 核心預測 (4+4 聚焦版)</div><div id="nextPred" class="ball-container"></div></div>
+    <div class="panel"><div id="logBox">V.25 啟動：基於 V.23 優異表現優化區間聚焦度...</div></div>
 </div>
 
 <script>
@@ -34,32 +34,32 @@
     const log = (m) => { const b = document.getElementById('logBox'); b.innerHTML += `> ${m}<br>`; b.scrollTop = b.scrollHeight; };
     const pad = (n) => n.toString().padStart(2, '0');
 
-    function getResonancePred(hist) {
-        if(hist.length < 30) return [2,4,12,14,22,24,32,34];
+    function getVoidFocusPred(hist) {
+        if(hist.length < 20) return [3,7,11,15,19,23,27,31];
         let stats = Array(40).fill(0).map((_, i) => ({ n: i, score: 0 }));
-        const lastRow = hist[hist.length-1].nums;
         
-        // 1. 基礎遺漏分 (應對 30% 掛0)
+        // 核心：繼承 V.23 的遺漏加權
         for(let i=1; i<=39; i++) {
             let gap = 0;
             for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
-            if(gap >= 12 && gap <= 22) stats[i].score += 80;
+            if(gap >= 15 && gap <= 28) stats[i].score += (gap * 30); // 權重比 V.23 更高
+            else stats[i].score += (gap * 2.5);
         }
 
-        // 2. 二星共振邏輯：偵測上一期獎號的「關聯夥伴」
-        hist.slice(-40).forEach(d => {
-            let matches = d.nums.filter(n => lastRow.includes(n)).length;
-            if(matches >= 2) { // 歷史中若出現過類似目前的組合
-                d.nums.forEach(n => { if(!lastRow.includes(n)) stats[n].score += 120; });
-            }
+        // 鄰位收縮：從跳 2 格改為跳 1-2 格混和，強迫產生聚集
+        const lastRow = hist[hist.length-1].nums;
+        lastRow.forEach(ln => {
+            if(ln > 1) stats[ln-1].score += 45;
+            if(ln < 39) stats[ln+1].score += 45;
+            if(ln > 2) stats[ln-2].score += 75; // 強化隔位號碼
+            if(ln < 38) stats[ln+2].score += 75;
         });
 
-        // 3. 鄰號與同尾加成 (傳統強力因子)
-        lastRow.forEach(ln => {
-            if(ln > 1) stats[ln-1].score += 60;
-            if(ln < 39) stats[ln+1].score += 60;
-            for(let i=1; i<=39; i++) { if(i%10 === ln%10) stats[i].score += 30; }
-        });
+        // 尾數過濾：聚焦最冷的兩個尾數
+        let tailCount = Array(10).fill(0);
+        hist.slice(-15).forEach(d => d.nums.forEach(n => tailCount[n%10]++));
+        let coldTails = tailCount.map((v, i) => ({ t: i, v })).sort((a,b) => a.v - b.v).slice(0, 2).map(x => x.t);
+        for(let i=1; i<=39; i++) { if(coldTails.includes(i%10)) stats[i].score += 50; }
 
         return stats.sort((a,b) => b.score - a.score).slice(0, 8).map(x => x.n).sort((a,b) => a-b);
     }
@@ -82,15 +82,15 @@
         const testData = rawData.slice(-10).reverse();
         testData.forEach(row => {
             const hist = rawData.slice(0, rawData.indexOf(row));
-            const pred = getResonancePred(hist);
+            const pred = getVoidFocusPred(hist);
             const hits = row.nums.filter(n => pred.includes(n));
             star[Math.min(hits.length, 4)]++;
-            document.getElementById('btBody').innerHTML += `<div class="bt-row"><div class="bt-meta"><span>📅 ${row.date}</span> <span style="color:var(--success)">${hits.length} ★</span></div><div class="num-group">${row.nums.map(n => `<div class="n-box ${pred.includes(n)?'hit':''}">${pad(n)}</div>`).join('')}</div></div>`;
+            document.getElementById('btBody').innerHTML += `<div class="bt-row"><div class="bt-meta"><span>📅 ${row.date}</span> <span style="color:var(--primary)">${hits.length} ★</span></div><div class="num-group">${row.nums.map(n => `<div class="n-box ${pred.includes(n)?'hit':''}">${pad(n)}</div>`).join('')}</div></div>`;
         });
-        const next = getResonancePred(rawData);
+        const next = getVoidFocusPred(rawData);
         document.getElementById('nextPred').innerHTML = `<div class="ball-row">${next.slice(0,4).map(n=>`<div class="ball">${pad(n)}</div>`).join('')}</div><div class="ball-row">${next.slice(4,8).map(n=>`<div class="ball">${pad(n)}</div>`).join('')}</div>`;
-        log(`命中：0★:${star[0]*10}% | 1★:${star[1]*10}% | 2★:${star[2]*10}% | 3★:${star[3]*10}%`);
-        log(`策略：偵測到 2 星集結現象，已強化關聯碼權重以誘導第 3 星。`);
+        log(`命中分析：0★:${star[0]*10}% | 1★:${star[1]*10}% | 2★:${star[2]*10}% | 3★:${star[3]*10}%`);
+        log(`策略：繼承 V.23 冷碼權重，並強化隔位號碼聚集度。`);
     }
 </script>
 </body>
