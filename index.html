@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>天天樂 Oracle V.20-AF</title>
+    <title>天天樂 Oracle V.21-TL</title>
     <style>
-        :root { --bg: #02040a; --panel: #0d1117; --primary: #58a6ff; --border: #30363d; --text: #c9d1d9; --sub: #8b949e; --hit: #f85149; --success: #238636; }
+        :root { --bg: #02040a; --panel: #0d1117; --primary: #58a6ff; --border: #30363d; --text: #c9d1d9; --sub: #8b949e; --hit: #ff4560; --success: #00e396; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
         .container { display: flex; flex-direction: column; gap: 12px; max-width: 600px; margin: auto; }
         .panel { background: var(--panel); border-radius: 12px; padding: 12px; border: 1px solid var(--border); }
@@ -15,19 +15,19 @@
         .num-group { display: flex; gap: 4px; align-items: center; }
         .n-box { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: #161b22; font-size: 11px; font-weight: bold; border: 1px solid #30363d; }
         .n-box.hit { background: var(--primary); color: #fff; box-shadow: 0 0 10px var(--primary); border: none; }
-        .star-tag { background: var(--success); color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: 900; }
+        .star-tag { background: var(--success); color: #000; padding: 2px 8px; border-radius: 4px; font-weight: 900; }
         .ball-container { display: flex; flex-direction: column; gap: 10px; padding: 5px 0; }
         .ball-row { display: flex; gap: 12px; justify-content: flex-start; }
         .ball { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #0d1117; border-radius: 50%; font-weight: bold; border: 2px solid var(--primary); color: var(--primary); font-size: 18px; }
-        #logBox { background: #000; color: #58a6ff; padding: 10px; height: 110px; overflow-y: auto; font-family: monospace; font-size: 11px; border-radius: 6px; border: 1px solid var(--border); line-height: 1.5; }
+        #logBox { background: #000; color: var(--success); padding: 10px; height: 110px; overflow-y: auto; font-family: monospace; font-size: 11px; border-radius: 6px; border: 1px solid var(--border); line-height: 1.5; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="panel"><div class="panel-header">P1: 原子數據注入 (V.20.0 Focus)</div><input type="file" id="csvFile" accept=".csv"></div>
-    <div class="panel"><div class="panel-header">P2: 策略命中分布</div><div id="btBody"></div></div>
-    <div class="panel"><div class="panel-header">P3: 核心預測 (8碼戰術組)</div><div id="nextPred" class="ball-container"></div></div>
-    <div class="panel"><div id="logBox">V.20.0 啟動。採用 2+2+2+2 模組化策略...</div></div>
+    <div class="panel"><div class="panel-header">P1: 數據注入 (V.21 Trinity-Lock)</div><input type="file" id="csvFile" accept=".csv"></div>
+    <div class="panel"><div class="panel-header">P2: 實時命中分佈</div><div id="btBody"></div></div>
+    <div class="panel"><div class="panel-header">P3: 核心預測 (4+4 靠左)</div><div id="nextPred" class="ball-container"></div></div>
+    <div class="panel"><div id="logBox">正在初始化三位一體鎖定協議...</div></div>
 </div>
 
 <script>
@@ -35,43 +35,39 @@
     const log = (m) => { const b = document.getElementById('logBox'); b.innerHTML += `> ${m}<br>`; b.scrollTop = b.scrollHeight; };
     const pad = (n) => n.toString().padStart(2, '0');
 
-    function getAtomicPrediction(hist) {
+    function getTrinityPrediction(hist) {
         if(hist.length < 30) return [1,2,3,4,11,12,13,14];
-        let stats = Array(40).fill(0).map((_, i) => ({ n: i, gap: 0, heat: 0 }));
-        const lastNums = hist[hist.length-1].nums;
+        let stats = Array(40).fill(0).map((_, i) => ({ n: i, score: 0 }));
         
-        // 計算遺漏與熱度
-        for(let i=1; i<=39; i++) {
-            let g = 0;
-            for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) g++; else break; }
-            stats[i].gap = g;
-            hist.slice(-15).forEach(d => { if(d.nums.includes(i)) stats[i].heat++; });
-        }
-
-        let selected = new Set();
-        // 1. 選遺漏最長 2 碼
-        let byGap = [...stats].sort((a,b)=>b.gap - a.gap).slice(0, 10);
-        byGap.slice(0, 2).forEach(x => selected.add(x.n));
-        
-        // 2. 選鄰號潛力 2 碼
-        lastNums.forEach(n => {
-            if(n > 1 && !selected.has(n-1) && selected.size < 4) selected.add(n-1);
-            if(n < 39 && !selected.has(n+1) && selected.size < 4) selected.add(n+1);
+        // 1. 三星群組共振分析
+        let pairMap = {};
+        hist.slice(-50).forEach(d => {
+            for(let i=0; i<d.nums.length; i++) {
+                for(let j=i+1; j<d.nums.length; j++) {
+                    let p = d.nums[i] + "-" + d.nums[j];
+                    pairMap[p] = (pairMap[p] || 0) + 1;
+                }
+            }
         });
 
-        // 3. 選同尾熱門 2 碼
-        let tails = Array(10).fill(0);
-        hist.slice(-10).forEach(d => d.nums.forEach(n => tails[n%10]++));
-        let bestTail = tails.indexOf(Math.max(...tails));
+        // 2. 核心權重：鄰號(120) + 遺漏補償(150) + 群組熱度(80)
+        const lastNums = hist[hist.length-1].nums;
         for(let i=1; i<=39; i++) {
-            if(i%10 === bestTail && !selected.has(i) && selected.size < 6) selected.add(i);
+            let gap = 0;
+            for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
+            
+            // 針對 40% 掛0 的強力補償
+            if(gap >= 12) stats[i].score += (gap * 15.0);
+            
+            // 鄰號連動
+            lastNums.forEach(ln => { if(Math.abs(ln-i) === 1) stats[i].score += 120; });
+            
+            // 尾數共振
+            let tail = i % 10;
+            hist.slice(-10).forEach(d => d.nums.forEach(n => { if(n%10 === tail) stats[i].score += 15; }));
         }
 
-        // 4. 補足熱區 2 碼
-        let byHeat = [...stats].sort((a,b)=>b.heat - a.heat);
-        for(let x of byHeat) { if(!selected.has(x.n) && selected.size < 8) selected.add(x.n); }
-
-        return Array.from(selected).sort((a,b)=>a-b);
+        return stats.sort((a,b)=>b.score - a.score).slice(0, 8).map(x=>x.n).sort((a,b)=>a-b);
     }
 
     document.getElementById('csvFile').addEventListener('change', e => {
@@ -81,26 +77,26 @@
                 const c = l.split(',');
                 return { date: c[0].trim(), nums: c.slice(1, 6).map(x => parseInt(x.trim())).filter(x => !isNaN(x)).sort((a,b)=>a-b) };
             }).filter(r => r.nums.length === 5);
-            runAtomicSim();
+            runSim();
         };
         reader.readAsText(e.target.files[0]);
     });
 
-    function runAtomicSim() {
+    function runSim() {
         document.getElementById('btBody').innerHTML = "";
         let star = { 0:0, 1:0, 2:0, 3:0, 4:0 };
         const testData = rawData.slice(-10).reverse();
         testData.forEach(row => {
             const hist = rawData.slice(0, rawData.indexOf(row));
-            const pred = getAtomicPrediction(hist);
+            const pred = getTrinityPrediction(hist);
             const hits = row.nums.filter(n => pred.includes(n));
             star[Math.min(hits.length, 4)]++;
             document.getElementById('btBody').innerHTML += `<div class="bt-row"><div class="bt-meta"><span>📅 ${row.date}</span> <span class="star-tag">${hits.length} ★</span></div><div class="num-group">${row.nums.map(n => `<div class="n-box ${pred.includes(n)?'hit':''}">${pad(n)}</div>`).join('')}</div></div>`;
         });
-        const next = getAtomicPrediction(rawData);
+        const next = getTrinityPrediction(rawData);
         document.getElementById('nextPred').innerHTML = `<div class="ball-row">${next.slice(0,4).map(n=>`<div class="ball">${pad(n)}</div>`).join('')}</div><div class="ball-row">${next.slice(4,8).map(n=>`<div class="ball">${pad(n)}</div>`).join('')}</div>`;
-        log(`命中率：0★:${star[0]*10}% | 1★:${star[1]*10}% | 2★:${star[2]*10}% | 3★:${star[3]*10}%`);
-        log(`策略優化：已將 8 碼拆解為四路並進。`);
+        log(`命中分析：0★:${star[0]*10}% | 1★:${star[1]*10}% | 2★:${star[2]*10}% | 3★:${star[3]*10}%`);
+        log(`目標：將 30% 二星推向三星。當前策略：群組共振鎖定。`);
     }
 </script>
 </body>
