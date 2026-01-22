@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Oracle V.53.8 Cross-Entropy</title>
+    <title>Oracle V.53.9 Synergy</title>
     <style>
         :root { --bg: #000; --panel: #141414; --primary: #ff3b30; --border: #2c2c2e; --text: #fff; --sub: #8e8e93; --hit: #ffd60a; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
@@ -23,18 +23,18 @@
         .m-head { background: #1a1a1a; color: var(--primary); position: sticky; top: 0; }
         .m-date { background: #1a1a1a; color: var(--sub); position: sticky; left: 0; width: 50px; z-index: 5; }
         .m-ball { background: var(--primary); border-radius: 50%; width: 12px; height: 12px; display: inline-block; }
-        #logBox { background: #000; color: #32d74b; padding: 10px; height: 120px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 8px; line-height: 1.6; }
+        #logBox { background: #000; color: #32d74b; padding: 10px; height: 130px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 8px; line-height: 1.6; }
         .ball-row { display: flex; flex-wrap: wrap; gap: 8px; }
         .ball { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #1a1a1a; border-radius: 50%; font-weight: bold; border: 2px solid var(--primary); color: var(--primary); font-size: 18px; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="panel"><div class="panel-header">P1: 數據注入</div><input type="file" id="csvFile" accept=".csv" style="color: #8e8e93;"></div>
+    <div class="panel"><div class="panel-header">P1: 數據注入 (V.53.9)</div><input type="file" id="csvFile" accept=".csv" style="color: #8e8e93;"></div>
     <div class="panel"><div class="panel-header">P2: 深度回測 (近 10 期明細)</div><div id="btBody"></div></div>
-    <div class="panel"><div class="panel-header">P3: 下期預測 (V.53.8 8碼)</div><div id="nextPred" class="ball-row"></div></div>
+    <div class="panel"><div class="panel-header">P3: 下期預測 (8 碼共振)</div><div id="nextPred" class="ball-row"></div></div>
     <div class="panel"><div class="panel-header">P4: 分布矩陣</div><div class="matrix-scroll" id="matrixCont"></div></div>
-    <div class="panel"><div class="panel-header">CONSOLE: 統計分析</div><div id="logBox">等待 CSV 匯入...</div></div>
+    <div class="panel"><div class="panel-header">CONSOLE: 策略統計分析</div><div id="logBox">等待 CSV 匯入...</div></div>
 </div>
 
 <script>
@@ -51,38 +51,31 @@
         for(let i=1; i<=39; i++) {
             let gap = 0; for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
             scores[i].gap = gap;
-            if(gap >= 18 && gap <= 32) scores[i].s += 800; // 虛空權重微調
+            if(gap >= 18 && gap <= 32) scores[i].s += 820; 
+            if(gap >= 5 && gap <= 9) scores[i].s += 150; // 溫碼補償
             let hot = 0; hist.slice(-10).forEach(d => { if(d.nums.includes(i)) hot++; });
-            scores[i].s += hot * 210;
+            scores[i].s += hot * 220; 
             lastRow.forEach(ln => { 
-                if(Math.abs(ln - i) === 1) scores[i].s += 310; 
-                if(ln % 10 === i % 10) scores[i].s += 320; // 強化同尾
+                if(Math.abs(ln - i) === 1) scores[i].s += 320; 
+                if(ln % 10 === i % 10) scores[i].s += 350; 
             });
         }
 
         let final = new Set();
-        // A核心：4碼 (增加交叉熵過濾)
-        let coldCandidates = [...scores].sort((a,b)=>b.gap - a.gap).slice(0, 12).sort((a,b)=>b.s - a.s);
-        final.add(coldCandidates[0].n);
-        [coldCandidates[0].n-1, coldCandidates[0].n+1, (coldCandidates[0].n+10)%40].filter(n=>n>0&&n<40).forEach(n=>{ if(final.size < 4) final.add(n); });
+        let coldCands = [...scores].sort((a,b)=>b.gap - a.gap).slice(0, 10).sort((a,b)=>b.s - a.s);
+        final.add(coldCands[0].n);
+        [coldCands[0].n-1, coldCands[0].n+1, (coldCands[0].n+10)%40].filter(n=>n>0&&n<40).forEach(n=>{ if(final.size < 4) final.add(n); });
 
-        // B核心：4碼 (跳島與熱度覆蓋)
-        let hotCandidates = [...scores].sort((a,b)=>b.s - a.s);
-        for(let x of hotCandidates) {
+        let hotCands = [...scores].sort((a,b)=>b.s - a.s);
+        for(let x of hotCands) {
             if(!final.has(x.n) && ![...final].some(fn => Math.abs(fn-x.n) < 3)) {
                 final.add(x.n);
-                // 優先拉攏同尾伴侶
-                let tailMatch = hotCandidates.find(h => h.n !== x.n && h.n%10 === x.n%10 && !final.has(h.n));
-                if(tailMatch) final.add(tailMatch.n);
+                let partner = hotCands.find(h => !final.has(h.n) && (h.n%10 === x.n%10 || Math.abs(h.n-x.n) === 1));
+                if(partner) final.add(partner.n);
                 if(final.size >= 8) break;
             }
         }
-
-        // 補位機制
-        if(final.size < 8) {
-            hotCandidates.forEach(h => { if(final.size < 8) final.add(h.n); });
-        }
-
+        while(final.size < 8) { let n = hotCands.find(h => !final.has(h.n)); if(n) final.add(n.n); else break; }
         return Array.from(final).slice(0, 8).sort((a,b) => a-b);
     }
 
@@ -129,12 +122,10 @@
             mHtml += `</tr>`;
         });
         document.getElementById('matrixCont').innerHTML = mHtml + `</tbody></table>`;
-        log(`[V.53.8 交叉熵優化啟動]`);
-        log(`全量數據: ${rawData.length} 期 | 回測: ${totalPeriods} 期`);
+        log(`[V.53.9 Synergy 啟動]`);
         log(`期望值：${(totalHits / totalPeriods).toFixed(2)} 碼/期`);
-        log(`--------------------------------`);
-        log(`2★以上總占比: ${((starCount[2]+starCount[3]+starCount[4])/totalPeriods*100).toFixed(1)}%`);
-        log(`明細: 0★(${(starCount[0]/totalPeriods*100).toFixed(0)}%) | 1★(${(starCount[1]/totalPeriods*100).toFixed(0)}%) | 2★(${(starCount[2]/totalPeriods*100).toFixed(0)}%) | 3★+(${(starCount[3]/totalPeriods*100).toFixed(0)}%)`);
+        log(`2★以上累積: ${((starCount[2]+starCount[3]+starCount[4])/totalPeriods*100).toFixed(1)}%`);
+        log(`0★(${(starCount[0]/totalPeriods*100).toFixed(0)}%) | 1★(${(starCount[1]/totalPeriods*100).toFixed(0)}%) | 2★(${(starCount[2]/totalPeriods*100).toFixed(0)}%) | 3★+(${(starCount[3]/totalPeriods*100).toFixed(0)}%)`);
     }
 </script>
 </body>
