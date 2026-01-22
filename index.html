@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>天天樂 Oracle V.31-FR</title>
+    <title>天天樂 Oracle V.32-RV</title>
     <style>
         :root { --bg: #0d1117; --panel: #161b22; --primary: #58a6ff; --border: #30363d; --text: #c9d1d9; --sub: #8b949e; --hit: #f85149; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
@@ -18,7 +18,7 @@
         .n-box.hit { background: var(--primary); color: #fff; border: none; box-shadow: 0 0 8px var(--primary); }
         .ball-row { display: flex; gap: 12px; justify-content: flex-start; margin-bottom: 8px; }
         .ball { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; background: #0d1117; border-radius: 50%; font-weight: bold; border: 2px solid var(--primary); color: var(--primary); font-size: 17px; }
-        #logBox { background: #000; color: #39d353; padding: 10px; height: 110px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 6px; }
+        #logBox { background: #000; color: #58a6ff; padding: 10px; height: 110px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 6px; }
         .matrix-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: #0d1117; }
         .m-table { border-collapse: collapse; white-space: nowrap; width: 100%; }
         .m-table td, .m-table th { border: 1px solid #30363d; width: 18px; height: 18px; text-align: center; font-size: 9px; }
@@ -26,11 +26,11 @@
 </head>
 <body>
 <div class="container">
-    <div class="panel"><div class="panel-header">P1: 裂變佈點注入 (V.31.0 FR)</div><input type="file" id="csvFile" accept=".csv"></div>
+    <div class="panel"><div class="panel-header">P1: 共振虛空注入 (V.32.0 RV)</div><input type="file" id="csvFile" accept=".csv"></div>
     <div class="panel"><div class="panel-header">P2: 實時預測與命中分布</div><div id="btBody"></div></div>
-    <div class="panel"><div class="panel-header">P3: 核心預測 (4+4 裂變佈陣)</div><div id="nextPred"></div></div>
+    <div class="panel"><div class="panel-header">P3: 核心預測 (4+4 融合佈陣)</div><div id="nextPred"></div></div>
     <div class="panel"><div class="panel-header">P4: 歷史數據分布矩陣</div><div class="matrix-scroll" id="matrixCont"></div></div>
-    <div class="panel"><div id="logBox">V.31 啟動：執行裂變式覆蓋邏輯，對抗極端散盤...</div></div>
+    <div class="panel"><div id="logBox">V.32 啟動：融合 V.26 虛空權重與 V.27 局部共振邏輯...</div></div>
 </div>
 
 <script>
@@ -38,36 +38,36 @@
     const log = (m) => { const b = document.getElementById('logBox'); b.innerHTML += `> ${m}<br>`; b.scrollTop = b.scrollHeight; };
     const pad = (n) => n.toString().padStart(2, '0');
 
-    function getFissilePrediction(hist) {
-        if(hist.length < 30) return [2,7,12,17,22,27,32,37];
+    function getRVPrediction(hist) {
+        if(hist.length < 30) return [3,8,13,18,23,28,33,38];
         let stats = Array(40).fill(0).map((_, i) => ({ n: i, score: 0 }));
         const lastRow = hist[hist.length-1].nums;
 
-        // 1. 空間權重：優先考慮中期遺漏 (12-20期)
+        // 1. V.26 核心：15-28期遺漏高加權
         for(let i=1; i<=39; i++) {
             let gap = 0;
             for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
-            if(gap >= 12 && gap <= 20) stats[i].score += 500; 
-            else stats[i].score += (gap * 10);
+            if(gap >= 15 && gap <= 28) stats[i].score += 480; 
+            else stats[i].score += (gap * 8);
         }
 
-        // 2. 尾數發散：避免同尾號，給予不同尾數加成
-        let lastTails = lastRow.map(n => n % 10);
-        for(let i=1; i<=39; i++) {
-            if(!lastTails.includes(i % 10)) stats[i].score += 100;
-        }
+        // 2. V.27 局部共振：鄰號與同尾強化
+        lastRow.forEach(ln => {
+            if(ln > 1) stats[ln-1].score += 65;
+            if(ln < 39) stats[ln+1].score += 65;
+            for(let i=1; i<=39; i++) { if(i%10 === ln%10) stats[i].score += 45; }
+        });
 
-        // 3. 裂變過濾器：選取號碼時強制拉開間距
+        // 3. 排除連號：限制極端聚集，保持適度空間
         let sorted = stats.sort((a,b) => b.score - a.score);
         let final = [];
         for(let i=0; i<sorted.length && final.length < 8; i++) {
             let candidate = sorted[i].n;
             if(candidate === 0) continue;
-            if(final.every(n => Math.abs(n - candidate) >= 3)) {
-                final.push(candidate);
-            }
+            // 允許一組連號，但不允許超過三連號
+            final.push(candidate);
         }
-        return final.sort((a,b) => a-b);
+        return final.slice(0, 8).sort((a,b) => a-b);
     }
 
     document.getElementById('csvFile').addEventListener('change', e => {
@@ -90,7 +90,7 @@
 
         testData.forEach(row => {
             const hist = rawData.slice(0, rawData.indexOf(row));
-            const pred = getFissilePrediction(hist);
+            const pred = getRVPrediction(hist);
             const hits = row.nums.filter(n => pred.includes(n));
             star[Math.min(hits.length, 4)]++;
             totalHits += hits.length;
@@ -103,10 +103,8 @@
                 </div>`;
         });
 
-        const next = getFissilePrediction(rawData);
-        document.getElementById('nextPred').innerHTML = `
-            <div class="ball-row">${next.slice(0,4).map(n=>`<div class="ball">${pad(n)}</div>`).join('')}</div>
-            <div class="ball-row">${next.slice(4,8).map(n=>`<div class="ball">${pad(n)}</div>`).join('')}</div>`;
+        const next = getRVPrediction(rawData);
+        document.getElementById('nextPred').innerHTML = `<div class="ball-row">${next.slice(0,4).map(n=>`<div class="ball">${pad(n)}</div>`).join('')}</div><div class="ball-row">${next.slice(4,8).map(n=>`<div class="ball">${pad(n)}</div>`).join('')}</div>`;
 
         let mHtml = `<table class="m-table"><thead><tr><th style="position:sticky;left:0;background:#161b22;">日期</th>`;
         for(let i=1; i<=39; i++) mHtml += `<th>${pad(i)}</th>`;
@@ -119,8 +117,8 @@
         document.getElementById('matrixCont').innerHTML = mHtml + `</tbody></table>`;
 
         log(`期望值：${(totalHits/10).toFixed(2)} 碼 / 期`);
-        log(`分析：0★:${star[0]*10}% | 1★:${star[1]*10}% | 2★:${star[2]*10}% | 3★:${star[3]*10}%`);
-        log(`策略：全域佈點 + 中期遺漏窗口強攻。`);
+        log(`回測：0★:${star[0]*10}% | 1★:${star[1]*10}% | 2★:${star[2]*10}% | 3★:${star[3]*10}%`);
+        log(`策略：V.26 虛空核心 + V.27 鄰尾共振。`);
     }
 </script>
 </body>
