@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Oracle V.53.4 精煉版</title>
+    <title>Oracle V.53.5 Pivot-Shield</title>
     <style>
         :root { --bg: #000; --panel: #141414; --primary: #ff3b30; --border: #2c2c2e; --text: #fff; --sub: #8e8e93; --hit: #ffd60a; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
@@ -32,7 +32,7 @@
 <div class="container">
     <div class="panel"><div class="panel-header">P1: 數據注入</div><input type="file" id="csvFile" accept=".csv" style="color: #8e8e93;"></div>
     <div class="panel"><div class="panel-header">P2: 深度回測 (近 10 期明細)</div><div id="btBody"></div></div>
-    <div class="panel"><div class="panel-header">P3: 下期預測 (8 碼)</div><div id="nextPred" class="ball-row"></div></div>
+    <div class="panel"><div class="panel-header">P3: 下期預測 (8 碼軸心防禦)</div><div id="nextPred" class="ball-row"></div></div>
     <div class="panel"><div class="panel-header">P4: 分布矩陣</div><div class="matrix-scroll" id="matrixCont"></div></div>
     <div class="panel"><div class="panel-header">CONSOLE: CSV 統計分析</div><div id="logBox">等待 CSV 匯入...</div></div>
 </div>
@@ -47,40 +47,44 @@
         if(hist.length < 30) return [1,2,11,12,21,22,31,32];
         const lastRow = hist[hist.length-1].nums;
         let scores = Array(40).fill(0).map((_, i) => ({ n: i, s: 0, gap: 0 }));
-        
-        // V.53.4 強化評分
+        let avgGap = 0;
+
         for(let i=1; i<=39; i++) {
             let gap = 0; for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
-            scores[i].gap = gap;
-            if(gap >= 18 && gap <= 32) scores[i].s += 700; // 提高虛空權重
+            scores[i].gap = gap; avgGap += gap;
+            if(gap >= 18 && gap <= 32) scores[i].s += 720;
             let hot = 0; hist.slice(-10).forEach(d => { if(d.nums.includes(i)) hot++; });
-            scores[i].s += hot * 150;
+            scores[i].s += hot * 160;
             lastRow.forEach(ln => { 
-                if(Math.abs(ln - i) === 1) scores[i].s += 250; 
-                if(ln % 10 === i % 10) scores[i].s += 220; 
+                if(Math.abs(ln - i) === 1) scores[i].s += 260; 
+                if(ln % 10 === i % 10) scores[i].s += 240; 
             });
         }
-        
+        avgGap /= 39;
+
         let final = new Set();
-        // A: 核心冷嵌套
+        // A: 核心冷嵌套 (收緊半徑)
         let cold = [...scores].sort((a,b)=>b.gap - a.gap).slice(0, 8).sort((a,b)=>b.s - a.s)[0].n;
         final.add(cold);
-        [cold-1, cold+1, (cold+10)%40, (cold-10+40)%40].filter(n=>n>0&&n<40).sort((a,b)=>scores[b].s - scores[a].s).slice(0,2).forEach(n=>final.add(n));
-        
-        // B: 核心熱嵌套 (增加間距校驗)
-        let hot = [...scores].sort((a,b)=>b.s - a.s).find(x => !final.has(x.n) && ![...final].some(fn => Math.abs(fn-x.n) < 4)).n;
+        [cold-1, cold+1].filter(n=>n>0&&n<40).forEach(n=>final.add(n));
+
+        // B: 核心熱嵌套 (收緊半徑 + 距離校驗)
+        let hot = [...scores].sort((a,b)=>b.s - a.s).find(x => !final.has(x.n) && ![...final].some(fn => Math.abs(fn-x.n) < 3)).n;
         final.add(hot);
-        [hot-1, hot+1, (hot+10)%40].filter(n=>n>0&&n<40).forEach(n=>{ if(final.size < 6) final.add(n); });
-        
-        // C: 牽引補強 (強行靠近 A 或 B)
+        [hot-1, hot+1].filter(n=>n>0&&n<40).forEach(n=>{ if(final.size < 6) final.add(n); });
+
+        // Shield: 軸心防禦碼 (選取最接近平均遺漏值的穩健碼)
+        let shield = [...scores].sort((a,b)=> Math.abs(a.gap - avgGap) - Math.abs(b.gap - avgGap)).find(x => !final.has(x.n)).n;
+        final.add(shield);
+
+        // C: 牽引補強 (填滿 8 碼)
         let remain = [...scores].sort((a,b)=>b.s-a.s).filter(x => !final.has(x.n));
         remain.sort((a,b) => {
-            let distA = Math.min(...[...final].map(f => Math.abs(f-a.n)));
-            let distB = Math.min(...[...final].map(f => Math.abs(f-b.n)));
-            return distA < distB ? -1 : 1;
+            let dist = Math.min(...[...final].map(f => Math.abs(f-a.n)));
+            return dist - Math.min(...[...final].map(f => Math.abs(f-b.n)));
         });
         for(let x of remain) { if(final.size < 8) final.add(x.n); }
-        
+
         return Array.from(final).slice(0, 8).sort((a,b) => a-b);
     }
 
@@ -127,12 +131,10 @@
             mHtml += `</tr>`;
         });
         document.getElementById('matrixCont').innerHTML = mHtml + `</tbody></table>`;
-        log(`[精煉完成] 回測範圍: ${totalPeriods} 期`);
+        log(`[V.53.5 軸心啟動] 回測範圍: ${totalPeriods} 期`);
         log(`期望值：${(totalHits / totalPeriods).toFixed(2)} 碼/期`);
-        log(`0星：${(starCount[0]/totalPeriods*100).toFixed(1)}% | 1星：${(starCount[1]/totalPeriods*100).toFixed(1)}%`);
-        log(`2星：${(starCount[2]/totalPeriods*100).toFixed(1)}% | 3星：${(starCount[3]/totalPeriods*100).toFixed(1)}%`);
-        log(`4星+：${(starCount[4]/totalPeriods*100).toFixed(1)}%`);
         log(`2★以上累計：${((starCount[2]+starCount[3]+starCount[4])/totalPeriods*100).toFixed(1)}%`);
+        log(`分佈：0★(${(starCount[0]/totalPeriods*100).toFixed(0)}%) | 1★(${(starCount[1]/totalPeriods*100).toFixed(0)}%) | 2★(${(starCount[2]/totalPeriods*100).toFixed(0)}%) | 3★+(${(starCount[3]/totalPeriods*100).toFixed(0)}%)`);
     }
 </script>
 </body>
