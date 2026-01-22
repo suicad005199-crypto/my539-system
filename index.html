@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Oracle V.53.6 Dual-Core</title>
+    <title>Oracle V.53.6 Dual-Resonance</title>
     <style>
         :root { --bg: #000; --panel: #141414; --primary: #ff3b30; --border: #2c2c2e; --text: #fff; --sub: #8e8e93; --hit: #ffd60a; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
@@ -23,18 +23,18 @@
         .m-head { background: #1a1a1a; color: var(--primary); position: sticky; top: 0; }
         .m-date { background: #1a1a1a; color: var(--sub); position: sticky; left: 0; width: 50px; z-index: 5; }
         .m-ball { background: var(--primary); border-radius: 50%; width: 12px; height: 12px; display: inline-block; }
-        #logBox { background: #000; color: #32d74b; padding: 10px; height: 110px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 8px; line-height: 1.6; }
+        #logBox { background: #000; color: #32d74b; padding: 10px; height: 120px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 8px; line-height: 1.6; }
         .ball-row { display: flex; flex-wrap: wrap; gap: 8px; }
         .ball { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #1a1a1a; border-radius: 50%; font-weight: bold; border: 2px solid var(--primary); color: var(--primary); font-size: 18px; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="panel"><div class="panel-header">P1: 數據注入 (V.53.6 Dual-Core)</div><input type="file" id="csvFile" accept=".csv" style="color: #8e8e93;"></div>
-    <div class="panel"><div class="panel-header">P2: 深度回測 (近 10 期明細)</div><div id="btBody"></div></div>
-    <div class="panel"><div class="panel-header">P3: 下期預測 (8 碼雙核嵌套)</div><div id="nextPred" class="ball-row"></div></div>
+    <div class="panel"><div class="panel-header">P1: 數據注入</div><input type="file" id="csvFile" accept=".csv" style="color: #8e8e93;"></div>
+    <div class="panel"><div class="panel-header">P2: 深度回測看板 (近 10 期明細)</div><div id="btBody"></div></div>
+    <div class="panel"><div class="panel-header">P3: 下期預測 (8 碼雙核共振)</div><div id="nextPred" class="ball-row"></div></div>
     <div class="panel"><div class="panel-header">P4: 分布矩陣</div><div class="matrix-scroll" id="matrixCont"></div></div>
-    <div class="panel"><div class="panel-header">CONSOLE: 全數據分析報告</div><div id="logBox">等待 CSV 匯入...</div></div>
+    <div class="panel"><div class="panel-header">CONSOLE: 統計分析</div><div id="logBox">等待 CSV 匯入...</div></div>
 </div>
 
 <script>
@@ -61,22 +61,15 @@
         }
 
         let final = new Set();
-        const createCluster = (seed, size) => {
-            let cluster = [seed];
-            let options = [seed-1, seed+1, seed+10, seed-10, seed%10+10, seed%10+20, seed%10+30];
-            options = options.filter(n => n>0 && n<40 && !final.has(n))
-                             .sort((a,b) => scores[b].s - scores[a].s);
-            for(let opt of options) { if(cluster.length < size) cluster.push(opt); }
-            return cluster;
-        };
+        // A核心：4碼 (冷碼共振)
+        let cold = [...scores].sort((a,b)=>b.gap - a.gap).slice(0, 10).sort((a,b)=>b.s - a.s)[0].n;
+        final.add(cold);
+        [cold-1, cold+1, (cold+10)%40, (cold-10+40)%40].filter(n=>n>0&&n<40).sort((a,b)=>scores[b].s - scores[a].s).forEach(n=>{ if(final.size < 4) final.add(n); });
 
-        // Core 1: 最強冷熱結合點
-        let seed1 = [...scores].sort((a,b) => b.s - a.s).slice(0,5).sort((a,b)=>b.gap - a.gap)[0].n;
-        createCluster(seed1, 4).forEach(n => final.add(n));
-
-        // Core 2: 距離核心 1 較遠的高分點
-        let seed2 = [...scores].sort((a,b) => b.s - a.s).find(x => !final.has(x.n) && ![...final].some(fn => Math.abs(fn-x.n) < 5)).n;
-        createCluster(seed2, 4).forEach(n => final.add(n));
+        // B核心：4碼 (熱碼共振)
+        let hot = [...scores].sort((a,b)=>b.s - a.s).find(x => !final.has(x.n) && ![...final].some(fn => Math.abs(fn-x.n) < 4)).n;
+        final.add(hot);
+        [hot-1, hot+1, (hot+10)%40, (hot-10+40)%40].filter(n=>n>0&&n<40).sort((a,b)=>scores[b].s - scores[a].s).forEach(n=>{ if(final.size < 8) final.add(n); });
 
         return Array.from(final).slice(0, 8).sort((a,b) => a-b);
     }
@@ -95,7 +88,7 @@
     });
 
     function runGlobalScan() {
-        let btHtml = ""; let starCount = {0:0,1:0,2:0,3:0,4:0,5:0}; let totalHits = 0;
+        let btHtml = ""; let starCount = {0:0, 1:0, 2:0, 3:0, 4:0, 5:0}; let totalHits = 0;
         const totalPeriods = rawData.length - 30;
         for(let i = 30; i < rawData.length; i++) {
             const hist = rawData.slice(0, i);
@@ -124,10 +117,13 @@
             mHtml += `</tr>`;
         });
         document.getElementById('matrixCont').innerHTML = mHtml + `</tbody></table>`;
-        log(`[V.53.6 雙核共振啟動] 全域範圍: ${totalPeriods} 期`);
+        log(`[V.53.6 雙核共振啟動]`);
+        log(`全數據回測: ${totalPeriods} 期`);
         log(`期望值：${(totalHits / totalPeriods).toFixed(2)} 碼/期`);
-        log(`2★+ 占比：${((starCount[2]+starCount[3]+starCount[4])/totalPeriods*100).toFixed(1)}%`);
-        log(`0★(${(starCount[0]/totalPeriods*100).toFixed(0)}%) | 1★(${(starCount[1]/totalPeriods*100).toFixed(0)}%) | 2★(${(starCount[2]/totalPeriods*100).toFixed(0)}%) | 3★+(${(starCount[3]/totalPeriods*100).toFixed(0)}%)`);
+        log(`--------------------------------`);
+        log(`0★(${(starCount[0]/totalPeriods*100).toFixed(0)}%) | 1★(${(starCount[1]/totalPeriods*100).toFixed(0)}%)`);
+        log(`2★(${(starCount[2]/totalPeriods*100).toFixed(0)}%) | 3★+(${(starCount[3]/totalPeriods*100).toFixed(0)}%)`);
+        log(`2★以上累積: ${((starCount[2]+starCount[3]+starCount[4])/totalPeriods*100).toFixed(1)}%`);
     }
 </script>
 </body>
