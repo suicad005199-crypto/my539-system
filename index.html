@@ -3,30 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>天天樂 Oracle V.26-VB</title>
+    <title>天天樂 Oracle V.27-VRM</title>
     <style>
-        :root { --bg: #050505; --panel: #111; --primary: #00ffcc; --border: #333; --text: #eee; --hit: #ff2d55; --success: #00ffcc; }
+        :root { --bg: #02040a; --panel: #0d1117; --primary: #58a6ff; --border: #30363d; --text: #c9d1d9; --sub: #8b949e; --hit: #f85149; --success: #238636; }
         body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
-        .container { display: flex; flex-direction: column; gap: 10px; max-width: 600px; margin: auto; }
-        .panel { background: var(--panel); border-radius: 10px; padding: 12px; border: 1px solid var(--border); }
+        .container { display: flex; flex-direction: column; gap: 12px; max-width: 600px; margin: auto; }
+        .panel { background: var(--panel); border-radius: 12px; padding: 12px; border: 1px solid var(--border); }
         .panel-header { color: var(--primary); font-weight: bold; margin-bottom: 10px; border-left: 3px solid var(--primary); padding-left: 8px; font-size: 14px; }
-        .bt-row { border-bottom: 1px solid var(--border); padding: 8px 0; }
-        .bt-meta { display: flex; justify-content: space-between; color: #888; font-size: 11px; margin-bottom: 4px; }
-        .num-group { display: flex; gap: 4px; align-items: center; }
-        .n-box { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: #222; font-size: 11px; font-weight: bold; border: 1px solid #444; }
-        .n-box.hit { background: var(--primary); color: #000; box-shadow: 0 0 8px var(--primary); border: none; }
-        .ball-container { display: flex; flex-direction: column; gap: 10px; padding: 5px 0; }
-        .ball-row { display: flex; gap: 12px; justify-content: flex-start; }
-        .ball { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #000; border-radius: 50%; font-weight: bold; border: 2px solid var(--primary); color: var(--primary); font-size: 18px; }
-        #logBox { background: #000; color: var(--primary); padding: 10px; height: 100px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 6px; }
+        .bt-row { border-bottom: 1px solid var(--border); padding: 10px 0; }
+        .bt-meta { display: flex; justify-content: space-between; color: var(--sub); font-size: 11px; margin-bottom: 4px; }
+        .num-group { display: flex; gap: 4px; align-items: center; margin-top: 2px; }
+        .num-label { font-size: 10px; color: var(--sub); width: 30px; flex-shrink: 0; }
+        .n-box { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: #161b22; font-size: 11px; font-weight: bold; border: 1px solid #30363d; }
+        .n-box.hit { background: var(--primary); color: #fff; border: none; box-shadow: 0 0 8px var(--primary); }
+        .ball-row { display: flex; gap: 12px; justify-content: flex-start; margin-bottom: 10px; }
+        .ball { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; background: #0d1117; border-radius: 50%; font-weight: bold; border: 2px solid var(--primary); color: var(--primary); font-size: 17px; }
+        #logBox { background: #000; color: var(--primary); padding: 10px; height: 110px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 6px; line-height: 1.5; }
+        .matrix-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: #010409; }
+        .m-table { border-collapse: collapse; white-space: nowrap; width: 100%; }
+        .m-table td, .m-table th { border: 1px solid #21262d; width: 18px; height: 18px; text-align: center; font-size: 9px; }
+        .m-head { background: #161b22; color: var(--primary); }
+        .m-ball { background: var(--hit); border-radius: 50%; width: 12px; height: 12px; display: inline-block; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="panel"><div class="panel-header">P1: 數據注入 (V.26.0 Burst)</div><input type="file" id="csvFile" accept=".csv"></div>
-    <div class="panel"><div class="panel-header">P2: 三星連動回測</div><div id="btBody"></div></div>
-    <div class="panel"><div class="panel-header">P3: 核心預測 (4+4 極致對沖)</div><div id="nextPred" class="ball-container"></div></div>
-    <div class="panel"><div id="logBox">基於 V.23 優點進行三星基因強化...</div></div>
+    <div class="panel"><div class="panel-header">P1: 虛空共振注入 (V.27.0 VRM)</div><input type="file" id="csvFile" accept=".csv"></div>
+    <div class="panel"><div class="panel-header">P2: 實時預測與命中分布</div><div id="btBody"></div></div>
+    <div class="panel"><div class="panel-header">P3: 核心預測 (4+4 靠左)</div><div id="nextPred"></div></div>
+    <div class="panel"><div class="panel-header">P4: 歷史數據分布矩陣</div><div class="matrix-scroll" id="matrixCont"></div></div>
+    <div class="panel"><div id="logBox">系統已就緒。正在恢復 P4 矩陣並優化期望值計算...</div></div>
 </div>
 
 <script>
@@ -34,32 +40,32 @@
     const log = (m) => { const b = document.getElementById('logBox'); b.innerHTML += `> ${m}<br>`; b.scrollTop = b.scrollHeight; };
     const pad = (n) => n.toString().padStart(2, '0');
 
-    function getVoidBurstPred(hist) {
+    function getVRMPrediction(hist) {
         if(hist.length < 30) return [1,5,9,13,17,21,25,29];
         let stats = Array(40).fill(0).map((_, i) => ({ n: i, score: 0 }));
-        
-        // 1. 復刻 V.23 遺漏權重 (核心)
+        const lastRow = hist[hist.length-1].nums;
+
+        // 核心邏輯：復刻 V.23 遺漏權重
         for(let i=1; i<=39; i++) {
             let gap = 0;
             for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
-            if(gap >= 15 && gap <= 28) stats[i].score += (gap * 28);
-            else stats[i].score += (gap * 3);
+            if(gap >= 15 && gap <= 28) stats[i].score += (gap * 30);
+            else stats[i].score += (gap * 4);
         }
 
-        // 2. 三星連動補償 (針對掛2優化)
-        const lastRow = hist[hist.length-1].nums;
-        hist.slice(-50).forEach(d => {
+        // 二星轉三星共振強化
+        hist.slice(-60).forEach(d => {
             let matches = d.nums.filter(n => lastRow.includes(n)).length;
             if(matches >= 2) { 
-                d.nums.forEach(n => { if(!lastRow.includes(n)) stats[n].score += 90; });
+                d.nums.forEach(n => { if(!lastRow.includes(n)) stats[n].score += 100; });
             }
         });
 
-        // 3. 尾數對沖：加入最熱尾數以防止全冷
-        let tailCount = Array(10).fill(0);
-        hist.slice(-20).forEach(d => d.nums.forEach(n => tailCount[n%10]++));
-        let hotTail = tailCount.indexOf(Math.max(...tailCount));
-        for(let i=1; i<=39; i++) { if(i%10 === hotTail) stats[i].score += 45; }
+        // 鄰位與熱尾補償
+        lastRow.forEach(ln => {
+            if(ln > 1) stats[ln-1].score += 50;
+            if(ln < 39) stats[ln+1].score += 50;
+        });
 
         return stats.sort((a,b) => b.score - a.score).slice(0, 8).map(x => x.n).sort((a,b) => a-b);
     }
@@ -71,26 +77,54 @@
                 const c = l.split(',');
                 return { date: c[0].trim(), nums: c.slice(1, 6).map(x => parseInt(x.trim())).filter(x => !isNaN(x)).sort((a,b)=>a-b) };
             }).filter(r => r.nums.length === 5);
-            runSim();
+            runFullSim();
         };
         reader.readAsText(e.target.files[0]);
     });
 
-    function runSim() {
+    function runFullSim() {
         document.getElementById('btBody').innerHTML = "";
         let star = { 0:0, 1:0, 2:0, 3:0, 4:0 };
+        let totalHits = 0;
         const testData = rawData.slice(-10).reverse();
+
         testData.forEach(row => {
             const hist = rawData.slice(0, rawData.indexOf(row));
-            const pred = getVoidBurstPred(hist);
+            const pred = getVRMPrediction(hist);
             const hits = row.nums.filter(n => pred.includes(n));
             star[Math.min(hits.length, 4)]++;
-            document.getElementById('btBody').innerHTML += `<div class="bt-row"><div class="bt-meta"><span>📅 ${row.date}</span> <span style="color:var(--primary)">${hits.length} ★</span></div><div class="num-group">${row.nums.map(n => `<div class="n-box ${pred.includes(n)?'hit':''}">${pad(n)}</div>`).join('')}</div></div>`;
+            totalHits += hits.length;
+
+            document.getElementById('btBody').innerHTML += `
+                <div class="bt-row">
+                    <div class="bt-meta"><span>📅 ${row.date}</span> <span style="color:var(--primary)">${hits.length} ★</span></div>
+                    <div class="num-group"><span class="num-label">預測</span>${pred.map(n => `<div class="n-box" style="color:${row.nums.includes(n)?'var(--primary)':'#555'}">${pad(n)}</div>`).join('')}</div>
+                    <div class="num-group"><span class="num-label">開獎</span>${row.nums.map(n => `<div class="n-box ${pred.includes(n)?'hit':''}">${pad(n)}</div>`).join('')}</div>
+                </div>`;
         });
-        const next = getVoidBurstPred(rawData);
-        document.getElementById('nextPred').innerHTML = `<div class="ball-row">${next.slice(0,4).map(n=>`<div class="ball">${pad(n)}</div>`).join('')}</div><div class="ball-row">${next.slice(4,8).map(n=>`<div class="ball">${pad(n)}</div>`).join('')}</div>`;
-        log(`命中分析：0★:${star[0]*10}% | 1★:${star[1]*10}% | 2★:${star[2]*10}% | 3★:${star[3]*10}%`);
-        log(`策略：V.23 基因強化版，已補償三星連動規律。`);
+
+        // P3 顯示
+        const next = getVRMPrediction(rawData);
+        document.getElementById('nextPred').innerHTML = `
+            <div class="ball-row">${next.slice(0,4).map(n=>`<div class="ball">${pad(n)}</div>`).join('')}</div>
+            <div class="ball-row">${next.slice(4,8).map(n=>`<div class="ball">${pad(n)}</div>`).join('')}</div>`;
+
+        // P4 矩陣恢復
+        let mHtml = `<table class="m-table"><thead><tr><th style="position:sticky;left:0;background:#161b22;">日期</th>`;
+        for(let i=1; i<=39; i++) mHtml += `<th class="m-head">${pad(i)}</th>`;
+        mHtml += `</tr></thead><tbody>`;
+        rawData.slice(-15).reverse().forEach(row => {
+            mHtml += `<tr><td style="position:sticky;left:0;background:#0d1117;font-size:8px;">${row.date.slice(-5)}</td>`;
+            for(let i=1; i<=39; i++) mHtml += `<td>${row.nums.includes(i) ? '<span class="m-ball"></span>' : ''}</td>`;
+            mHtml += `</tr>`;
+        });
+        document.getElementById('matrixCont').innerHTML = mHtml + `</tbody></table>`;
+
+        // Log 期望值
+        let ev = (totalHits / 10).toFixed(2);
+        log(`全數據模擬完成。`);
+        log(`命中率：0★:${star[0]*10}% | 1★:${star[1]*10}% | 2★:${star[2]*10}% | 3★:${star[3]*10}%`);
+        log(`[期望值評估]：${ev} 碼 / 期`);
     }
 </script>
 </body>
