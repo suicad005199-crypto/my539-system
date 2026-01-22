@@ -3,26 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>天天樂 Oracle V.52-TLC</title>
+    <title>天天樂 Oracle V.53-TNC</title>
     <style>
-        :root { --bg: #050505; --panel: #111; --primary: #ff3e3e; --border: #333; --text: #eee; }
+        :root { --bg: #050505; --panel: #0d1117; --primary: #ffcc00; --border: #30363d; --text: #c9d1d9; }
         body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
         .container { display: flex; flex-direction: column; gap: 10px; max-width: 600px; margin: auto; }
-        .panel { background: var(--panel); border-radius: 10px; padding: 12px; border: 1px solid var(--border); }
+        .panel { background: var(--panel); border-radius: 10px; padding: 12px; border: 1px solid var(--border); box-shadow: 0 0 10px rgba(255,204,0,0.1); }
         .panel-header { color: var(--primary); font-weight: bold; margin-bottom: 8px; border-left: 4px solid var(--primary); padding-left: 8px; }
         .bt-row { border-bottom: 1px solid #222; padding: 8px 0; }
-        .n-box { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: #1a1a1a; font-size: 11px; font-weight: bold; border: 1px solid #333; margin-right: 4px; }
-        .n-box.hit { background: var(--primary); color: #fff; border: none; box-shadow: 0 0 10px var(--primary); }
+        .n-box { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: #161b22; font-size: 11px; font-weight: bold; border: 1px solid #333; margin-right: 4px; }
+        .n-box.hit { background: var(--primary); color: #000; border: none; box-shadow: 0 0 8px var(--primary); }
         .ball { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; background: #000; border-radius: 50%; font-weight: bold; border: 2px solid var(--primary); color: var(--primary); font-size: 18px; margin-right: 8px; margin-bottom: 10px; }
         #logBox { background: #000; color: var(--primary); padding: 10px; height: 100px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid #333; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="panel"><div class="panel-header">P1: 尾數連動注入 (V.52.0 TLC)</div><input type="file" id="csvFile" accept=".csv"></div>
-    <div class="panel"><div class="panel-header">P2: 2 星占比轉化回測</div><div id="btBody"></div></div>
-    <div class="panel"><div class="panel-header">P3: 核心預測 (雙尾全包 + 鄰位修補)</div><div id="nextPred" style="display:flex; flex-wrap:wrap;"></div></div>
-    <div class="panel"><div id="logBox">V.52 啟動：執行尾數連動邏輯，強攻 2 星占比...</div></div>
+    <div class="panel"><div class="panel-header">P1: 三元嵌套共識 (V.53.0 TNC)</div><input type="file" id="csvFile" accept=".csv"></div>
+    <div class="panel"><div class="panel-header">P2: 80% 2星占比優化回測</div><div id="btBody"></div></div>
+    <div class="panel"><div class="panel-header">P3: 核心預測 (三區塊嵌套)</div><div id="nextPred" style="display:flex; flex-wrap:wrap;"></div></div>
+    <div class="panel"><div id="logBox">V.53 啟動：執行冷熱嵌套與區塊收縮邏輯...</div></div>
 </div>
 
 <script>
@@ -30,39 +30,41 @@
     const log = (m) => { const b = document.getElementById('logBox'); b.innerHTML += `> ${m}<br>`; b.scrollTop = b.scrollHeight; };
     const pad = (n) => n.toString().padStart(2, '0');
 
-    function getTLCPrediction(hist) {
-        if(hist.length < 35) return [01,11,21,31,02,12,22,32];
+    function getTNCPrediction(hist) {
+        if(hist.length < 35) return [05,06,07,15,16,17,25,26];
         const lastRow = hist[hist.length-1].nums;
-        let tScores = Array(10).fill(0);
-        let nScores = Array(40).fill(0);
+        let scores = Array(40).fill(0).map((_, i) => ({ n: i, s: 0, gap: 0 }));
 
-        // 綜合評分評分 (V26, 27, 35, 39, 47, 48)
         for(let i=1; i<=39; i++) {
             let gap = 0;
             for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
-            let s = gap * 10;
-            if(gap >= 18 && gap <= 32) s += 500;
-            lastRow.forEach(ln => { if(Math.abs(ln - i) === 1) s += 200; });
-            nScores[i] = s;
-            tScores[i % 10] += s;
+            scores[i].gap = gap;
+            // V26/V35 基礎分
+            if(gap >= 18 && gap <= 32) scores[i].s += 500;
+            let hotCount = 0;
+            hist.slice(-5).forEach(d => { if(d.nums.includes(i)) hotCount++; });
+            scores[i].s += hotCount * 150;
+            // V27/V39 鄰號同尾分
+            lastRow.forEach(ln => {
+                if(Math.abs(ln - i) === 1) scores[i].s += 200;
+                if(ln % 10 === i % 10) scores[i].s += 150;
+            });
         }
-
-        // 選出最強的 2 個尾數
-        let topTails = tScores.map((s, i) => ({ t: i, s: s })).sort((a,b) => b.s - a.s).slice(0, 2).map(x => x.t);
 
         let final = new Set();
-        // 策略：優先填滿這兩個尾數中得分最高的號碼
-        for(let t of topTails) {
-            let tNums = [];
-            for(let i=1; i<=39; i++) { if(i % 10 === t) tNums.push({ n: i, s: nScores[i] }); }
-            tNums.sort((a,b) => b.s - a.s).forEach(tn => { if(final.size < 8) final.add(tn.n); });
-        }
+        // 區塊 A: 冷碼嵌套 (3碼)
+        let coldSeed = [...scores].sort((a,b) => b.gap - a.gap).slice(0, 10).sort((a,b) => b.s - a.s)[0].n;
+        final.add(coldSeed);
+        [coldSeed-1, coldSeed+1, coldSeed%10+10].forEach(n => { if(n>0 && n<40 && final.size < 3) final.add(n); });
 
-        // 鄰位修補：若仍有名額，補上 final 中最高分號碼的鄰居
-        let currentBest = Array.from(final).sort((a,b) => nScores[b] - nScores[a])[0];
-        [currentBest-1, currentBest+1].forEach(nb => {
-            if(nb > 0 && nb < 40 && final.size < 8) final.add(nb);
-        });
+        // 區塊 B: 熱碼嵌套 (3碼)
+        let hotSeed = [...scores].sort((a,b) => b.s - a.s).find(x => !final.has(x.n)).n;
+        final.add(hotSeed);
+        [hotSeed-1, hotSeed+1, hotSeed%10+10].forEach(n => { if(n>0 && n<40 && final.size < 6) final.add(n); });
+
+        // 區塊 C: 共識補強 (2碼)
+        let remain = [...scores].sort((a,b) => b.s - a.s).filter(x => !final.has(x.n));
+        for(let x of remain) { if(final.size < 8) final.add(x.n); }
 
         return Array.from(final).slice(0, 8).sort((a,b) => a-b);
     }
@@ -87,23 +89,21 @@
 
         testData.forEach(row => {
             const hist = rawData.slice(0, rawData.indexOf(row));
-            const pred = getTLCPrediction(hist);
+            const pred = getTNCPrediction(hist);
             const hits = row.nums.filter(n => pred.includes(n));
             star[Math.min(hits.length, 4)]++;
             totalHits += hits.length;
-
             document.getElementById('btBody').innerHTML += `
                 <div class="bt-row">
                     <div style="display:flex; justify-content:space-between; color:#888; font-size:11px;">📅 ${row.date} <span style="color:${hits.length>=2?'var(--primary)':''}">${hits.length} ★</span></div>
                     <div style="display:flex; margin-top:4px;">${pred.map(n => `<div class="n-box" style="color:${row.nums.includes(n)?'var(--primary)':'#555'}">${pad(n)}</div>`).join('')}</div>
                 </div>`;
         });
-
-        const next = getTLCPrediction(rawData);
+        const next = getTNCPrediction(rawData);
         document.getElementById('nextPred').innerHTML = next.map(n => `<div class="ball">${pad(n)}</div>`).join('');
         const s2plus = ((star[2]+star[3]+star[4])/10*100).toFixed(0);
-        log(`2★ 以上占比：${s2plus}% (目標 80%)`);
-        log(`期望值：${(totalHits/10).toFixed(2)} | 尾數共振鎖定`);
+        log(`2★ 以上占比：${s2plus}% | 冷熱嵌套模式`);
+        log(`期望值：${(totalHits/10).toFixed(2)} | 0★ 率: ${star[0]*10}%`);
     }
 </script>
 </body>
