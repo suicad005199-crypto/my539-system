@@ -3,26 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>天天樂 Oracle V.37-RC</title>
+    <title>天天樂 Oracle V.38-PVR</title>
     <style>
-        :root { --bg: #050505; --panel: #121212; --primary: #00d4ff; --border: #333; --text: #e0e0e0; --hit: #ff4d4d; }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
+        :root { --bg: #0d1117; --panel: #161b22; --primary: #58a6ff; --border: #30363d; --text: #c9d1d9; --sub: #8b949e; --hit: #f85149; }
+        body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
         .container { display: flex; flex-direction: column; gap: 10px; max-width: 600px; margin: auto; }
-        .panel { background: var(--panel); border-radius: 8px; padding: 12px; border: 1px solid var(--border); }
-        .panel-header { color: var(--primary); font-weight: bold; margin-bottom: 8px; border-left: 3px solid var(--primary); padding-left: 8px; }
+        .panel { background: var(--panel); border-radius: 10px; padding: 12px; border: 1px solid var(--border); }
+        .panel-header { color: var(--primary); font-weight: bold; margin-bottom: 8px; border-left: 3px solid var(--primary); padding-left: 8px; font-size: 14px; }
         .bt-row { border-bottom: 1px solid var(--border); padding: 8px 0; }
-        .n-box { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: #1a1a1a; font-size: 11px; font-weight: bold; border: 1px solid #333; margin-right: 3px; }
-        .n-box.hit { background: var(--primary); color: #000; border: none; box-shadow: 0 0 10px var(--primary); }
-        .ball { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; background: #000; border-radius: 50%; font-weight: bold; border: 2px solid var(--primary); color: var(--primary); font-size: 18px; margin-right: 10px; }
-        #logBox { background: #000; color: var(--primary); padding: 10px; height: 100px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); }
+        .bt-meta { display: flex; justify-content: space-between; color: var(--sub); font-size: 11px; margin-bottom: 4px; }
+        .num-group { display: flex; gap: 4px; align-items: center; margin-top: 2px; }
+        .n-box { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: #0d1117; font-size: 11px; font-weight: bold; border: 1px solid #30363d; }
+        .n-box.hit { background: var(--primary); color: #fff; border: none; box-shadow: 0 0 8px var(--primary); }
+        .ball-row { display: flex; gap: 12px; justify-content: flex-start; margin-bottom: 8px; }
+        .ball { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; background: #0d1117; border-radius: 50%; font-weight: bold; border: 2px solid var(--primary); color: var(--primary); font-size: 17px; }
+        #logBox { background: #000; color: #58a6ff; padding: 10px; height: 110px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 6px; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="panel"><div class="panel-header">P1: 集群共振注入 (V.37.0 RC)</div><input type="file" id="csvFile" accept=".csv"></div>
+    <div class="panel"><div class="panel-header">P1: 純粹虛空注入 (V.38.0 PVR)</div><input type="file" id="csvFile" accept=".csv"></div>
     <div class="panel"><div class="panel-header">P2: 實時預測與期望分布</div><div id="btBody"></div></div>
-    <div class="panel"><div class="panel-header">P3: 核心預測 (集群鎖定)</div><div id="nextPred" style="display:flex; flex-wrap:wrap;"></div></div>
-    <div class="panel"><div id="logBox">V.37 啟動：放棄發散佈陣，轉向集群共振模式...</div></div>
+    <div class="panel"><div class="panel-header">P3: 核心預測 (V26+V27基因)</div><div id="nextPred"></div></div>
+    <div class="panel"><div id="logBox">V.38 啟動：全面回歸 V26 虛空與 V27 共振邏輯...</div></div>
 </div>
 
 <script>
@@ -30,32 +33,31 @@
     const log = (m) => { const b = document.getElementById('logBox'); b.innerHTML += `> ${m}<br>`; b.scrollTop = b.scrollHeight; };
     const pad = (n) => n.toString().padStart(2, '0');
 
-    function getRCPrediction(hist) {
-        if(hist.length < 30) return [1,2,3,11,12,13,21,22];
+    function getPVRPrediction(hist) {
+        if(hist.length < 40) return [2,8,14,20,26,32,38,39];
         const lastRow = hist[hist.length-1].nums;
+        
+        // 1. 偵測熱號 (剔除用)
+        let hotNums = [];
+        let counts = Array(40).fill(0);
+        hist.slice(-5).forEach(d => d.nums.forEach(n => counts[n]++));
+        for(let i=1; i<=39; i++) if(counts[i] >= 2) hotNums.push(i);
+
+        // 2. V.26 虛空評分 (強化極限冷碼)
         let stats = Array(40).fill(0).map((_, i) => ({ n: i, score: 0 }));
-
-        // 1. 集群偵測：偵測近3期最熱的區段
-        let clusterMap = [0,0,0,0];
-        hist.slice(-3).forEach(d => d.nums.forEach(n => clusterMap[Math.floor((n-1)/10)]++));
-        let hottestZone = clusterMap.indexOf(Math.max(...clusterMap));
-
-        // 2. 混合權重
         for(let i=1; i<=39; i++) {
-            // 虛空窗口 (V.26)
+            if(hotNums.includes(i)) continue; // 強行去熱
             let gap = 0;
             for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
-            if(gap >= 18 && gap <= 28) stats[i].score += 400;
-
-            // 集群加分
-            if(Math.floor((i-1)/10) === hottestZone) stats[i].score += 250;
-
-            // 共振加分 (V.27)
-            lastRow.forEach(ln => {
-                if(Math.abs(ln - i) === 1) stats[i].score += 150;
-                if(ln % 10 === i % 10) stats[i].score += 100;
-            });
+            if(gap >= 18 && gap <= 30) stats[i].score += (gap * 50); 
+            stats[i].score += (gap * 5);
         }
+
+        // 3. V.27 共振評分 (鄰號)
+        lastRow.forEach(ln => {
+            if(ln > 1 && !hotNums.includes(ln-1)) stats[ln-1].score += 150;
+            if(ln < 39 && !hotNums.includes(ln+1)) stats[ln+1].score += 150;
+        });
 
         return stats.sort((a,b) => b.score - a.score).slice(0, 8).map(x => x.n).sort((a,b) => a-b);
     }
@@ -80,26 +82,23 @@
 
         testData.forEach(row => {
             const hist = rawData.slice(0, rawData.indexOf(row));
-            const pred = getRCPrediction(hist);
+            const pred = getPVRPrediction(hist);
             const hits = row.nums.filter(n => pred.includes(n));
             star[Math.min(hits.length, 4)]++;
             totalHits += hits.length;
 
             document.getElementById('btBody').innerHTML += `
                 <div class="bt-row">
-                    <div style="display:flex; justify-content:space-between; font-size:11px; color:#888;">
-                        <span>📅 ${row.date}</span><span>${hits.length} ★</span>
-                    </div>
-                    <div style="display:flex; margin-top:4px;">
-                        ${pred.map(n => `<div class="n-box" style="color:${row.nums.includes(n)?'var(--primary)':'#555'}">${pad(n)}</div>`).join('')}
-                    </div>
+                    <div class="bt-meta"><span>📅 ${row.date}</span> <span style="color:var(--primary)">${hits.length} ★</span></div>
+                    <div class="num-group">${pred.map(n => `<div class="n-box" style="color:${row.nums.includes(n)?'var(--primary)':'#555'}">${pad(n)}</div>`).join('')}</div>
                 </div>`;
         });
 
-        const next = getRCPrediction(rawData);
-        document.getElementById('nextPred').innerHTML = next.map(n => `<div class="ball">${pad(n)}</div>`).join('');
+        const next = getPVRPrediction(rawData);
+        document.getElementById('nextPred').innerHTML = `<div class="ball-row">${next.slice(0,4).map(n=>`<div class="ball">${pad(n)}</div>`).join('')}</div><div class="ball-row">${next.slice(4,8).map(n=>`<div class="ball">${pad(n)}</div>`).join('')}</div>`;
+
         log(`期望值：${(totalHits/10).toFixed(2)} 碼 / 期`);
-        log(`分布：0★:${star[0]*10}% | 1★:${star[1]*10}% | 2★:${star[2]*10}% | 3★+:${(star[3]+star[4])*10}%`);
+        log(`回測分布：0★:${star[0]*10}% | 1★:${star[1]*10}% | 2★:${star[2]*10}% | 3★+:${(star[3]+star[4])*10}%`);
     }
 </script>
 </body>
