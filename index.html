@@ -1,141 +1,231 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Oracle V.53.8 Cross-Entropy</title>
+    <title>ULTIMATE EVO v8.61 PRECISE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root { --bg: #000; --panel: #141414; --primary: #ff3b30; --border: #2c2c2e; --text: #fff; --sub: #8e8e93; --hit: #ffd60a; }
-        body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; font-size: 13px; }
-        .container { display: flex; flex-direction: column; gap: 12px; max-width: 600px; margin: auto; }
-        .panel { background: var(--panel); border-radius: 12px; padding: 12px; border: 1px solid var(--border); }
-        .panel-header { color: var(--primary); font-weight: bold; margin-bottom: 10px; border-left: 3px solid var(--primary); padding-left: 8px; font-size: 14px; }
-        .bt-row { border-bottom: 1px solid var(--border); padding: 10px 0; display: flex; flex-direction: column; gap: 6px; }
-        .bt-meta { display: flex; justify-content: space-between; color: var(--sub); font-size: 11px; }
-        .num-group { display: flex; gap: 4px; align-items: center; }
-        .num-label { font-size: 10px; color: var(--sub); width: 30px; flex-shrink: 0; }
-        .n-box { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: #2c2c2e; font-size: 11px; font-weight: bold; }
-        .n-box.hit { background: var(--hit); color: #000; box-shadow: 0 0 8px var(--hit); }
-        .star-tag { background: var(--primary); color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: 900; }
-        .matrix-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: #000; }
-        .m-table { border-collapse: collapse; white-space: nowrap; width: 100%; }
-        .m-table td, .m-table th { border: 1px solid #222; width: 20px; height: 20px; text-align: center; font-size: 10px; }
-        .m-head { background: #1a1a1a; color: var(--primary); position: sticky; top: 0; }
-        .m-date { background: #1a1a1a; color: var(--sub); position: sticky; left: 0; width: 50px; z-index: 5; }
-        .m-ball { background: var(--primary); border-radius: 50%; width: 12px; height: 12px; display: inline-block; }
-        #logBox { background: #000; color: #32d74b; padding: 10px; height: 120px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 8px; line-height: 1.6; }
-        .ball-row { display: flex; flex-wrap: wrap; gap: 8px; }
-        .ball { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #1a1a1a; border-radius: 50%; font-weight: bold; border: 2px solid var(--primary); color: var(--primary); font-size: 18px; }
+        :root { --ios-orange: #f97316; --ios-bg: #000000; --ios-panel: #1c1c1e; }
+        body { background-color: var(--ios-bg); color: #fff; font-family: -apple-system, system-ui; overflow: hidden; }
+        .ios-panel { background: var(--ios-panel); border-radius: 12px; }
+        .orange-glow { box-shadow: 0 0 30px rgba(249, 115, 22, 0.4); }
+        .btn-active { background: var(--ios-orange); color: #000; font-weight: 700; }
+        .btn-inactive { background: #2c2c2e; color: var(--ios-orange); }
+        #logBox { font-variant-numeric: tabular-nums; scrollbar-width: none; }
+        #logBox::-webkit-scrollbar { display: none; }
+        .hit-num { color: var(--ios-orange); font-weight: 900; text-decoration: underline; background: rgba(249,115,22,0.2); padding: 0 2px; }
     </style>
 </head>
-<body>
-<div class="container">
-    <div class="panel"><div class="panel-header">P1: 數據注入</div><input type="file" id="csvFile" accept=".csv" style="color: #8e8e93;"></div>
-    <div class="panel"><div class="panel-header">P2: 深度回測 (近 10 期明細)</div><div id="btBody"></div></div>
-    <div class="panel"><div class="panel-header">P3: 下期預測 (V.53.8 8碼)</div><div id="nextPred" class="ball-row"></div></div>
-    <div class="panel"><div class="panel-header">P4: 分布矩陣</div><div class="matrix-scroll" id="matrixCont"></div></div>
-    <div class="panel"><div class="panel-header">CONSOLE: 統計分析</div><div id="logBox">等待 CSV 匯入...</div></div>
-</div>
+<body class="h-screen flex flex-col p-4" onload="fetchData()">
 
-<script>
-    let rawData = [];
-    const log = (m) => { const b = document.getElementById('logBox'); b.innerHTML += `> ${m}<br>`; b.scrollTop = b.scrollHeight; };
-    const pad = (n) => n.toString().padStart(2, '0');
-    const formatDate = (s) => { const p = s.split(/[-/]/); return p.length >= 3 ? `${p[1]}/${p[2]}` : s; };
+    <div class="flex justify-between items-center mb-5">
+        <h1 class="text-2xl font-black italic tracking-tighter text-orange-500">ULTIMATE <span class="text-white">EVO 8.61</span></h1>
+        <div class="flex bg-[#2c2c2e] p-1 rounded-xl flex-nowrap shrink-0">
+            <button id="btn539" onclick="switchMode('539')" class="px-4 py-1.5 rounded-lg text-sm btn-active whitespace-nowrap">今彩539</button>
+            <button id="btnDaily" onclick="switchMode('Daily')" class="px-4 py-1.5 rounded-lg text-sm btn-inactive ml-1 whitespace-nowrap">天天樂</button>
+        </div>
+    </div>
 
-    function getPrediction(hist) {
-        if(hist.length < 30) return [1,2,11,12,21,22,31,32];
-        const lastRow = hist[hist.length-1].nums;
-        let scores = Array(40).fill(0).map((_, i) => ({ n: i, s: 0, gap: 0 }));
+    <div class="ios-panel p-4 mb-4 orange-glow border border-orange-500/50">
+        <div class="flex justify-between items-end mb-2">
+            <label class="text-[10px] text-orange-400 font-bold uppercase tracking-widest">Panel 1: EXPECTATION 權重校準引擎</label>
+            <div id="syncStatus" class="flex items-center text-[10px] text-orange-500 font-bold uppercase">
+                <span id="statusDot" class="w-2 h-2 bg-green-500 rounded-full mr-1"></span> v8.61 <span id="strategyMode" class="ml-1 text-white">CROSS-ENTROPY</span>
+            </div>
+        </div>
+        <div id="logBox" class="bg-black/50 p-3 rounded-lg text-[11px] h-28 overflow-y-auto font-mono border border-white/5 leading-relaxed">
+            <span class="text-orange-500/50 italic">深度權重運算中...</span>
+        </div>
+    </div>
 
-        for(let i=1; i<=39; i++) {
-            let gap = 0; for(let k=hist.length-1; k>=0; k--) { if(!hist[k].nums.includes(i)) gap++; else break; }
-            scores[i].gap = gap;
-            if(gap >= 18 && gap <= 32) scores[i].s += 800; // 虛空權重微調
-            let hot = 0; hist.slice(-10).forEach(d => { if(d.nums.includes(i)) hot++; });
-            scores[i].s += hot * 210;
-            lastRow.forEach(ln => { 
-                if(Math.abs(ln - i) === 1) scores[i].s += 310; 
-                if(ln % 10 === i % 10) scores[i].s += 320; // 強化同尾
-            });
+    <div class="ios-panel p-4 mb-4 border-t-2 border-orange-600">
+        <label class="text-[10px] text-gray-400 font-bold uppercase tracking-widest block mb-3">Panel 3: HEDGING 對沖下注結構 (動態 8 碼)</label>
+        <div class="grid grid-cols-4 gap-2">
+            <div class="bg-orange-500/20 p-2 rounded-lg text-center border border-orange-500/40">
+                <div class="text-[9px] text-orange-500 font-bold" id="label_p1">核心權重</div>
+                <div class="text-lg font-black text-white" id="p1">--</div>
+            </div>
+            <div class="bg-orange-500/20 p-2 rounded-lg text-center border border-orange-500/40">
+                <div class="text-[9px] text-orange-500 font-bold" id="label_p2">版路聯動</div>
+                <div class="text-lg font-black text-white" id="p2">--</div>
+            </div>
+            <div class="bg-white/5 p-2 rounded-lg text-center border border-white/10">
+                <div class="text-[9px] text-gray-400 font-bold" id="label_p3">環境感知</div>
+                <div class="text-lg font-black text-white" id="p3">--</div>
+            </div>
+            <div class="bg-white/5 p-2 rounded-lg text-center border border-white/10">
+                <div class="text-[9px] text-gray-400 font-bold" id="label_p4">對沖遺漏</div>
+                <div class="text-lg font-black text-white" id="p4">--</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ios-panel p-4 flex-grow overflow-hidden flex flex-col">
+        <label id="historyTitle" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">近十期 v8.61 實時回測</label>
+        <div class="overflow-y-auto flex-grow">
+            <table class="w-full text-[12px]">
+                <thead class="sticky top-0 bg-[#1c1c1e] text-gray-500">
+                    <tr class="text-left border-b border-white/10">
+                        <th class="pb-2">日期</th>
+                        <th class="pb-2">開獎</th>
+                        <th class="pb-2">建議選碼</th>
+                        <th class="pb-2 text-right">星</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTable" class="divide-y divide-white/5"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbzJImKcRHRtb-Bv3ZT_vx9L8h4YKwSaLsf7cmIAxYun0tWXOZVXIBJ9O2jzkiwptvw5rg/exec";
+        let currentMode = '539';
+        let rawData = null;
+
+        async function fetchData() {
+            try {
+                const response = await fetch(API_URL);
+                rawData = await response.json();
+                processData(rawData[currentMode]);
+            } catch (error) { document.getElementById('logBox').innerText = "數據連線異常"; }
         }
 
-        let final = new Set();
-        // A核心：4碼 (增加交叉熵過濾)
-        let coldCandidates = [...scores].sort((a,b)=>b.gap - a.gap).slice(0, 12).sort((a,b)=>b.s - a.s);
-        final.add(coldCandidates[0].n);
-        [coldCandidates[0].n-1, coldCandidates[0].n+1, (coldCandidates[0].n+10)%40].filter(n=>n>0&&n<40).forEach(n=>{ if(final.size < 4) final.add(n); });
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('btn539').className = `px-4 py-1.5 rounded-lg text-sm transition-all ${mode==='539'?'btn-active':'btn-inactive'} whitespace-nowrap`;
+            document.getElementById('btnDaily').className = `px-4 py-1.5 rounded-lg text-sm transition-all ${mode==='Daily'?'btn-active ml-1':'btn-inactive ml-1'} whitespace-nowrap`;
+            if(rawData) processData(rawData[mode]);
+        }
 
-        // B核心：4碼 (跳島與熱度覆蓋)
-        let hotCandidates = [...scores].sort((a,b)=>b.s - a.s);
-        for(let x of hotCandidates) {
-            if(!final.has(x.n) && ![...final].some(fn => Math.abs(fn-x.n) < 3)) {
-                final.add(x.n);
-                // 優先拉攏同尾伴侶
-                let tailMatch = hotCandidates.find(h => h.n !== x.n && h.n%10 === x.n%10 && !final.has(h.n));
-                if(tailMatch) final.add(tailMatch.n);
-                if(final.size >= 8) break;
+        // --- 核心優化：539 V.42.2 三區分佈引擎 ---
+        function get539V422Logic(history) {
+            let stats = Array(40).fill(0).map((_, i) => ({ n: i, score: 0 }));
+            const lastRow = history[0].nums;
+            const last15 = history.slice(0, 15);
+            
+            // 1. 遺漏值加權 (V.42.2 修正版)
+            for(let i=1; i<=39; i++) {
+                let gap = 0;
+                for(let k=0; k<history.length; k++) {
+                    if(!history[k].nums.includes(i)) gap++; else break;
+                }
+                stats[i].score += (gap <= 12) ? (gap * 3.0) : Math.max(0, 38 - gap);
             }
+
+            // 2. 尾數權重 (V.42.2 tailMap)
+            let tailMap = Array(10).fill(0);
+            last15.forEach(d => d.nums.forEach(n => tailMap[n%10]++));
+            for(let i=1; i<=39; i++) stats[i].score += (tailMap[i%10] * 3.2);
+
+            // 3. 鄰號與連莊
+            lastRow.forEach(ln => {
+                if(ln > 1) stats[ln-1].score += 20;
+                if(ln < 39) stats[ln+1].score += 20;
+                stats[ln].score += 15;
+            });
+
+            // 4. 三區過濾 (1-13, 14-26, 27-39)
+            let zones = [[],[],[]];
+            for(let i=1; i<=39; i++) {
+                let z = Math.min(Math.floor((i-1)/13), 2);
+                zones[z].push(stats[i]);
+            }
+
+            let pool = [];
+            zones.forEach(z => pool.push(...z.sort((a,b)=>b.score-a.score).slice(0, 3)));
+            return pool.sort((a,b)=>b.score-a.score).slice(0, 8).map(x=>x.n.toString().padStart(2,'0')).sort();
         }
 
-        // 補位機制
-        if(final.size < 8) {
-            hotCandidates.forEach(h => { if(final.size < 8) final.add(h.n); });
+        // --- 核心優化：天天樂 V.53.8 交叉熵/強集中引擎 ---
+        function getDailyV538Logic(history) {
+            const lastRow = history[0].nums;
+            let scores = Array(40).fill(0).map((_, i) => ({ n: i, s: 0, gap: 0 }));
+
+            for(let i=1; i<=39; i++) {
+                let gap = 0; for(let k=0; k<history.length; k++) { if(!history[k].nums.includes(i)) gap++; else break; }
+                scores[i].gap = gap;
+                if(gap >= 18 && gap <= 32) scores[i].s += 800; // 虛空補償
+                let hot = 0; history.slice(0,10).forEach(d => { if(d.nums.includes(i)) hot++; });
+                scores[i].s += hot * 210;
+                lastRow.forEach(ln => { 
+                    if(Math.abs(ln - i) === 1) scores[i].s += 310; 
+                    if(ln % 10 === i % 10) scores[i].s += 320; 
+                });
+            }
+
+            let final = new Set();
+            // A核心：4碼 (冷熱交叉)
+            let coldCandidates = [...scores].sort((a,b)=>b.gap - a.gap).slice(0, 12).sort((a,b)=>b.s - a.s);
+            final.add(coldCandidates[0].n);
+            [coldCandidates[0].n-1, coldCandidates[0].n+1, (coldCandidates[0].n+10)%40].filter(n=>n>0&&n<40).forEach(n=>{ if(final.size < 4) final.add(n); });
+
+            // B核心：4碼 (跳島覆蓋)
+            let hotCandidates = [...scores].sort((a,b)=>b.s - a.s);
+            for(let x of hotCandidates) {
+                if(!final.has(x.n) && ![...final].some(fn => Math.abs(fn-x.n) < 3)) {
+                    final.add(x.n);
+                    if(final.size >= 8) break;
+                }
+            }
+            // 補位
+            if(final.size < 8) hotCandidates.forEach(h => { if(final.size < 8) final.add(h.n); });
+
+            return Array.from(final).slice(0, 8).sort((a,b) => a-b).map(x=>x.toString().padStart(2,'0'));
         }
 
-        return Array.from(final).slice(0, 8).sort((a,b) => a-b);
-    }
+        function processData(data) {
+            if(!data) return;
+            let history = data.filter(row => row.length >= 6).map(row => ({
+                date: String(row[0]).split('T')[0],
+                nums: row.slice(1, 6).map(n => parseInt(n)).filter(n => !isNaN(n)).sort((a,b)=>a-b)
+            })).filter(h => h.nums.length === 5);
+            if (new Date(history[0].date) < new Date(history[history.length - 1].date)) history.reverse();
 
-    document.getElementById('csvFile').addEventListener('change', e => {
-        const reader = new FileReader();
-        reader.onload = () => {
-            rawData = reader.result.replace(/\r/g, "").trim().split('\n').map(l => {
-                const c = l.split(',');
-                return { date: c[0].trim(), nums: c.slice(1, 6).map(x => parseInt(x.trim())).filter(x => !isNaN(x)).sort((a,b)=>a-b) };
-            }).filter(r => r.nums.length === 5);
-            document.getElementById('logBox').innerHTML = "";
-            runGlobalScan();
-        };
-        reader.readAsText(e.target.files[0]);
-    });
+            let stars = 0, rowsHtml = "";
+            for (let i = 0; i < 10; i++) {
+                const histSlice = history.slice(i + 1);
+                const result = (currentMode === '539') ? get539V422Logic(histSlice) : getDailyV538Logic(histSlice);
+                const actual = history[i].nums;
+                const hits = actual.filter(n => result.includes(n.toString().padStart(2,'0'))).length;
+                stars += hits;
+                
+                const predHtml = result.map(p => actual.includes(parseInt(p)) ? `<span class="hit-num">${p}</span>` : p).join(',');
+                rowsHtml += `<tr class="border-b border-white/5"><td class="py-3 text-gray-500">${history[i].date.split('-').slice(1).join('/')}</td><td class="font-mono text-white">${actual.map(n => n.toString().padStart(2,'0')).join(' ')}</td><td class="text-[11px] text-gray-400 font-mono">${predHtml}</td><td class="text-right font-black ${hits >= 2 ? 'text-orange-500' : 'text-gray-700'}">${hits}</td></tr>`;
+            }
 
-    function runGlobalScan() {
-        let btHtml = ""; let starCount = {0:0, 1:0, 2:0, 3:0, 4:0, 5:0}; let totalHits = 0;
-        const totalPeriods = rawData.length - 30;
-        for(let i = 30; i < rawData.length; i++) {
-            const hist = rawData.slice(0, i);
-            const pred = getPrediction(hist);
-            const hits = rawData[i].nums.filter(n => pred.includes(n));
-            starCount[Math.min(hits.length, 5)]++; totalHits += hits.length;
+            const avg = (stars / 10).toFixed(2);
+            document.getElementById('statusDot').className = `w-2 h-2 rounded-full mr-1 ${avg < 1.1 ? 'bg-orange-500 animate-pulse' : 'bg-green-500'}`;
+            
+            // UI 文字切換
+            if(currentMode === '539') {
+                document.getElementById('label_p1').innerText = "一區(頭)";
+                document.getElementById('label_p2').innerText = "二區(中)";
+                document.getElementById('label_p3').innerText = "三區(尾)";
+                document.getElementById('label_p4').innerText = "權重補位";
+            } else {
+                document.getElementById('label_p1').innerText = "冷熱核心";
+                document.getElementById('label_p2').innerText = "跳島結構";
+                document.getElementById('label_p3').innerText = "交叉過濾";
+                document.getElementById('label_p4').innerText = "動態對沖";
+            }
+
+            document.getElementById('logBox').innerHTML = `
+                <div class="flex justify-between items-center border-b border-white/10 pb-1 mb-1">
+                    <span class="text-orange-500 font-bold uppercase">${currentMode} V8.61 CORE</span>
+                    <span class="bg-white text-black px-1 rounded text-[9px] font-black">AI-OPTIMIZED</span>
+                </div>
+                10期平均命中: <span class="text-orange-500 text-lg font-black">${avg} 星</span><br>
+                策略引擎: <span class="text-white font-bold italic">${currentMode === '539' ? 'V.42.2 三區平衡' : 'V.53.8 強集中核心'}</span><br>
+                <div class="mt-1 text-[9px] text-gray-400 italic">模式：已強化${currentMode === '539' ? '區間遺漏' : '交叉熵'}運算參數</div>`;
+
+            const final = (currentMode === '539') ? get539V422Logic(history) : getDailyV538Logic(history);
+            document.getElementById('p1').innerText = `${final[0]},${final[1]}`;
+            document.getElementById('p2').innerText = `${final[2]},${final[3]}`;
+            document.getElementById('p3').innerText = `${final[4]},${final[5]}`;
+            document.getElementById('p4').innerText = `${final[6]},${final[7]}`;
+            document.getElementById('historyTable').innerHTML = rowsHtml;
         }
-        rawData.slice(-10).reverse().forEach(row => {
-            const hist = rawData.slice(0, rawData.indexOf(row));
-            const pred = getPrediction(hist);
-            const hits = row.nums.filter(n => pred.includes(n));
-            btHtml += `<div class="bt-row">
-                <div class="bt-meta"><span>📅 ${formatDate(row.date)}</span> <span class="star-tag">${hits.length} ★</span></div>
-                <div class="num-group"><span class="num-label">開獎</span>${row.nums.map(n => `<div class="n-box ${pred.includes(n)?'hit':''}">${pad(n)}</div>`).join('')}</div>
-                <div class="num-group"><span class="num-label">預測</span>${pred.map(n => `<div class="n-box" style="color:${row.nums.includes(n)?'var(--hit)':'#666'}">${pad(n)}</div>`).join('')}</div>
-            </div>`;
-        });
-        document.getElementById('btBody').innerHTML = btHtml;
-        document.getElementById('nextPred').innerHTML = getPrediction(rawData).map(n => `<div class="ball">${pad(n)}</div>`).join('');
-        let mHtml = `<table class="m-table"><thead><tr><th class="m-date">日</th>`;
-        for(let i=1; i<=39; i++) mHtml += `<th class="m-head">${pad(i)}</th>`;
-        mHtml += `</tr></thead><tbody>`;
-        rawData.slice(-15).reverse().forEach(row => {
-            mHtml += `<tr><td class="m-date">${formatDate(row.date)}</td>`;
-            for(let i=1; i<=39; i++) mHtml += `<td>${row.nums.includes(i) ? '<span class="m-ball"></span>' : ''}</td>`;
-            mHtml += `</tr>`;
-        });
-        document.getElementById('matrixCont').innerHTML = mHtml + `</tbody></table>`;
-        log(`[V.53.8 交叉熵優化啟動]`);
-        log(`全量數據: ${rawData.length} 期 | 回測: ${totalPeriods} 期`);
-        log(`期望值：${(totalHits / totalPeriods).toFixed(2)} 碼/期`);
-        log(`--------------------------------`);
-        log(`2★以上總占比: ${((starCount[2]+starCount[3]+starCount[4])/totalPeriods*100).toFixed(1)}%`);
-        log(`明細: 0★(${(starCount[0]/totalPeriods*100).toFixed(0)}%) | 1★(${(starCount[1]/totalPeriods*100).toFixed(0)}%) | 2★(${(starCount[2]/totalPeriods*100).toFixed(0)}%) | 3★+(${(starCount[3]/totalPeriods*100).toFixed(0)}%)`);
-    }
-</script>
+    </script>
 </body>
 </html>
